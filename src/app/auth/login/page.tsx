@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import * as React from "react"
 import { motion } from "framer-motion"
@@ -11,7 +11,6 @@ import { FaGoogle, FaFacebook } from "react-icons/fa"
 interface FormData {
   email: string
   password: string
-  confirmPassword: string
 }
 
 // Input component
@@ -65,14 +64,31 @@ const LoadingSpinner = () => (
   <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
 );
 
-export default function RegisterForm() {
+export default function LoginPage() {
   const [isLoading, setIsLoading] = React.useState(false)
   const [formData, setFormData] = React.useState<FormData>({
     email: "",
     password: "",
-    confirmPassword: "",
   })
   const router = useRouter();
+
+  // Add initialization check
+  React.useEffect(() => {
+    const checkSupabase = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        console.log("Supabase initialization check:", {
+          session: !!session,
+          error: error?.message,
+          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ? "Set" : "Not Set",
+          supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "Set" : "Not Set"
+        })
+      } catch (error) {
+        console.error("Supabase initialization error:", error)
+      }
+    }
+    checkSupabase()
+  }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
@@ -81,37 +97,53 @@ export default function RegisterForm() {
     }))
   }
 
-  // Sign up with Email/Password
+  // Sign in with Email/Password
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
+    console.log("Login form submitted");
 
-    if (!formData.email || !formData.password || !formData.confirmPassword) {
+    if (!formData.email || !formData.password) {
+      console.log("Missing email or password");
       toast.error("Please fill in all fields");
       return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
     setIsLoading(true);
+    console.log("Attempting to sign in with:", formData.email);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      console.log("Supabase client check:", {
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+        hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      });
+
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Login error details:", {
+          message: error.message,
+          status: error.status,
+          name: error.name
+        });
+        throw error;
+      }
 
       if (data.user) {
-        toast.success("Registration successful! Please check your email to confirm your account.");
-        setFormData({ email: "", password: "", confirmPassword: "" });
-        router.push("/auth/login");
+        console.log("Login successful, user:", data.user);
+        toast.success("Login successful!");
+        setFormData({ email: "", password: "" });
+        router.push("/profile-setup");
       }
     } catch (error: any) {
-      toast.error(error.message || "Something went wrong. Please try again.");
+      console.error("Login failed with error:", error);
+      if (error.message === "Email not confirmed") {
+        toast.error("Please check your email and confirm your account before logging in.");
+      } else {
+        toast.error(error.message || "Something went wrong. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -164,7 +196,7 @@ export default function RegisterForm() {
           className="flex flex-col items-center space-y-2 text-center"
         >
           <h1 className="text-3xl font-semibold tracking-tight text-white">
-            Register
+            Login
           </h1>
         </motion.div>
 
@@ -191,14 +223,6 @@ export default function RegisterForm() {
               onChange={handleInputChange}
               disabled={isLoading}
             />
-            <Input
-              type="password"
-              name="confirmPassword"
-              placeholder="Confirm Password"
-              value={formData.confirmPassword}
-              onChange={handleInputChange}
-              disabled={isLoading}
-            />
           </motion.div>
 
           <motion.div
@@ -214,10 +238,10 @@ export default function RegisterForm() {
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <LoadingSpinner />
-                  Registering...
+                  Logging in...
                 </span>
               ) : (
-                "Register"
+                "Login"
               )}
             </Button>
           </motion.div>
@@ -234,7 +258,7 @@ export default function RegisterForm() {
             <span className="text-sm text-white/70">or</span>
             <Separator className="w-16" />
           </div>
-          <span className="text-sm text-white/70">sign up with</span>
+          <span className="text-sm text-white/70">sign in with</span>
           <div className="flex space-x-4">
             <SocialButton
               icon={<FaGoogle className="h-5 w-5" />}
@@ -251,4 +275,4 @@ export default function RegisterForm() {
       </motion.div>
     </div>
   );
-}
+} 

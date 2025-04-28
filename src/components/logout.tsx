@@ -1,26 +1,30 @@
-import { deleteCookie } from "cookies-next"; 
-import { getAuth, signOut } from "firebase/auth";
-import { useRouter } from "next/navigation";
+"use client"
+
+import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase"
+import { toast } from "sonner"
 
 const LogoutButton = () => {
-    const auth = getAuth();
     const router = useRouter();
 
     const handleLogout = async () => {
         try {
-            await signOut(auth); // Firebase sign-out
-            deleteCookie("firebase-auth-token"); // Remove auth cookie
-
-            console.log("User logged out, cookie removed!");
-
-            router.push("/dashboard"); // Redirect to dashboard
+            const { error } = await supabase.auth.signOut();
+            if (error) throw error;
+            
+            toast.success("Logged out successfully");
+            router.push("/");
         } catch (error) {
-            console.error("Logout error:", error);
+            console.error("Error logging out:", error);
+            toast.error("Failed to log out");
         }
     };
 
     return (
-        <button onClick={handleLogout} className="bg-red-500 px-3 py-1 rounded">
+        <button
+            onClick={handleLogout}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
             Logout
         </button>
     );

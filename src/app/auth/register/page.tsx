@@ -65,7 +65,7 @@ const LoadingSpinner = () => (
   <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
 );
 
-export default function RegisterForm() {
+export default function RegisterPage() {
   const [isLoading, setIsLoading] = React.useState(false)
   const [formData, setFormData] = React.useState<FormData>({
     email: "",
@@ -251,4 +251,4 @@ export default function RegisterForm() {
       </motion.div>
     </div>
   );
-}
+} 

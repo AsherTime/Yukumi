@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-
+import { supabase } from "@/lib/supabase";
 
 interface Anime {
   id: number;
@@ -26,18 +26,18 @@ interface Anime {
 
 interface FavAnime {
   id: number
-created_at: string
-image_url: string
-title: string
-Type: string
-episodes: number
-aired_from: string
-aired_to: string
-Genres: string[]
-avg_score: number
-rank: number
-popularity: number
-members: number
+  created_at: string
+  image_url: string
+  title: string
+  Type: string
+  episodes: number
+  aired_from: string
+  aired_to: string
+  Genres: string[]
+  avg_score: number
+  rank: number
+  popularity: number
+  members: number
 }
 
 interface UserEntry {
@@ -60,13 +60,12 @@ export default function Home() {
   const [userScores, setUserScores] = useState<Record<number, number>>({});
   const [userStatuses, setUserStatuses] = useState<Record<number, string>>({});
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [favorites, setFavorites] = useState<FavAnime[]>([]);
   const [userData, setUserData] = useState<UserEntry | null>(null);
   const [debouncedUserData, setDebouncedUserData] = useState(userData);
   const [firebase_uid, setFirebase_uid] = useState<string | null>(null);
-
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -196,23 +195,22 @@ export default function Home() {
 
   useEffect(() => {
     const fetchAnime = async () => {
-      setLoading(true);
       try {
-        const response = await fetch("https://x8ki-letl-twmt.n7.xano.io/api:8BJgb0Hk/animes1");
-        await fetch("https://x8ki-letl-twmt.n7.xano.io/api:8BJgb0Hk/fetchanimedata/updateAvgScore");
-        const data = await response.json();
+        const { data, error } = await supabase
+          .from('anime')
+          .select('*')
 
-        const sortedData = data.sort((a: Anime, b: Anime) => b.avg_score - a.avg_score);
-        setAnimeList(sortedData);
-        setDisplayedAnime(sortedData.slice(0, 50));
+        if (error) throw error
+        setAnimeList(data || [])
       } catch (error) {
-        console.error("Error fetching anime:", error);
+        console.error('Error fetching anime:', error)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false);
-    };
+    }
 
-    fetchAnime();
-  }, []);
+    fetchAnime()
+  }, [])
 
   useEffect(() => {
     if (!isLoggedIn) return;

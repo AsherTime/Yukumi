@@ -1,84 +1,48 @@
 "use client"
 
-import type React from "react"
-import { useRef, useState, useEffect } from "react"
-import { ImageCarousel } from "@/components/image-carousel"
-import { CarouselProvider, useCarousel } from "@/contexts/carousel-context"
-import Link from "next/link"
-import { auth } from "@/app/auth/register-form/firebase";
-import { ButtonCarousel } from "@/components/button-carousel"
-import Footer from "@/components/footer"
-import { TopNav } from "@/components/top-nav"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase"
 
-function MainContent() { 
-  const carousel = useCarousel(); 
-  const activeImage = carousel?.activeImage || "/placeholder.svg";
-  const mainRef = useRef<HTMLDivElement>(null) 
-  const [user, setUser] = useState<null | object>(null);
+export default function DashboardPage() {
+  const [user, setUser] = useState<any>(null)
+  const router = useRouter()
 
-    useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-            setUser(currentUser);
-        });
-        return () => unsubscribe();
-    }, []);
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error || !session) {
+        router.push("/auth/login")
+        return
+      }
+
+      setUser(session.user)
+    }
+
+    checkUser()
+  }, [router])
+
+  if (!user) {
+    return <div>Loading...</div>
+  }
+
   return (
-    <main
-      ref={mainRef}
-      className="relative min-h-screen overflow-hidden"
-    >
-      {/* Dynamic Background */}
-      <div
-        className="absolute inset-0 bg-cover bg-top z-0 transition-opacity duration-500"
-        style={{
-          backgroundImage: `url(${encodeURI(activeImage)})`,
-        }}
-      />
-
-      {/* Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-8 pt-20 flex flex-row h-[calc(100vh-80px)] justify-between items-center">
-  {/* Left Side: Join Now Button */}
-  <div className="flex flex-col items-center gap-0 relative">
-  <div className="relative w-full flex justify-center mt-2 max-w-md h-[300px]">
-      <ImageCarousel />
+    <div className="min-h-screen bg-black p-8">
+      <h1 className="text-3xl font-bold text-white mb-8">Dashboard</h1>
+      <div className="bg-white/5 rounded-lg p-6">
+        <h2 className="text-xl font-semibold text-white mb-4">Welcome, {user.email}</h2>
+        <button
+          onClick={async () => {
+            await supabase.auth.signOut()
+            router.push("/auth/login")
+          }}
+          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+        >
+          Sign Out
+        </button>
+      </div>
     </div>
-    {user ? (
-    <Link
-      href="/community"
-      className="inline-block px-8 py-3 mt-[-10px] mb-6 bg-[#FF00FF] bg-opacity-50 backdrop-blur-md text-white rounded-full text-xl font-bold 
-               transition-all hover:bg-opacity-75 hover:scale-105 animate-pulse"
-    >
-      EXPLORE
-    </Link>
-    ):(
-      <Link
-      href="/auth/register-form"
-      className="inline-block px-8 py-3 mt-[-10px] mb-6 bg-[#FF00FF] bg-opacity-50 backdrop-blur-md text-white rounded-full text-xl font-bold 
-               transition-all hover:bg-opacity-75 hover:scale-105 animate-pulse"
-    >
-      JOIN NOW
-    </Link>
-    )}
-    </div>
-  <div className="w-full max-w-lg">
-    <ButtonCarousel />
-  </div>
-</div>
-
-    </main> 
-  )
-}
-
-export default function Home() {
-  return (
-    <>
-    <CarouselProvider>
-      <TopNav>
-        <MainContent />
-      </TopNav>
-    </CarouselProvider>
-    <Footer />
-    </>
   )
 } 
 
