@@ -4,149 +4,356 @@ import { Upload } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 export function UserProfile() {
   const [avatarUrl, setAvatarUrl] = useState<string>("/placeholder.svg");
   const [displayName, setDisplayName] = useState<string>("Loading...");
-  const [firebaseUid, setFirebaseUid] = useState<string | null>(null);
-  const [userId, setUserId] = useState<number | null>(null);
   const [editMode, setEditMode] = useState<boolean>(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   
-  const { user, loading } = useAuth();
   const router = useRouter();
 
-  // Firebase Authentication
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push("/auth/login-page"); // Redirect if not logged in
-      } else {
-        setFirebaseUid(user.uid); // Update firebase_uid when user is set
-        fetchUserData(); // Fetch user ID from Xano
-      }
-    }
-  }, [user, loading, router]);
-
-  // Fetch user data from Xano based on Firebase UID
-  const fetchUserData = async () => {
-    try {
-      if (firebaseUid) {
-        console.log("Fetching User ID for:", firebaseUid);
+    const fetchUserProfile = async () => {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        const response = await fetch(
-          `https://x8ki-letl-twmt.n7.xano.io/api:hRCl8Tp6/users`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ firebase_uid: firebaseUid }),
+        if (sessionError) {
+          console.error("Session error:", sessionError);
+          router.push("/auth/login");
+          return;
+        }
+
+        if (!session) {
+          router.push("/auth/login");
+          return;
+        }
+
+        // Debug log to check session
+        console.log("Current session user ID:", session.user.id);
+
+        const { data: profile, error: profileError } = await supabase
+          .from('Profiles')  // Capital P
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+          if (profileError.code === 'PGRST116') {
+            console.log("Profile not found, will be created on first update");
+          } else {
+            throw profileError;
           }
-        );
+        }
 
-        const data = await response.json();
-        console.log("User Data Response:", data);
-        setUserId(data); // Set user ID received from Xano
+        if (profile) {
+          console.log("Fetched profile:", profile);
+          setDisplayName(profile.display_name || "Anonymous");
+          setAvatarUrl(profile.avatar_url || "/placeholder.svg");
+          setProfileImage(profile.avatar_url || null);
+        }
+      } catch (error) {
+        console.error("Error in fetchUserProfile:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-    }
-  };
+    };
 
-  // Fetch user details from Xano
-  useEffect(() => {
-    if (userId) {
-      fetchUserDetails();
-    }
-  }, [userId]);
+    fetchUserProfile();
+  }, [router]);
 
-  const fetchUserDetails = async () => {
-    try {
-      if (userId) {
-        console.log("Fetching details for user ID:", userId);
-        const response = await fetch(
-          `https://x8ki-letl-twmt.n7.xano.io/api:hRCl8Tp6/users/${userId}`
-        );
-        const userDetails = await response.json();
-        console.log("Final user details:", userDetails);
-
-        // Update avatar URL and display name
-        setAvatarUrl(userDetails.picture_url || "/placeholder.svg");
-        setDisplayName(userDetails.display_name || "Anonymous");
-        setProfileImage(userDetails.picture_url || null);
-      }
-    } catch (error) {
-      console.error("Error fetching user details:", error);
-    }
-  };
-
-  // Handle profile image upload to Cloudinary
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      alert("Please select an image first.");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", "image-upload-1");
-    formData.append("folder", "DisplayPicture");
-
     try {
-      const response = await fetch("https://api.cloudinary.com/v1_1/difdc39kr/image/upload", {
-        method: "POST",
-        body: formData,
+      const file = e.target.files?.[0];
+      if (!file) {
+        toast.error("No file selected");
+        return;
+      }
+
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("File size should be less than 5MB");
+        return;
+      }
+
+      // Check file type
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error("Invalid file type. Please upload an image (PNG, JPEG, JPG, WEBP, or GIF)");
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        toast.error("No active session");
+        return;
+      }
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${session.user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `${session.user.id}/${fileName}`;
+      
+
+      console.log("Starting upload process...");
+      console.log("File path:", filePath);
+
+      // Debug session info
+      console.log("Session info:", {
+        userId: session.user.id,
+        fileInfo: {
+          name: file.name,
+          size: file.size,
+          type: file.type
+        }
       });
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${data.error?.message || "Unknown error"}`);
+      // Check if bucket exists and create if it doesn't
+      console.log("Checking storage bucket...");
+      const { data: bucketData, error: bucketError } = await supabase
+        .storage
+        .getBucket('avatars');
+
+      if (bucketError?.message === 'Bucket not found') {
+        console.log("Bucket not found, creating new bucket...");
+        const { data: newBucket, error: createError } = await supabase
+          .storage
+          .createBucket('avatars', {
+            public: true,
+            allowedMimeTypes: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'],
+            fileSizeLimit: 5242880 // 5MB in bytes
+          });
+
+        if (createError) {
+          console.error("Error creating bucket:", {
+            message: createError.message,
+            name: createError.name,
+            error: createError
+          });
+          throw createError;
+        }
+        console.log("Bucket created successfully:", newBucket);
+      } else if (bucketError) {
+        console.error("Bucket error:", {
+          message: bucketError.message,
+          name: bucketError.name,
+          error: bucketError
+        });
+        throw bucketError;
       }
 
-      const newAvatarUrl = data.secure_url;
-      setProfileImage(newAvatarUrl);
-      
-      // Update avatar URL in Xano
-      await updateUserProfile({ picture_url: newAvatarUrl });
-    } catch (error) {
-      console.error("Error uploading image:", error);
-    }
-  };
+      console.log("Storage bucket is ready");
 
-  // Update user details in Xano (Display Name and Avatar)
-  const updateUserProfile = async (updates: { picture_url?: string, display_name?: string }) => {
-    if (!userId) return;
-    try {
-      const response = await fetch(
-        `https://x8ki-letl-twmt.n7.xano.io/api:hRCl8Tp6/users/${userId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updates),
+      // Upload new avatar
+      console.log("Uploading new file...");
+      try {
+        // Upload file
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true,
+            contentType: file.type // Explicitly set content type
+          });
+
+        if (uploadError) {
+          console.error("Upload error details:", {
+            message: uploadError.message,
+            name: uploadError.name,
+            error: uploadError
+          });
+          throw uploadError;
         }
-      );
-      const updatedUser = await response.json();
-      console.log("Updated User:", updatedUser);
-    } catch (error) {
-      console.error("Error updating user profile:", error);
+
+        console.log("Upload successful:", uploadData);
+
+        // Get the public URL
+        const { data: urlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+
+        if (!urlData.publicUrl) {
+          throw new Error("Failed to generate public URL");
+        }
+
+        const publicUrl = urlData.publicUrl;
+        console.log("Generated public URL:", publicUrl);
+
+        // Check if profile exists and create/update accordingly
+        const { data: existingProfile, error: fetchError } = await supabase
+          .from('Profiles')  // Capital P
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          console.error("Error fetching profile:", fetchError);
+          throw fetchError;
+        }
+
+        let profileError;
+        if (!existingProfile) {
+          console.log("Creating new profile...");
+          // Create new profile if it doesn't exist
+          const { error: insertError } = await supabase
+            .from('Profiles')  // Capital P
+            .insert([{
+              id: session.user.id,
+              avatar_url: publicUrl,
+              display_name: displayName || 'Anonymous',
+              updated_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error("Insert error details:", {
+              message: insertError.message,
+              hint: insertError.hint,
+              details: insertError.details,
+              code: insertError.code
+            });
+          }
+          profileError = insertError;
+        } else {
+          console.log("Updating existing profile...");
+          // Update existing profile
+          const { error: updateError } = await supabase
+            .from('Profiles')  // Capital P
+            .update({ 
+              avatar_url: publicUrl,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', session.user.id)
+            .select()
+            .single();
+
+          if (updateError) {
+            console.error("Update error details:", {
+              message: updateError.message,
+              hint: updateError.hint,
+              details: updateError.details,
+              code: updateError.code
+            });
+          }
+          profileError = updateError;
+        }
+
+        if (profileError) {
+          console.error("Profile operation error:", profileError);
+          throw profileError;
+        }
+
+        // Update local state
+        setProfileImage(publicUrl);
+        setAvatarUrl(publicUrl);
+        
+        toast.success("Profile picture updated successfully!");
+      } catch (error: any) {
+        // Detailed error logging
+        console.error("Upload process failed - Full error:", {
+          error,
+          message: error?.message,
+          details: error?.details,
+          hint: error?.hint,
+          code: error?.code,
+          statusCode: error?.statusCode,
+          name: error?.name,
+          stack: error?.stack
+        });
+
+        // Check if it's a Supabase error
+        if (error?.error_description) {
+          console.error("Supabase error:", error.error_description);
+        }
+
+        // More specific error message for the user
+        let errorMessage = "Failed to upload image. ";
+        if (error?.message) {
+          errorMessage += error.message;
+        } else if (error?.error_description) {
+          errorMessage += error.error_description;
+        } else {
+          errorMessage += "Please try again.";
+        }
+
+        toast.error(errorMessage);
+      }
+    } catch (error: any) {
+      // Detailed error logging
+      console.error("Upload process failed - Full error:", {
+        error,
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        code: error?.code,
+        statusCode: error?.statusCode,
+        name: error?.name,
+        stack: error?.stack
+      });
+
+      // Check if it's a Supabase error
+      if (error?.error_description) {
+        console.error("Supabase error:", error.error_description);
+      }
+
+      // More specific error message for the user
+      let errorMessage = "Failed to upload image. ";
+      if (error?.message) {
+        errorMessage += error.message;
+      } else if (error?.error_description) {
+        errorMessage += error.error_description;
+      } else {
+        errorMessage += "Please try again.";
+      }
+
+      toast.error(errorMessage);
     }
   };
 
-  // Editable display name logic
-  const handleSaveDisplayName = () => {
-    updateUserProfile({ display_name: displayName });
-    setEditMode(false); // Exit edit mode after saving
+  const handleSaveDisplayName = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("No user session");
+
+      const { error } = await supabase
+        .from('Profiles')  // Capital P
+        .update({ 
+          display_name: displayName,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', session.user.id);
+
+      if (error) throw error;
+      
+      setEditMode(false);
+      toast.success("Display name updated successfully!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update display name");
+    }
   };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="flex items-center gap-6 p-6 bg-background/50 rounded-lg">
       {/* Avatar */}
       <div className="relative">
         <Avatar className="h-24 w-24">
-          <AvatarImage src={profileImage || avatarUrl} />
-          <AvatarFallback>DP</AvatarFallback>
+          <AvatarImage 
+            src={profileImage || avatarUrl} 
+            alt="Profile picture"
+            className="object-cover"
+          />
+          <AvatarFallback className="bg-gray-800 text-white">
+            {displayName?.charAt(0)?.toUpperCase() || 'U'}
+          </AvatarFallback>
         </Avatar>
 
         <label
