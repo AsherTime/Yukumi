@@ -7,8 +7,6 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
 
 export function UserProfile() {
   const [avatarUrl, setAvatarUrl] = useState<string>("/placeholder.svg");

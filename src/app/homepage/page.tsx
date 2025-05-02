@@ -10,7 +10,7 @@ import { FiFlag, FiHeart, FiMessageCircle } from "react-icons/fi";
 import { FaHeart } from "react-icons/fa"; // Filled heart
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
-
+ 
 interface Post {
   id: string;
   title: string;

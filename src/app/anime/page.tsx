@@ -1,269 +1,114 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { Heart, Star, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import Image from "next/image";
+import React, { useEffect, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Search, Heart } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
 import { TopNav } from "@/components/top-nav";
-import Footer from "@/components/footer";
-import Link from "next/link";
+import Footer from "@/components/Footer"
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase"
 
 interface Anime {
-  id: number;
-  image_url: string;
-  title: string;
-  type: string;
-  episodes: number;
-  aired_from: string;
-  aired_to: string;
-  genres: string[];
-  avg_score: number;
-}
-
-interface FavAnime {
   id: number
-  created_at: string
-  image_url: string
   title: string
-  Type: string
-  episodes: number
-  aired_from: string
-  aired_to: string
-  Genres: string[]
+  image_url: string
   avg_score: number
-  rank: number
-  popularity: number
-  members: number
-}
+} 
 
-interface UserEntry {
-  id: number
-  created_at: string
-  firebase_uid: string
-  username: string
-  picture_url: string
-  auth_provider: string
-  display_name: string
-  gender: string[]
-  country: string
-  age: number
-  favourites: number[]
-}
+const AnimeBrowser: React.FC = () => {
+  const [animeList, setAnimeList] = useState<Anime[]>([])
+  const [displayedAnime, setDisplayedAnime] = useState<Anime[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [page, setPage] = useState(1)
+  const [favorites, setFavorites] = useState<Anime[]>([])
+  const [userScores, setUserScores] = useState<Record<number, number>>({})
+  const [userStatuses, setUserStatuses] = useState<Record<number, string>>({})
 
-export default function Home() {
-  const [animeList, setAnimeList] = useState<Anime[]>([]);
-  const [displayedAnime, setDisplayedAnime] = useState<Anime[]>([]);
-  const [userScores, setUserScores] = useState<Record<number, number>>({});
-  const [userStatuses, setUserStatuses] = useState<Record<number, string>>({});
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [favorites, setFavorites] = useState<FavAnime[]>([]);
-  const [userData, setUserData] = useState<UserEntry | null>(null);
-  const [debouncedUserData, setDebouncedUserData] = useState(userData);
-  const [firebase_uid, setFirebase_uid] = useState<string | null>(null);
-
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const { user } = useAuth();
-  const router = useRouter();
+  const { user } = useAuth()
 
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        setFirebase_uid(user.uid); // Update firebase_uid when user is set
-      }
-    }
-  }, [user, loading, router]);
-
-  // Debouncing userData
-  useEffect(() => {
-    console.log("Setting debouncedUserData:", userData); // Log to verify if userData changes
-    const handler = setTimeout(() => {
-      setDebouncedUserData(userData);
-    }, 500); // Delays API call by 500ms
-
-    return () => clearTimeout(handler); // Cancels previous request if userData changes within 500ms
-  }, [userData]);
-
-  // Fetch user data based on firebase_uid
-  useEffect(() => {
-    if (!firebase_uid) return;
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch("https://x8ki-letl-twmt.n7.xano.io/api:hRCl8Tp6/users", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ firebase_uid: firebase_uid }),
-        });
-        const data = await response.json();
-        const response2 = await fetch(`https://x8ki-letl-twmt.n7.xano.io/api:hRCl8Tp6/users/${data}`);
-        const data2 = await response2.json();
-        console.log("data2", data2);
-        setUserData(data2);
-      } catch (error) {
-        console.error("Error fetching user anime:", error);
-      }
-    };
-
-    fetchUserData();
-  }, [firebase_uid]);
-
-  // Fetch anime details based on debouncedUserData
-  const fetchAnimeDetails = async (debouncedUserData: UserEntry) => {
-    console.log('Fetching anime details...', debouncedUserData); // Check if the function is triggered
-    if (!debouncedUserData?.favourites || debouncedUserData.favourites.length === 0) return [];
-
-    try {
-      const response = await fetch(
-        `https://x8ki-letl-twmt.n7.xano.io/api:8BJgb0Hk/fetchanimedata/getFavourites`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ anime_ids: debouncedUserData.favourites }),
-        }
-      );
-      const extractedData = await response.json();
-      console.log("extracted", extractedData);
-      return extractedData; // Return the data
-    } catch (error) {
-      console.error("Error fetching favorite anime details:", error);
-      return []; // Return an empty array in case of an error
-    }
-  };
-
-  // useQuery with queryFn
-  const { data: favoriteAnimeList, error: queryError, isLoading } = useQuery({
-    queryKey: ["favoriteAnimes", debouncedUserData?.favourites ?? []], 
-    queryFn: () => {
-      console.log('Inside queryFn, debouncedUserData:', debouncedUserData); // Add log for debug
-      return debouncedUserData ? fetchAnimeDetails(debouncedUserData) : [];
-    },
-    enabled: !!debouncedUserData && debouncedUserData.favourites?.length > 0, // Ensure query is enabled only when there are favorites
-    staleTime: 1000 * 60 * 5, // Cache data for 5 minutes
-  });
-
-  // Update favorites when favoriteAnimeList changes
-  useEffect(() => {
-    if (favoriteAnimeList) {
-      setFavorites(favoriteAnimeList);
-    }
-  }, [favoriteAnimeList]);
-
-  const toggleFavorite = async (id: number) => {
-    if (!user) {
-      router.push("/auth/login-page");
-      return;
-    } // Ensure user is logged in before making a request
-  
-    const isFavorite = favorites.some(fav => fav.id === id);    
-    const endpoint = isFavorite 
-      ? `https://x8ki-letl-twmt.n7.xano.io/api:hRCl8Tp6/favourites/remove`  // API to remove favorite
-      : `https://x8ki-letl-twmt.n7.xano.io/api:hRCl8Tp6/favourites/add`;   // API to add favorite
-  
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ firebase_uid: user.uid, anime_id: id }),
-      });
-  
-      if (!response.ok) throw new Error("Failed to update favorites");
-      const newFavorite = await response.json();
-  
-      // Update state only after a successful API call
-      setFavorites((prev) => 
-        isFavorite 
-          ? prev.filter(fav => fav.id !== id) // Remove the favorite
-          : [...prev, newFavorite] // Add new favorite
-      );
-  
-      console.log(`Anime ${id} ${isFavorite ? "removed from" : "added to"} favorites.`);
-    } catch (error) {
-      console.error("Error updating favorite anime:", error);
-    }
-  };
-  
-
-  useEffect(() => {
-    const fetchAnime = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('anime')
-          .select('*')
-
-        if (error) throw error
-        setAnimeList(data || [])
-      } catch (error) {
-        console.error('Error fetching anime:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchAnime()
+    fetchAnimeList()
   }, [])
 
   useEffect(() => {
-    if (!isLoggedIn) return;
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch("https://x8ki-letl-twmt.n7.xano.io/api:P5mUuktq/user_anime");
-        const userData = await response.json();
-        
-        const scores: Record<number, number> = {};
-        const statuses: Record<number, string> = {};
+    const start = (page - 1) * 50
+    const end = start + 50
+    // If searchQuery is empty, just show paginated animeList
+  if (!searchQuery.trim()) {
+    console.log(animeList.slice(start, end)); 
+    setDisplayedAnime(animeList.slice(start, end));
+    return;
+  }
 
-        userData.forEach((entry: { anime_id: number; score: number; status: string }) => {
-          scores[entry.anime_id] = entry.score;
-          statuses[entry.anime_id] = entry.status;
-        });
+  // Filter based on search query
+  const filtered = animeList.filter(anime =>
+    anime.title?.toLowerCase().includes(searchQuery.toLowerCase())
+  ); 
 
-        setUserScores(scores);
-        setUserStatuses(statuses);
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-      }
-    };
+  // If there are no results, fall back to full list for current page
+  if (filtered.length === 0) {
+    setDisplayedAnime(animeList.slice(start, end));
+  } else {
+    setDisplayedAnime(filtered.slice(start, end));
+  }
+  }, [animeList, searchQuery, page])
 
-    fetchUserData();
-  }, [isLoggedIn]);
-
-  useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setDisplayedAnime(animeList.slice(0, 50));
-      return;
-    }
-
-    const filteredAnime = animeList.filter((anime) =>
-      anime.title.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setDisplayedAnime(filteredAnime);
-  }, [searchQuery, animeList]);
+  const fetchAnimeList = async () => {
+    const { data, error } = await supabase.from("Anime").select("*").order("rank")
+    if (error) console.error("Failed to fetch anime list:", error)
+    else setAnimeList(data || [])
+  }
 
   const loadNextPage = () => {
-    if (page * 50 < animeList.length) {
-      setDisplayedAnime(animeList.slice(page * 50, (page + 1) * 50));
-      setPage(page + 1);
-    }
-  };
+    setPage((prev) => prev + 1)
+  }
 
   const loadPreviousPage = () => {
-    if (page > 1) {
-      setDisplayedAnime(animeList.slice((page - 2) * 50, (page - 1) * 50));
-      setPage(page - 1);
-    }
-  };
+    setPage((prev) => Math.max(1, prev - 1))
+  }
 
-  if (loading && displayedAnime.length === 0) return <p>Loading anime...</p>;
+  const toggleFavorite = (animeId: number) => {
+    const alreadyFavorite = favorites.some(f => f.id === animeId)
+    if (alreadyFavorite) {
+      setFavorites(favorites.filter(f => f.id !== animeId))
+    } else {
+      const anime = animeList.find(a => a.id === animeId)
+      if (anime) setFavorites([...favorites, anime])
+    }
+  }
+
+  // Fetch user-specific scores and statuses if logged in
+  useEffect(() => {
+    if (!user) return
+
+    const fetchUserData = async () => {
+      const { data, error } = await supabase
+        .from("UserAnime")
+        .select("anime_id, score, status")
+        .eq("user_id", user.id)
+
+      if (data) {
+        //console.log(data);
+        const scores: Record<string, number> = {}
+        const statuses: Record<string, string> = {}
+        data.forEach((entry) => {
+          scores[entry.anime_id] = entry.score
+          statuses[entry.anime_id] = entry.status
+        })
+        //console.log(scores, statuses);
+        setUserScores(scores)
+        setUserStatuses(statuses)
+      }
+
+      if (error) {
+        console.error("Failed to fetch user scores/statuses:", error)
+      }
+    }
+
+    fetchUserData()
+  }, [user])
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-12">
@@ -308,13 +153,16 @@ export default function Home() {
               <tr key={anime.id} className="border-t border-white/10 hover:bg-white/5">
                 <td className="p-4">
                   <div className="flex items-center gap-4">
+                  <div className="relative w-[60px] h-[80px]">
                     <Image
                       src={anime.image_url || "/placeholder.svg"}
                       alt={anime.title}
-                      width={60}
-                      height={80}
-                      className="rounded"
+                      fill
+                      sizes="(max-width: 768px) 40px, (max-width: 1200px) 60px, 80px"
+                      className="rounded object-contain"
                     />
+                  </div>
+
                   </div>
                 </td>
                 <td className="p-4">
@@ -329,8 +177,8 @@ export default function Home() {
                   </div>
                 </td>
                 <td>{anime.avg_score?.toFixed(2) || "-"}</td>
-                <td>{isLoggedIn ? userScores[anime.id] ?? "-" : "-"}</td>
-                <td>{isLoggedIn ? userStatuses[anime.id] ?? "-" : "-"}</td>
+                <td>{user ? userScores[anime.id] ?? "-" : "-"}</td>
+                <td>{user ? userStatuses[anime.id] ?? "-" : "-"}</td>
               </tr>
             ))}
           </tbody>
@@ -357,3 +205,5 @@ export default function Home() {
     </div>
   );
 }
+
+export default AnimeBrowser
