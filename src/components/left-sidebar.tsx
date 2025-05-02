@@ -28,7 +28,7 @@ export function LeftSidebar() {
             {link.name}
           </Link>
         ))}
-      </nav>
+      </nav>  
     </div>
   )
 }

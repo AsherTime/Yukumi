@@ -87,7 +87,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
               <LogoutButton />
             </>
           ) : (
-            // Logged-out view
+            // Logged-out view  
             <>
               <Link href="/auth/login">Login</Link>
               <Link href="/auth/register">Register</Link>
