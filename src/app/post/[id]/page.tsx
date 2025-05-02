@@ -5,38 +5,38 @@ import { FiShare2, FiFlag, FiHeart, FiMessageCircle } from "react-icons/fi"; // 
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface Comment {
-    id: number
+    id: string
     created_at: string
-    posts_id: number
-    users_id: number
+    post_id: string
+    user_id: string
     content: string
-    updated_at: string
-    parent_id: number
+    parent_id: string | null
+    user?: {
+      username: string
+      avatar_url: string
+    }
 }
 
 interface Post {
-    id: number
+    id: string
     created_at: string
-    users_id: number
-    animes1_id: number
+    user_id: string
     title: string
     image_url: string
     content: string
-    collection: string[]
-    OG_Work: boolean
-    ref_link: string
-    likes: number
-    comment_count: number
-    comment: [string]
+    likes_count: number
+    comments_count: number
     views: number
-    shares: number
-    liked?: boolean;
-    username?: string;
-    profile_pic?: string;
+    liked_by_user: boolean
+    user?: {
+      username: string
+      avatar_url: string
+    }
 }
 
 const PostPage = () => {
@@ -44,284 +44,400 @@ const PostPage = () => {
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState<string>("");
-  const [replyTo, setReplyTo] = useState<number | null>(null);
-  const [userId, setUserId] = useState<number | null>(null);
-  const [liked, setLiked] = useState<boolean>(false)
-  
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const auth = getAuth();
+    if (!id) return;
 
-        onAuthStateChanged(auth, async (user) => {
-          if (user) {
-            const firebase_uid = user.uid; // Get Firebase UID
-      
-            try {
-              const res = await fetch("https://x8ki-letl-twmt.n7.xano.io/api:hRCl8Tp6/users", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ firebase_uid }),
-              });
-      
-              if (!res.ok) throw new Error("Failed to fetch user ID");
-      
-              const data = await res.json();
-              setUserId(data.id); // Set Xano user ID
-            } catch (error) {
-              console.error("Error fetching user ID:", error);
-            }
-          } else {
-            setUserId(null); // No user logged in
-          }
+    const fetchPostAndComments = async () => {
+      try {
+        // Fetch post with user details
+        const { data: postData, error: postError } = await supabase
+          .from('posts')
+          .select(`
+            *,
+            Profiles!posts_user_id_fkey (
+              username,
+              avatar_url
+            )
+          `)
+          .eq('id', id)
+          .single();
+
+        if (postError) throw postError;
+
+        // Fetch like status if user is logged in
+        let likedByUser = false;
+        if (user) {
+          const { data: likeData } = await supabase
+            .from('likes')
+            .select('*')
+            .eq('post_id', id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          likedByUser = !!likeData;
+        }
+
+        // Set post data
+        setPost({
+          ...postData,
+          user: postData.Profiles,
+          liked_by_user: likedByUser
         });
 
-    //fetch the like details
-    fetch(`https://x8ki-letl-twmt.n7.xano.io/api:eA0dhH6K/likes/getRecord`, {
-      method: "POST", // or "PUT" depending on Xano API setup
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ users_id: userId, posts_id: id }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setLiked(data?.liked ?? false); // If data is null, set liked to false
-      })
-      .catch((err) => {
-        console.error("Error fetching like record:", err);
-        setLiked(false); // Fallback to false in case of an error
-      });
-    
+        // Fetch comments with user details
+        const { data: commentsData, error: commentsError } = await supabase
+          .from('comments')
+          .select(`
+            *,
+            Profiles!comments_user_id_fkey (
+              username,
+              avatar_url
+            )
+          `)
+          .eq('post_id', id)
+          .order('created_at', { ascending: true });
 
-    // Fetch the post details
-    fetch(`https://x8ki-letl-twmt.n7.xano.io/api:0Q68j1tU/posts/${id}`)
-      .then((res) => res.json())
-      .then((postData) => {
-        if (!postData || !postData.users_id) {
-          console.error("Post data or users_id missing");
-          return;
-        }
-    
-        // Fetch user details using users_id
-        fetch(`https://x8ki-letl-twmt.n7.xano.io/api:0Q68j1tU/users/${postData.users_id}`)
-          .then((res) => res.json())
-          .then((userData) => {
-            // Combine post data with username & profile pic
-            setPost({
-              ...postData,
-              liked: liked,
-              username: userData.username,
-              profile_pic: userData.picture_url,
-            });
-          })
-          .catch((err) => console.error("Error fetching user data:", err));
-      })
-      .catch((err) => console.error("Error fetching post data:", err));
-
-    // Fetch comments for the post
-    fetch("https://x8ki-letl-twmt.n7.xano.io/api:oxZQQ-hr/comments", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ id }), // Send ID in the request body
-      })
-        .then((res) => res.json())
-        .then((data) => setComments(data));
-  }, [id]);
-
-  // Handle adding a comment
-  const handleAddComment = async () => {
-    if (!newComment.trim()) return;
-    const commentData = {
-      post_id: id,
-      user_id: userId,
-      content: newComment,
-      parent_id: replyTo,
+        if (commentsError) throw commentsError;
+        setComments(commentsData?.map(comment => ({
+          ...comment,
+          user: comment.Profiles
+        })) || []);
+      } catch (error) {
+        console.error('Error fetching post and comments:', error);
+        toast.error('Failed to load post and comments');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    const res = await fetch("https://x8ki-letl-twmt.n7.xano.io/api:oxZQQ-hr/comments", {
-      method: "POST",
-      body: JSON.stringify(commentData),
-      headers: { "Content-Type": "application/json" },
-    });
+    fetchPostAndComments();
+  }, [id, user]);
 
-    if (res.ok) {
-      const newCommentData = await res.json();
-      setComments([...comments, newCommentData]);
-      setNewComment("");
-      setReplyTo(null);
+  const handleAddComment = async () => {
+    if (!user) {
+      toast.error('Please log in to comment');
+      return;
     }
-  };
 
-  // Handle deleting a comment
-  const handleDeleteComment = async (commentId: number) => {
-    if (!userId) return;
-
-    const res = await fetch(`https://x8ki-letl-twmt.n7.xano.io/api:oxZQQ-hr/comments/${commentId}`, {
-      method: "DELETE",
-    });
-
-    if (res.ok) {
-      setComments(comments.filter((c) => c.id !== commentId));
+    if (!newComment.trim()) {
+      toast.error('Comment cannot be empty');
+      return;
     }
-  };
 
-  // Handle editing a comment
-  const handleEditComment = async (commentId: number, updatedContent: string) => {
-    const res = await fetch(`https://x8ki-letl-twmt.n7.xano.io/api:oxZQQ-hr/comments/${commentId}`, {
-      method: "PUT",
-      body: JSON.stringify({ content: updatedContent }),
-      headers: { "Content-Type": "application/json" },
-    });
-
-    if (res.ok) {
-      setComments(comments.map((c) => (c.id === commentId ? { ...c, content: updatedContent } : c)));
-    }
-  };
-
-  const toggleLike = async(postId: number) => {
-    setPost((post) => {
-      if (!post) return post; // Ensure prevPost is not null
-    
-      return {
-        ...post,
-        likes: post.liked ? post.likes - 1 : post.likes + 1,
-        liked: !post.liked, // Toggle liked state
-      };
-    });
-    if (!post) return post; // Ensure prevPost is not null
     try {
-      await fetch("https://x8ki-letl-twmt.n7.xano.io/api:0Q68j1tU/update/likes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ posts_id: postId }),
-    });
-      await fetch(`https://x8ki-letl-twmt.n7.xano.io/api:eA0dhH6K/likes`, {
-        method: "POST", // or "PUT" depending on Xano API setup
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ users_id: userId, posts_id: postId, liked: !post.liked
-        }),
-      });
-  
+      const { data: newCommentData, error } = await supabase
+        .from('comments')
+        .insert({
+          post_id: id,
+          user_id: user.id,
+          content: newComment.trim(),
+          parent_id: replyTo
+        })
+        .select(`
+          *,
+          Profiles!comments_user_id_fkey (
+            username,
+            avatar_url
+          )
+        `)
+        .single();
+
+      if (error) throw error;
+
+      // Update comments list
+      setComments(prev => [...prev, newCommentData]);
+      
+      // Update post comment count
+      if (post) {
+        setPost({
+          ...post,
+          comments_count: (post.comments_count || 0) + 1
+        });
+
+        // Update the comments count in the database
+        await supabase
+          .from('posts')
+          .update({ comments_count: (post.comments_count || 0) + 1 })
+          .eq('id', id);
+      }
+
+      setNewComment('');
+      setReplyTo(null);
+      toast.success('Comment added successfully');
     } catch (error) {
-      console.error("Error updating like count in Xano:", error);
+      console.error('Error adding comment:', JSON.stringify(error, null, 2));
+      toast.error('Failed to add comment');
     }
   };
-  
-  
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!user) {
+      toast.error('Please log in to delete comments');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('user_id', user.id); // Ensure user can only delete their own comments
+
+      if (error) throw error;
+
+      // Update comments list
+      setComments(prev => prev.filter(c => c.id !== commentId));
+      
+      // Update post comment count
+      if (post) {
+        setPost({
+          ...post,
+          comments_count: Math.max(0, (post.comments_count || 1) - 1)
+        });
+
+        // Update the comments count in the database
+        await supabase
+          .from('posts')
+          .update({ comments_count: Math.max(0, (post.comments_count || 1) - 1) })
+          .eq('id', id);
+      }
+
+      toast.success('Comment deleted successfully');
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      toast.error('Failed to delete comment');
+    }
+  };
+
+  const handleEditComment = async (commentId: string, updatedContent: string) => {
+    if (!user) {
+      toast.error('Please log in to edit comments');
+      return;
+    }
+
+    if (!updatedContent.trim()) {
+      toast.error('Comment cannot be empty');
+      return;
+    }
+
+    try {
+      const { data: updatedComment, error } = await supabase
+        .from('comments')
+        .update({ content: updatedContent.trim() })
+        .eq('id', commentId)
+        .eq('user_id', user.id) // Ensure user can only edit their own comments
+        .select(`
+          *,
+          Profiles!comments_user_id_fkey (
+            username,
+            avatar_url
+          )
+        `)
+        .single();
+
+      if (error) throw error;
+
+      // Update comments list
+      setComments(prev => prev.map(c => c.id === commentId ? updatedComment : c));
+      toast.success('Comment updated successfully');
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      toast.error('Failed to update comment');
+    }
+  };
+
+  const toggleLike = async () => {
+    if (!user) {
+      toast.error('Please log in to like posts');
+      return;
+    }
+
+    if (!post) return;
+
+    try {
+      const newLikedState = !post.liked_by_user;
+
+      if (newLikedState) {
+        // Add like
+        const { error: likeError } = await supabase
+          .from('likes')
+          .insert({
+            post_id: id,
+            user_id: user.id
+          });
+
+        if (likeError) throw likeError;
+      } else {
+        // Remove like
+        const { error: unlikeError } = await supabase
+          .from('likes')
+          .delete()
+          .eq('post_id', id)
+          .eq('user_id', user.id);
+
+        if (unlikeError) throw unlikeError;
+      }
+
+      // Always recount likes after the operation
+      const { count } = await supabase
+        .from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', id);
+
+      const likeCount = count ?? 0; // Default to 0 if null
+
+      await supabase
+        .from('posts')
+        .update({ likes_count: likeCount })
+        .eq('id', id);
+
+      // Update post in state
+      setPost({
+        ...post,
+        likes_count: likeCount,
+        liked_by_user: newLikedState
+      });
+
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      toast.error('Failed to update like');
+    }
+  };
+
+  if (isLoading) {
+    return <div className="max-w-3xl mx-auto p-6">Loading...</div>;
+  }
+
+  if (!post) {
+    return <div className="max-w-3xl mx-auto p-6">Post not found</div>;
+  }
 
   return (
     <div className="max-w-3xl mx-auto p-6">
-      {post && (
-        <Card key={post.id} className="bg-[#2e2e2e] border-0 p-4 relative">
-        {/* 🚨 Report Button (Correctly placed on Top-Right) */}
+      <Card key={post.id} className="bg-[#2e2e2e] border-0 p-4 relative">
+        {/* Report Button */}
         <button className="absolute top-4 right-4 bg-black/30 p-2 rounded-full text-white hover:text-red-500">
           <FiFlag size={20} />
         </button>
 
-        {/* User Info (Profile Picture Clickable) */}
+        {/* User Info */}
         <div className="flex items-center gap-4">
           <img
-            src={post.profile_pic || "/default-avatar.png"} // Fallback image
+            src={post.user?.avatar_url || "/default-avatar.png"}
             alt="User"
             className="w-10 h-10 rounded-full cursor-pointer"
           />
           <div>
-            <p className="text-white font-semibold">{post.username || "Unknown User"}</p>
-            <p className="text-gray-400 text-sm">{post.created_at || "Just now"}</p>
+            <p className="text-white font-semibold">{post.user?.username || "Unknown User"}</p>
+            <p className="text-gray-400 text-sm">{new Date(post.created_at).toLocaleDateString()}</p>
           </div>
         </div>
 
         {/* Post Image */}
         <div className="mt-4">
           <img
-            src={post.image_url || "/placeholder.jpg"} // Fallback image
+            src={post.image_url || "/placeholder.jpg"}
             alt="Post"
             className="w-full h-80 object-cover rounded-lg"
           />
         </div>
 
-        {/* Post Actions (Like, Comment, Share, Views) */}
+        {/* Post Actions */}
         <div className="flex items-center gap-6 mt-4 text-gray-400">
-          {/* ✅ Like Button */}
           <button
-            className={`flex items-center gap-1 ${post.liked ? "text-red-500" : "text-gray-400"}`}
-            onClick={() => toggleLike(post.id)}
+            className={`flex items-center gap-1 ${post.liked_by_user ? "text-red-500" : "text-gray-400"}`}
+            onClick={toggleLike}
           >
             <FiHeart className="cursor-pointer hover:text-red-500" />
-            <span>{post.likes || 0}</span>
+            <span>{post.likes_count || 0}</span>
           </button>
 
-          {/* ✅ Comment Button */}
           <button className="flex items-center gap-1">
             <FiMessageCircle className="cursor-pointer hover:text-blue-400" />
-            <span>{post.comment_count || 0}</span>
+            <span>{post.comments_count || 0}</span>
           </button>
 
-          {/* ✅ Share Button (Now Left of Views) */}
           <button className="flex items-center gap-1 cursor-pointer hover:text-blue-400">
             <FiShare2 />
           </button>
 
-          {/* ✅ Views (Now Right of Share) */}
           <p className="text-sm">{post.views || 0} Views</p>
         </div>
       </Card>
-      )}
- 
-      <div className="mt-6">
-        <h2 className="string-2xl font-semibold">Comments</h2>
+
+      {/* Comments Section */}
+      <div className="mt-8">
+        <h2 className="text-2xl font-semibold mb-4">Comments</h2>
 
         {/* Add Comment Box */}
         <div className="mt-4">
           <textarea
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded bg-[#2e2e2e] text-white border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Write a comment..."
           />
-          <button onClick={handleAddComment} className="mt-2 px-4 py-2 bg-blue-500 string-white rounded">
+          <button 
+            onClick={handleAddComment}
+            className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          >
             {replyTo ? "Reply" : "Add Comment"}
           </button>
         </div>
 
-        {/* Comment List */}
-        <div className="mt-6">
-        {comments.length > 0 ? (
-          comments.map((comment) => (
-            <div key={comment.id} className="p-4 border-b">
-              <p>{comment.content}</p>
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => setReplyTo(comment.id)} className="string-blue-500">
-                  Reply
-                </button>
-                {userId === comment.users_id && (
-                  <>
-                    <button
-                      onClick={() => {
-                        const updatedContent = prompt("Edit your comment:", comment.content);
-                        if (updatedContent) handleEditComment(comment.id, updatedContent);
-                      }}
-                      className="string-yellow-500"
-                    >
-                      Edit
-                    </button>
-                    <button onClick={() => handleDeleteComment(comment.id)} className="string-red-500">
-                      Delete
-                    </button>
-                  </>
-                )}
+        {/* Comments List */}
+        <div className="mt-6 space-y-4">
+          {comments.length > 0 ? (
+            comments.map((comment) => (
+              <div key={comment.id} className="p-4 border border-gray-700 rounded-lg bg-[#2e2e2e]">
+                <div className="flex items-center gap-2 mb-2">
+                  <img
+                    src={comment.user?.avatar_url || "/default-avatar.png"}
+                    alt="User"
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <span className="font-semibold">{comment.user?.username || "Unknown User"}</span>
+                  <span className="text-gray-400 text-sm">
+                    {new Date(comment.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-gray-200">{comment.content}</p>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => setReplyTo(comment.id)}
+                    className="text-blue-500 hover:text-blue-400"
+                  >
+                    Reply
+                  </button>
+                  {user?.id === comment.user_id && (
+                    <>
+                      <button
+                        onClick={() => {
+                          const updatedContent = prompt("Edit your comment:", comment.content);
+                          if (updatedContent) handleEditComment(comment.id, updatedContent);
+                        }}
+                        className="text-yellow-500 hover:text-yellow-400"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteComment(comment.id)}
+                        className="text-red-500 hover:text-red-400"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
-        ): (
-          <p>Be the first one to comment!</p>
-        )}
+            ))
+          ) : (
+            <p className="text-gray-400">Be the first one to comment!</p>
+          )}
         </div>
       </div>
     </div>

@@ -64,8 +64,8 @@ export function DashboardNav({ children }: { children?: React.ReactNode }) {
           ) : ( 
             // Logged-out view
             <>
-              <Link href="/auth/login-page">Login</Link>
-              <Link href="/auth/register-form">Register</Link>
+              <Link href="/auth/login">Login</Link>
+              <Link href="/auth/register">Register</Link>
             </>
           )}
         </div>

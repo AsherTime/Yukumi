@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { auth } from "@/app/auth/register-form/firebase";
 import Image from "next/image"
 import Link from "next/link"
-import { Search, Bell, User } from "lucide-react"
+import { Search, Bell, User, Upload } from "lucide-react"
 import LogoutButton from "./logout";
 import { getAuth, onAuthStateChanged, User as FirebaseUser, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { useAuth } from "@/contexts/AuthContext";
@@ -75,6 +75,9 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
           {user ? (
             // Logged-in view
             <>
+              <Link href="/upload" className="text-white hover:text-gray-300 transition-colors">
+                <Upload className="w-5 h-5" />
+              </Link>
               <Link href="/notifications" className="text-white hover:text-gray-300 transition-colors">
                 <Bell className="w-5 h-5" />
               </Link>
@@ -86,8 +89,8 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
           ) : (
             // Logged-out view
             <>
-              <Link href="/auth/login-page">Login</Link>
-              <Link href="/auth/register-form">Register</Link>
+              <Link href="/auth/login">Login</Link>
+              <Link href="/auth/register">Register</Link>
             </>
           )}
       </div>
