@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 export function UserProfile() {
   const [avatarUrl, setAvatarUrl] = useState<string>("/placeholder.svg");
@@ -232,6 +234,14 @@ export function UserProfile() {
       {/* Avatar */}
       <div className="relative">
         <Avatar className="h-24 w-24">
+          <AvatarImage 
+            src={profileImage || avatarUrl} 
+            alt="Profile picture"
+            className="object-cover"
+          />
+          <AvatarFallback className="bg-gray-800 text-white">
+            {displayName?.charAt(0)?.toUpperCase() || 'U'}
+          </AvatarFallback>
           <AvatarImage 
             src={profileImage || avatarUrl} 
             alt="Profile picture"

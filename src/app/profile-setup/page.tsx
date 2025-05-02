@@ -145,31 +145,34 @@ export default function ProfileSetup() {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
-      const file = e.target.files?.[0]
-      if (!file) return
-
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.user) throw new Error("No user session")
-
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${session.user.id}-${Math.random()}.${fileExt}`
-      const filePath = `${session.user.id}/${fileName}`
-
+      const file = e.target.files?.[0];
+      if (!file) return;
+  
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("No user session");
+  
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${session.user.id}-${Math.random()}.${fileExt}`;
+      const filePath = `${session.user.id}/${fileName}`;
+  
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file)
-
-      if (uploadError) throw uploadError
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath)
-
-      setProfileImage(publicUrl)
+        .upload(filePath, file);
+  
+      if (uploadError) throw uploadError;
+  
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('avatars').getPublicUrl(filePath);
+  
+      setProfileImage(publicUrl);
     } catch (error: any) {
-      toast.error(error.message || "Failed to upload image")
+      toast.error(error.message || "Failed to upload image");
     }
-  }
+  };
+  
 
   return (
     <div className="min-h-screen bg-black p-8">
@@ -268,4 +271,3 @@ export default function ProfileSetup() {
     </div>
   )
 }
-
