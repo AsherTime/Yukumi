@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   },
   images: {
     loader: "default",
-    domains: ["x8ki-letl-twmt.n7.xano.io", "hebbkx1anhila5yf.public.blob.vercel-storage.com", "cdn.myanimelist.net", "res.cloudinary.com"], // 🔹 Add your API domain here
+    domains: ["x8ki-letl-twmt.n7.xano.io", "hebbkx1anhila5yf.public.blob.vercel-storage.com", "cdn.myanimelist.net", "res.cloudinary.com", "i.pinimg.com"], // 🔹 Add your API domain here
   },
 };
 
