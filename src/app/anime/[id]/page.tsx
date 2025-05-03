@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -9,20 +9,9 @@ import { TopNav } from "@/components/top-nav";
 import Footer from "@/components/footer";
 import { ListPlus, Pause, X, Play, Calendar, Check, ChevronDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
 
-
-interface Anime {
-  id: number;
-  image_url: string;
-  title: string;
-  type: string;
-  episodes: number;
-  aired_from: string | null;
-  aired_to: string | null;
-  genres: string[];
-  avg_score: number | null;
-  synopsis: string;
-}
+/*
 
 interface AnimeEntry{
   id: number
@@ -49,79 +38,15 @@ interface UserEntry {
 }
 
 export default function AnimeDetail() {
-  const params = useParams();
-  const id = params?.id ? Number(params.id) : 1; // or a default value
+ 
 
   const [userData, setUserData] = useState<UserEntry | null>(null);
-  const [anime, setAnime] = useState<Anime | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
   const [watchlistStatus, setWatchlistStatus] = useState<string | null>(null);
   const [firebase_uid, setFirebase_uid] = useState<string | null>(null);
   const [animeStatus, setAnimeStatus] = useState<AnimeEntry | null>(null);
-  const [progress, setProgress] = useState(1); 
-  const [score, setScore] = useState(1);
-  const { user } = useAuth();
-
-  useEffect(() => {
-    if (!loading) {
-      if (user) {
-        setFirebase_uid(user.uid); // Redirect if not logged in
-      } 
-    }
-  }, [user, loading]);
 
 
-  useEffect(() => {
-    const fetchAnimeDetails = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch(`https://x8ki-letl-twmt.n7.xano.io/api:8BJgb0Hk/animes1/${id}`);
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch anime details");
-        }
-
-        const data = await response.json();
-        setAnime(data);
-      } catch (error) {
-        console.error("Error fetching anime details:", error);
-        setError("Failed to load anime details. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) {
-      fetchAnimeDetails();
-    }
-  }, [id]);
-
-
-  useEffect(()=>{
-    if(!firebase_uid) return; 
-    const fetchUserData = async() => {
-    try{
-    const response = await fetch("https://x8ki-letl-twmt.n7.xano.io/api:hRCl8Tp6/users", {
-      method: "POST",
-      headers: {
-        "Content-Type" : "application/json",
-      },
-      body : JSON.stringify({ firebase_uid: firebase_uid }),
-        });
-    const data = await response.json();
-    const response2 = await fetch(`https://x8ki-letl-twmt.n7.xano.io/api:hRCl8Tp6/users/${data}`);
-    const data2 = await response2.json();    
-    setUserData(data2);      
-  }
-    catch (error) {
-        console.error("Error fetching user anime:", error);
-    }
-      };
-      fetchUserData();
-    }, [firebase_uid]);
 
 
   const handleStatusChange = async (status: string, progress: number, score: number) => {
@@ -146,17 +71,120 @@ export default function AnimeDetail() {
       // Update UI state
       setAnimeStatus(data);
       setWatchlistStatus(status);
-    } catch (error) {
+    } catch (error) { 
       console.error("Error updating watchlist:", error);
     }
   };  
 
-  const handleUpdate = () => {
-    handleStatusChange(watchlistStatus ?? "Add to My List", progress, score);
+  
+  
+*/
+
+export default function AnimeDetail() {
+
+  type Anime = {
+    image_url: string;
+    title: string;
+    synopsis: string;
+  }
+
+  const params = useParams();
+  const id = params?.id ? String(params.id) : undefined;
+  const {user} = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [anime, setAnime] = useState<Anime | null>(null);
+  const [watchlistStatus, setWatchlistStatus] = useState<string | null>(null);
+  const [progress, setProgress] = useState(1); 
+  const [score, setScore] = useState(1);
+
+
+  useEffect(() => {
+    const fetchAnimeDetails = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await supabase
+        .from("Anime")
+        .select("image_url, title, synopsis")
+        .eq("id", id)
+        .single();
+        console.log(data)
+        setAnime(data.data);
+      } catch (error) {
+        console.error("Error fetching anime details:", error);
+        setError("Failed to load anime details. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchAnimeDetails();
+    }
+  }, [id]);
+
+  const handleStatusChange = (
+    status: string,
+    progress: number,
+    score: number,
+  ) => {
+    if(status == "Add To My List") return;
+    useEffect(() => {
+      const checkAndInsert = async () => {
+        if (!user?.id) return;
+  
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+  
+        if (sessionError || !session) {
+          console.error("Error retrieving session:", sessionError);
+          return;
+        }
+  
+        try {
+          const response = await fetch(
+            "https://rhspkjpeyewjugifcvil.supabase.co/functions/v1/upsert-user-anime",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                user_id: user.id,
+                anime_id: id,
+                status,
+                progress,
+                score,
+              }),
+            }
+          );
+  
+          if (!response.ok) {
+            console.error("Failed to call edge function:", await response.text());
+            return;
+          }
+  
+          const result = await response.json();
+          console.log("Edge function result:", result);
+        } catch (error) {
+          console.error("Error calling edge function:", error);
+        }
+      };
+  
+      checkAndInsert();
+    }, [id, status, progress, score, user]);
   };
   
 
-  if (loading) return <p className="text-center text-gray-300">Loading anime details...</p>;
+  const handleUpdate = () => {
+    handleStatusChange(watchlistStatus ?? "Add to My List", progress, score);
+  };
+
+  //if (loading) return <p className="text-center text-gray-300">Loading anime details...</p>;
   if (error) return <p className="text-center text-red-500">{error}</p>;
   if (!anime) return <p className="text-center text-gray-400">Anime not found</p>;
 
@@ -169,13 +197,12 @@ export default function AnimeDetail() {
           {/* Left Column - Image & Community */}
           <div className="space-y-4">
             {/* Anime Image */}
-            <div className="bg-white p-4 flex justify-center items-center h-[400px]">
+            <div className="bg-white p-4 flex justify-center items-center h-[400px] relative">
               <Image
                 src={anime.image_url || "/placeholder.svg"}
                 alt={anime.title || "Anime image"}
-                width={300}
-                height={450}
-                className="rounded-lg"
+                fill
+                className="rounded-lg object-contain"
               />
             </div>
 
