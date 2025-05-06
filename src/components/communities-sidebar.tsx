@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 export function CommunitiesSidebar() {
   const [communities, setCommunities] = React.useState([
     "Solo Leveling",
-    "Jujutsu Kaisen",
+    "Jujutsu Kaisen", 
     "Chainsaw Man",
     "Konosuba",
     "Demon Slayer",

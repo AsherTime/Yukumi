@@ -16,8 +16,6 @@ export default function Home() {
     <div className="h-screen flex flex-col bg-[#121212] pt-3">
     <CommunityNavbar onSearch={setSelectedAnime} />
       <div className="flex flex-1 overflow-hidden">
-        {" "}
-        {/* Container for all scrollable areas */}
         <CommunitiesSidebar />
         <main className="flex-1">
         <ContentFeed selectedAnime={selectedAnime} />
@@ -29,4 +27,4 @@ export default function Home() {
     </div>
   )
 }
-
+ 

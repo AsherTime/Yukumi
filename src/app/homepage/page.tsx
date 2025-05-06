@@ -254,7 +254,7 @@ export default function HomePage() {
                   />
                 </div>
               )}
-              <p className="text-gray-400 mb-2">{post.content}</p>
+              <p className="text-gray-400 mb-2" dangerouslySetInnerHTML={{ __html: post.content }}></p>
               
               {/* Collection and Anime Tags */}
               <div className="flex flex-wrap gap-2 mb-4">

@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
+import DOMPurify from 'dompurify';
 
 interface Anime {
   id: string;
@@ -50,16 +51,16 @@ export default function CoverUpload() {
   const fetchAnimeList = async (query: string = "") => {
     try {
       let supaQuery = supabase
-        .from('posts')
-        .select('animetitle_post')
-        .not('animetitle_post', 'is', null);
+        .from('Anime')
+        .select('title')
+        .not('title', 'is', null);
       if (query) {
-        supaQuery = supaQuery.ilike('animetitle_post', `${query}%`);
+        supaQuery = supaQuery.ilike('title', `${query}%`);
       }
-      const { data, error } = await supaQuery.order('animetitle_post');
+      const { data, error } = await supaQuery.order('title');
       if (error) throw error;
       // Unique and sorted
-      const uniqueAnime = Array.from(new Set(data?.map(post => post.animetitle_post)))
+      const uniqueAnime = Array.from(new Set(data?.map(post => post.title)))
         .filter(title => title)
         .sort((a, b) => a.localeCompare(b))
         .map((title, index) => ({ id: `anime-${index}`, title }));
@@ -331,8 +332,9 @@ export default function CoverUpload() {
               contentEditable
               className="w-full h-64 p-4 bg-[#2A2A2A] text-white resize-none focus:outline-none border border-[#3A3A3A] rounded-lg mt-2 overflow-auto"
               onSelect={updateActiveStyles}
-              onInput={(e) => {
-                setContent(e.currentTarget.innerHTML)
+              onInput={(e) => {               
+              const safeContent = DOMPurify.sanitize(e.currentTarget.innerHTML);
+              setContent(safeContent);
               }}
             />
           </div>
