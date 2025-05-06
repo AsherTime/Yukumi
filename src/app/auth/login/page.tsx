@@ -135,7 +135,7 @@ export default function LoginPage() {
         console.log("Login successful, user:", data.user);
         toast.success("Login successful!");
         setFormData({ email: "", password: "" });
-        router.push("/profile-setup");
+        router.push("/homepage"); // Redirect to home page
       }
     } catch (error: any) {
       console.error("Login failed with error:", error);

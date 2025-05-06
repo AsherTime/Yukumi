@@ -108,7 +108,7 @@ export default function RegisterPage() {
       if (data.user) {
         toast.success("Registration successful! Please check your email to confirm your account.");
         setFormData({ email: "", password: "", confirmPassword: "" });
-        router.push("/auth/login");
+        router.push("/profile-setup");
       }
     } catch (error: any) {
       toast.error(error.message || "Something went wrong. Please try again.");
