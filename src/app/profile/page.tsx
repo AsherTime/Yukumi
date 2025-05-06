@@ -1,6 +1,6 @@
 import { TopNav } from "@/components/top-nav"
 import { UserProfile } from "@/components/user-profile"
-import { ContentSections } from "@/components/content-sections"
+import { UserPosts } from "@/components/user-posts"
 
 export default function ProfilePage() {
   return (
@@ -9,10 +9,7 @@ export default function ProfilePage() {
 
       <main className="container mx-auto px-4 py-8">
         <UserProfile />
-
-        <div className="mt-8">
-          <ContentSections />
-        </div>
+        <UserPosts />
       </main>
     </div>
   )

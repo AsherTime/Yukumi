@@ -1,14 +1,23 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
+import { Loader2, Bold, Italic, Underline, ImageIcon } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "sonner"
+
+interface Anime {
+  id: string;
+  title: string;
+}
+
+let debounceTimeout: NodeJS.Timeout | null = null;
 
 export default function CoverUpload() {
   const [title, setTitle] = useState("")
@@ -19,26 +28,137 @@ export default function CoverUpload() {
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [activeStyles, setActiveStyles] = useState<string[]>([])
+  const [animeList, setAnimeList] = useState<Anime[]>([])
+  const [filteredAnime, setFilteredAnime] = useState<Anime[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedAnime, setSelectedAnime] = useState<string | null>(null)
+  const [selectedCollection, setSelectedCollection] = useState<string | undefined>(undefined)
+  const editorRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
   const router = useRouter()
+  const [animeLoading, setAnimeLoading] = useState(false);
 
   useEffect(() => {
     if (!user) {
       router.push('/auth/login')
       return
     }
+    fetchAnimeList()
   }, [user, router])
 
-  useEffect(() => {
-    // Log auth state when component mounts
-    const checkAuth = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession()
-      console.log("Current session:", session)
-      console.log("Auth error:", error)
-      console.log("Current user:", user)
+  const fetchAnimeList = async (query: string = "") => {
+    try {
+      let supaQuery = supabase
+        .from('posts')
+        .select('animetitle_post')
+        .not('animetitle_post', 'is', null);
+      if (query) {
+        supaQuery = supaQuery.ilike('animetitle_post', `${query}%`);
+      }
+      const { data, error } = await supaQuery.order('animetitle_post');
+      if (error) throw error;
+      // Unique and sorted
+      const uniqueAnime = Array.from(new Set(data?.map(post => post.animetitle_post)))
+        .filter(title => title)
+        .sort((a, b) => a.localeCompare(b))
+        .map((title, index) => ({ id: `anime-${index}`, title }));
+      setAnimeList(uniqueAnime);
+      setFilteredAnime(uniqueAnime.slice(0, 2));
+    } catch (error: any) {
+      setAnimeList([]);
+      setFilteredAnime([]);
+    } finally {
+      setAnimeLoading(false);
     }
-    checkAuth()
-  }, [user])
+  };
+
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const query = event.target.value;
+    setSearchQuery(query);
+    setAnimeLoading(true);
+    if (debounceTimeout) clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+      fetchAnimeList(query);
+    }, 300);
+  };
+
+  const saveCursorPosition = () => {
+    const selection = window.getSelection()
+    if (!selection || !editorRef.current || selection.rangeCount === 0) return null
+
+    const range = selection.getRangeAt(0)
+    const preCaretRange = range.cloneRange()
+    preCaretRange.selectNodeContents(editorRef.current)
+    preCaretRange.setEnd(range.startContainer, range.startOffset)
+    return preCaretRange.toString().length
+  }
+
+  const restoreCursorPosition = (position: number) => {
+    const selection = window.getSelection()
+    if (!selection || !editorRef.current) return
+
+    const range = document.createRange()
+    let charCount = 0
+    const nodes = editorRef.current.childNodes
+
+    for (const node of nodes) {
+      const textLength = node.textContent?.length ?? 0
+
+      if (charCount + textLength >= position) {
+        try {
+          range.setStart(node, Math.min(position - charCount, textLength))
+          range.setEnd(node, Math.min(position - charCount, textLength))
+          selection.removeAllRanges()
+          selection.addRange(range)
+        } catch (error) {
+          console.error("Failed to restore cursor:", error)
+        }
+        break
+      }
+
+      charCount += textLength
+    }
+  }
+
+  const applyStyle = (style: string) => {
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+
+    const range = selection.getRangeAt(0)
+    const selectedText = range.toString()
+
+    if (!selectedText) return
+
+    document.execCommand('styleWithCSS', false, 'true')
+    
+    switch (style) {
+      case 'bold':
+        document.execCommand('bold', false)
+        break
+      case 'italic':
+        document.execCommand('italic', false)
+        break
+      case 'underline':
+        document.execCommand('underline', false)
+        break
+    }
+
+    updateActiveStyles()
+  }
+
+  const updateActiveStyles = () => {
+    const newActiveStyles = []
+    if (document.queryCommandState('bold')) newActiveStyles.push('bold')
+    if (document.queryCommandState('italic')) newActiveStyles.push('italic')
+    if (document.queryCommandState('underline')) newActiveStyles.push('underline')
+    setActiveStyles(newActiveStyles)
+  }
+
+  const buttonClass = (tag: string) =>
+    `p-1.5 rounded transition-colors ${
+      activeStyles.includes(tag) ? "bg-[#3A3A3A]" : "hover:bg-[#3A3A3A]"
+    }`
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -76,15 +196,9 @@ export default function CoverUpload() {
       setLoading(true)
       setError(null)
 
-      // Log current auth state
-      const { data: { session } } = await supabase.auth.getSession()
-      console.log("Session during upload:", session)
-      console.log("User during upload:", user)
-
       // Upload image
       const fileExt = selectedFile.name.split('.').pop()
       const fileName = `${Math.random()}.${fileExt}`
-      console.log("Attempting to upload file:", fileName)
 
       const { data: uploadedImage, error: uploadError } = await supabase.storage
         .from("posts-image")
@@ -93,79 +207,48 @@ export default function CoverUpload() {
         })
 
       if (uploadError) {
-        console.error("Upload Error:", {
-          message: uploadError.message,
-          statusCode: uploadError.statusCode,
-          name: uploadError.name,
-          stack: uploadError.stack
-        })
-        throw uploadError
+        console.error("Upload error:", uploadError)
+        throw new Error("Failed to upload image")
       }
-
-      console.log("Upload successful:", uploadedImage)
 
       const { data: { publicUrl } } = supabase.storage
         .from("posts-image")
         .getPublicUrl(uploadedImage.path)
 
-      console.log("Public URL:", publicUrl)
+      // Get the selected anime title if any
+      const selectedAnimeTitle = selectedAnime ? animeList.find(a => a.id === selectedAnime)?.title : null
 
-      // Test post table access
-      const { data: testSelect, error: testError } = await supabase
-        .from("posts")
-        .select()
-        .limit(1)
-
-      console.log("Test select result:", testSelect)
-      console.log("Test select error:", testError)
-
-      // Create post with debug
-      const timestamp = new Date().toISOString()
-      console.log("Attempting to insert post with data:", {
+      // Create post with updated field names
+      const postData = {
         user_id: user?.id,
         title,
         content,
-        created_at: timestamp,
-        image_url: publicUrl
-      })
+        created_at: new Date().toISOString(),
+        image_url: publicUrl,
+        animetitle_post: selectedAnimeTitle,
+        post_collections: selectedCollection || null,
+        original_work: isOriginalWork,
+        reference_link: referenceLink || null
+      }
 
-      const { data: postData, error: postError } = await supabase
+      console.log("Attempting to create post with data:", postData)
+
+      const { data: newPost, error: postError } = await supabase
         .from("posts")
-        .insert({
-          user_id: user?.id,
-          title,
-          content,
-          created_at: timestamp,
-          image_url: publicUrl
-        })
+        .insert(postData)
         .select()
 
       if (postError) {
-        console.error("Post Error Details:", {
-          message: postError.message,
-          details: postError.details,
-          hint: postError.hint,
-          code: postError.code,
-          status: postError.status,
-          statusText: postError.statusText
-        })
-        throw postError
+        console.error("Post creation error:", postError)
+        throw new Error(postError.message)
       }
 
-      console.log("Post created successfully:", postData)
+      console.log("Post created successfully:", newPost)
+      toast.success("Post created successfully!")
       router.push('/homepage')
     } catch (error: any) {
-      console.error("Full error details:", {
-        name: error?.name,
-        message: error?.message,
-        status: error?.status,
-        statusCode: error?.statusCode,
-        details: error?.details,
-        hint: error?.hint,
-        code: error?.code,
-        stack: error?.stack
-      })
-      setError(error?.message || "Failed to create post. Please try again.")
+      console.error("Error creating post:", error)
+      setError(error.message || "Failed to create post")
     } finally {
       setLoading(false)
     }
@@ -219,37 +302,133 @@ export default function CoverUpload() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="content">Content</Label>
-            <textarea
-              id="content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Enter post content"
-              className="w-full h-32 p-2 rounded bg-[#2e2e2e] border-0"
+            <Label>Content</Label>
+            <div className="bg-[#2A2A2A] p-2 flex gap-2 border-b border-[#3A3A3A]">
+              <button
+                type="button"
+                className={buttonClass("bold")}
+                onClick={() => applyStyle("bold")}
+              >
+                <Bold className="w-4 h-4 text-white" />
+              </button>
+              <button
+                type="button"
+                className={buttonClass("italic")}
+                onClick={() => applyStyle("italic")}
+              >
+                <Italic className="w-4 h-4 text-white" />
+              </button>
+              <button
+                type="button"
+                className={buttonClass("underline")}
+                onClick={() => applyStyle("underline")}
+              >
+                <Underline className="w-4 h-4 text-white" />
+              </button>
+            </div>
+            <div
+              ref={editorRef}
+              contentEditable
+              className="w-full h-64 p-4 bg-[#2A2A2A] text-white resize-none focus:outline-none border border-[#3A3A3A] rounded-lg mt-2 overflow-auto"
+              onSelect={updateActiveStyles}
+              onInput={(e) => {
+                setContent(e.currentTarget.innerHTML)
+              }}
             />
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="original"
-              checked={isOriginalWork}
-              onCheckedChange={setIsOriginalWork}
-            />
-            <Label htmlFor="original">Original Work</Label>
+          <div className="space-y-2">
+            <Label>Select Collection</Label>
+            <Select onValueChange={setSelectedCollection}>
+              <SelectTrigger className="bg-[#2e2e2e] border-0">
+                <SelectValue placeholder="Select Collection" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#2e2e2e] border-[#3A3A3A]">
+                <SelectItem value="Fanart">Fanart</SelectItem>
+                <SelectItem value="Memes">Memes</SelectItem>
+                <SelectItem value="Discussion">Discussion</SelectItem>
+                <SelectItem value="Theory">Theory</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          {!isOriginalWork && (
-            <div className="space-y-2">
-              <Label htmlFor="reference">Reference Link</Label>
+          <div className="space-y-2">
+            <Label>Select Anime</Label>
+            <div className="relative">
               <Input
-                id="reference"
+                type="text"
+                value={searchQuery}
+                onChange={handleSearch}
+                placeholder="Search anime..."
+                className="bg-[#2e2e2e] border-0"
+              />
+              {searchQuery && (
+                <div className="absolute w-full mt-1 bg-[#232323] border border-[#3A3A3A] rounded-lg z-50 shadow-lg">
+                  {animeLoading ? (
+                    <div className="p-2 text-gray-400">Loading...</div>
+                  ) : filteredAnime.length > 0 ? (
+                    <div className="max-h-60 overflow-y-auto">
+                      {filteredAnime.map((anime) => (
+                        <div
+                          key={anime.id}
+                          className="px-3 py-2 hover:bg-[#3A3A3A] cursor-pointer transition-colors"
+                          onClick={() => {
+                            setSelectedAnime(anime.id);
+                            setSearchQuery(anime.title);
+                          }}
+                        >
+                          {anime.title}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-2 text-gray-400">No results found</div>
+                  )}
+                </div>
+              )}
+            </div>
+            {selectedAnime && (
+              <div className="mt-2 text-sm text-gray-400">
+                Selected: {animeList.find(a => a.id === selectedAnime)?.title}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Original Work</Label>
+            <div className="flex items-center gap-4 p-4 bg-[#2e2e2e] rounded-lg">
+              <div className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  id="original-yes"
+                  name="original-work"
+                  checked={isOriginalWork}
+                  onChange={() => setIsOriginalWork(true)}
+                  className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500"
+                />
+                <Label htmlFor="original-yes" className="cursor-pointer">Yes</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  id="original-no"
+                  name="original-work"
+                  checked={!isOriginalWork}
+                  onChange={() => setIsOriginalWork(false)}
+                  className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500"
+                />
+                <Label htmlFor="original-no" className="cursor-pointer">No</Label>
+              </div>
+            </div>
+            {!isOriginalWork && (
+              <Input
                 value={referenceLink}
                 onChange={(e) => setReferenceLink(e.target.value)}
                 placeholder="Enter reference link"
-                className="bg-[#2e2e2e] border-0"
+                className="bg-[#2e2e2e] border-0 mt-2"
               />
-            </div>
-          )}
+            )}
+          </div>
 
           <Button
             type="submit"

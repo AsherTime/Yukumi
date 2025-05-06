@@ -6,7 +6,7 @@ import { Search, Heart } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { TopNav } from "@/components/top-nav";
-import Footer from "@/components/Footer"
+import Footer from "@/components/footer"
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase"
 

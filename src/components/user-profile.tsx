@@ -7,65 +7,61 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
-export function UserProfile() {
+export function UserProfile({ userId, readOnly = false }: { userId?: string, readOnly?: boolean }) {
   const [avatarUrl, setAvatarUrl] = useState<string>("/placeholder.svg");
   const [displayName, setDisplayName] = useState<string>("Loading...");
   const [editMode, setEditMode] = useState<boolean>(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [followers, setFollowers] = useState(0);
+  const [following, setFollowing] = useState(0);
+  const { user } = useAuth();
 
   const router = useRouter();
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-        if (sessionError) {
-          console.error("Session error:", sessionError);
-          router.push("/auth/login");
-          return;
-        }
-
-        if (!session) {
-          router.push("/auth/login");
-          return;
-        }
-
-        // Debug log to check session
-        console.log("Current session user ID:", session.user.id);
-
+        let profileId = userId || user?.id;
+        if (!profileId) return;
         const { data: profile, error: profileError } = await supabase
-          .from('Profiles')  // Capital P
+          .from('Profiles')
           .select('*')
-          .eq('id', session.user.id)
+          .eq('id', profileId)
           .single();
-
         if (profileError) {
-          console.error("Error fetching profile:", profileError);
-          if (profileError.code === 'PGRST116') {
-            console.log("Profile not found, will be created on first update");
-          } else {
-            throw profileError;
-          }
-        }
-
-        if (profile) {
-          console.log("Fetched profile:", profile);
+          setDisplayName("Anonymous");
+          setAvatarUrl("/placeholder.svg");
+        } else if (profile) {
           setDisplayName(profile.display_name || "Anonymous");
           setAvatarUrl(profile.avatar_url || "/placeholder.svg");
           setProfileImage(profile.avatar_url || null);
         }
       } catch (error) {
-        console.error("Error in fetchUserProfile:", error);
+        setDisplayName("Anonymous");
+        setAvatarUrl("/placeholder.svg");
       } finally {
         setLoading(false);
       }
     };
-
     fetchUserProfile();
-  }, [router]);
+  }, [userId, user?.id]);
+
+  useEffect(() => {
+    // Fetch follower/following counts
+    const fetchFollowCounts = async (profileId: string) => {
+      const [{ count: followersCount }, { count: followingCount }] = await Promise.all([
+        supabase.from("follows").select("*", { count: "exact", head: true }).eq("followed_id", profileId),
+        supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", profileId),
+      ]);
+      setFollowers(followersCount || 0);
+      setFollowing(followingCount || 0);
+    };
+    const profileId = userId || user?.id;
+    if (profileId) fetchFollowCounts(profileId);
+  }, [userId, user?.id]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -94,25 +90,37 @@ export function UserProfile() {
         return;
       }
 
+      console.log("User session:", {
+        id: session.user.id,
+        email: session.user.email,
+        role: session.user.role
+      });
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${session.user.id}-${Date.now()}.${fileExt}`;
       const filePath = `${session.user.id}/${fileName}`;
 
       console.log("Starting upload process...");
       console.log("File path:", filePath);
+      console.log("File type:", file.type);
+      console.log("File size:", file.size);
 
       // Upload new avatar
       console.log("Uploading new file...");
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('avatars')  // Check if 'avatars' bucket exists in Supabase
+        .from('avatars')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: true,
-          contentType: file.type // Explicitly set content type
+          contentType: file.type
         });
 
       if (uploadError) {
-        console.error("Upload error details:", uploadError);
+        console.error("Upload error details:", {
+          message: uploadError.message,
+          name: uploadError.name,
+          stack: uploadError.stack
+        });
         throw uploadError;
       }
 
@@ -228,18 +236,10 @@ export function UserProfile() {
   }
 
   return (
-    <div className="flex items-center gap-6 p-6 bg-background/50 rounded-lg">
+    <div className="flex flex-col items-center gap-4">
       {/* Avatar */}
       <div className="relative">
         <Avatar className="h-24 w-24">
-          <AvatarImage 
-            src={profileImage || avatarUrl} 
-            alt="Profile picture"
-            className="object-cover"
-          />
-          <AvatarFallback className="bg-gray-800 text-white">
-            {displayName?.charAt(0)?.toUpperCase() || 'U'}
-          </AvatarFallback>
           <AvatarImage 
             src={profileImage || avatarUrl} 
             alt="Profile picture"
@@ -252,9 +252,9 @@ export function UserProfile() {
 
         <label
           htmlFor="profile-upload"
-          className="absolute bottom-0 right-0 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-[#d600db] text-white"
+          className="absolute bottom-0 right-0 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-[#d600db] text-white hover:bg-[#b300b3] transition-colors"
         >
-          <Upload className="h-3 w-3" />
+          <Upload className="h-4 w-4" />
           <input
             id="profile-upload"
             type="file"
@@ -292,6 +292,17 @@ export function UserProfile() {
             />
           </>
         )}
+      </div>
+
+      <div className="flex gap-8 mt-2">
+        <div className="flex flex-col items-center">
+          <span className="text-lg font-bold">{following}</span>
+          <span className="text-xs text-gray-400">Following</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-lg font-bold">{followers}</span>
+          <span className="text-xs text-gray-400">Followers</span>
+        </div>
       </div>
     </div>
   );

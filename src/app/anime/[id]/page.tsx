@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -11,93 +11,24 @@ import { ListPlus, Pause, X, Play, Calendar, Check, ChevronDown } from "lucide-r
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 
-/*
-
-interface AnimeEntry{
-  id: number
-  created_at: string
-  user_id: number
-  animes1_id: number
-  status: string
-  progress: number
-  score: number
-}
-
-interface UserEntry {
-  id: number
-  created_at: string
-  firebase_uid: string
-  username: string
-  picture_url: string
-  auth_provider: string
-  display_name: string
-  gender: string
-  country: string
-  age: number
-  favourites: number[]
-}
-
 export default function AnimeDetail() {
- 
-
-  const [userData, setUserData] = useState<UserEntry | null>(null);
-  
-  const [watchlistStatus, setWatchlistStatus] = useState<string | null>(null);
-  const [firebase_uid, setFirebase_uid] = useState<string | null>(null);
-  const [animeStatus, setAnimeStatus] = useState<AnimeEntry | null>(null);
-
-
-
-
-  const handleStatusChange = async (status: string, progress: number, score: number) => {
-  if(status == "Add To My List") return;
-    try {
-      // Step 1: Check if the anime is already in the watchlist
-      const response = await fetch(`https://x8ki-letl-twmt.n7.xano.io/api:P5mUuktq/user_anime/checkAdd`,{
-        method: "POST",
-        headers: {
-          "Content-Type" : "application/json",
-        },
-        body: JSON.stringify({
-          user_id: userData?.id,
-          animes1_id: id,
-          status: status,
-          progress: progress,
-          score: score
-        })
-      })
-      const data = await response.json();
-      
-      // Update UI state
-      setAnimeStatus(data);
-      setWatchlistStatus(status);
-    } catch (error) { 
-      console.error("Error updating watchlist:", error);
-    }
-  };  
-
-  
-  
-*/
-
-export default function AnimeDetail() {
-
   type Anime = {
     image_url: string;
     title: string;
     synopsis: string;
-  }
+  };
 
   const params = useParams();
   const id = params?.id ? String(params.id) : undefined;
-  const {user} = useAuth();
+  const { user } = useAuth();
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [anime, setAnime] = useState<Anime | null>(null);
   const [watchlistStatus, setWatchlistStatus] = useState<string | null>(null);
-  const [progress, setProgress] = useState(1); 
+  const [progress, setProgress] = useState(1);
   const [score, setScore] = useState(1);
-
+  const [shouldUpdate, setShouldUpdate] = useState(false);
 
   useEffect(() => {
     const fetchAnimeDetails = async () => {
@@ -105,11 +36,10 @@ export default function AnimeDetail() {
       setError(null);
       try {
         const data = await supabase
-        .from("Anime")
-        .select("image_url, title, synopsis")
-        .eq("id", id)
-        .single();
-        console.log(data)
+          .from("Anime")
+          .select("image_url, title, synopsis")
+          .eq("id", id)
+          .single();
         setAnime(data.data);
       } catch (error) {
         console.error("Error fetching anime details:", error);
@@ -124,67 +54,66 @@ export default function AnimeDetail() {
     }
   }, [id]);
 
-  const handleStatusChange = (
-    status: string,
-    progress: number,
-    score: number,
-  ) => {
-    if(status == "Add To My List") return;
-    useEffect(() => {
-      const checkAndInsert = async () => {
-        if (!user?.id) return;
-  
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
-  
-        if (sessionError || !session) {
-          console.error("Error retrieving session:", sessionError);
+  useEffect(() => {
+    const upsertUserAnime = async () => {
+      if (!user?.id || !shouldUpdate || !watchlistStatus || watchlistStatus === "Add to My List") return;
+
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        console.error("Error retrieving session:", sessionError);
+        setError("Please sign in to update your anime list.");
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          "https://rhspkjpeyewjugifcvil.supabase.co/functions/v1/upsert-user-anime",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              user_id: user.id,
+              anime_id: id,
+              status: watchlistStatus,
+              progress,
+              score,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Failed to call edge function:", errorText);
+          setError("Failed to update your anime list. Please try again later.");
           return;
         }
-  
-        try {
-          const response = await fetch(
-            "https://rhspkjpeyewjugifcvil.supabase.co/functions/v1/upsert-user-anime",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({
-                user_id: user.id,
-                anime_id: id,
-                status,
-                progress,
-                score,
-              }),
-            }
-          );
-  
-          if (!response.ok) {
-            console.error("Failed to call edge function:", await response.text());
-            return;
-          }
-  
-          const result = await response.json();
-          console.log("Edge function result:", result);
-        } catch (error) {
-          console.error("Error calling edge function:", error);
-        }
-      };
-  
-      checkAndInsert();
-    }, [id, status, progress, score, user]);
-  };
-  
+
+        const result = await response.json();
+        console.log("Edge function result:", result);
+      } catch (error) {
+        console.error("Error calling edge function:", error);
+        setError("An unexpected error occurred. Please try again later.");
+      } finally {
+        setShouldUpdate(false);
+      }
+    };
+
+    upsertUserAnime();
+  }, [shouldUpdate, user, id, watchlistStatus, progress, score]);
 
   const handleUpdate = () => {
-    handleStatusChange(watchlistStatus ?? "Add to My List", progress, score);
+    if (watchlistStatus && watchlistStatus !== "Add to My List") {
+      setShouldUpdate(true);
+    }
   };
 
-  //if (loading) return <p className="text-center text-gray-300">Loading anime details...</p>;
   if (error) return <p className="text-center text-red-500">{error}</p>;
   if (!anime) return <p className="text-center text-gray-400">Anime not found</p>;
 
@@ -249,61 +178,63 @@ export default function AnimeDetail() {
 
             {/* Watchlist Actions */}
             <div className="bg-white p-4 rounded shadow">
-    <div className="flex flex-wrap gap-2">
-      {[
-        { label: "Add to My List", icon: <ListPlus className="h-4 w-4 mr-2" />, status: "Add to My List" },
-        { label: "CURRENTLY WATCHING", icon: <Play className="h-4 w-4 mr-2" />, status: "Currently Watching" },
-        { label: "PLAN TO WATCH", icon: <Calendar className="h-4 w-4 mr-2" />, status: "Plan to Watch" },
-        { label: "ON-HOLD", icon: <Pause className="h-4 w-4 mr-2" />, status: "On-Hold" },
-        { label: "DROPPED", icon: <X className="h-4 w-4 mr-2" />, status: "Dropped" },
-        { label: "COMPLETED", icon: <Check className="h-4 w-4 mr-2" />, status: "Completed" },
-      ].map(({ label, icon, status }) => (
-        <button
-          key={status}
-          onClick={() => setWatchlistStatus(status)}
-          className={`flex items-center px-3 py-1.5 rounded text-sm 
-            ${watchlistStatus === status ? "bg-[#1c439b] text-white" : "bg-[#f8f8f8] text-[#323232] hover:bg-gray-300"}
-          `}
-        >
-          {icon}
-          {label}
-        </button>
-      ))}
-    </div>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { label: "Add to My List", icon: <ListPlus className="h-4 w-4 mr-2" />, status: "Add to My List" },
+                  { label: "CURRENTLY WATCHING", icon: <Play className="h-4 w-4 mr-2" />, status: "Currently Watching" },
+                  { label: "PLAN TO WATCH", icon: <Calendar className="h-4 w-4 mr-2" />, status: "Plan to Watch" },
+                  { label: "ON-HOLD", icon: <Pause className="h-4 w-4 mr-2" />, status: "On-Hold" },
+                  { label: "DROPPED", icon: <X className="h-4 w-4 mr-2" />, status: "Dropped" },
+                  { label: "COMPLETED", icon: <Check className="h-4 w-4 mr-2" />, status: "Completed" },
+                ].map(({ label, icon, status }) => (
+                  <button
+                    key={status}
+                    onClick={() => setWatchlistStatus(status)}
+                    className={`flex items-center px-3 py-1.5 rounded text-sm 
+                    ${watchlistStatus === status ? "bg-[#1c439b] text-white" : "bg-[#f8f8f8] text-[#323232] hover:bg-gray-300"}`}
+                  >
+                    {icon}
+                    {label}
+                  </button>
+                ))}
+              </div>
 
-    {/* Progress & Score Inputs */}
-    <div className="mt-4 flex items-center space-x-4">
-      {/* Progress Control */}
-      <div className="flex items-center space-x-2">
-        <button onClick={() => setProgress((prev) => Math.max(prev - 1, 0))} className="px-2 py-1 bg-gray-300 rounded">➖</button>
-        <span className="text-gray-800 font-medium">{progress} Episodes</span>
-        <button onClick={() => setProgress((prev) => prev + 1)} className="px-2 py-1 bg-gray-300 rounded">➕</button>
-      </div>
+              {/* Progress & Score Inputs */}
+              <div className="mt-4 flex items-center space-x-4">
+                {/* Progress Control */}
+                <div className="flex items-center space-x-2">
+                  <button onClick={() => setProgress((prev) => Math.max(prev - 1, 0))} className="px-2 py-1 bg-gray-300 rounded">➖</button>
+                  <span className="text-gray-800 font-medium">{progress} Episodes</span>
+                  <button onClick={() => setProgress((prev) => prev + 1)} className="px-2 py-1 bg-gray-300 rounded">➕</button>
+                </div>
 
-      {/* Score Selection */}
-      <select value={score} onChange={(e) => setScore(Number(e.target.value))} className="text-gray-800 font-medium">
-        <option value={0}>Select Score</option>
-        {[...Array(10)].map((_, i) => (
-          <option key={i + 1} value={i + 1}>
-            {i + 1}
-          </option>
-        ))}
-      </select>
-    </div>
-    <button
-        onClick={handleUpdate}
-        className="mt-4 w-full bg-[#1c439b] text-white py-2 rounded font-medium hover:bg-[#162e6a] transition"
-      >
-        Update
-      </button>
-  </div>
+                {/* Score Selection */}
+                <select value={score} onChange={(e) => setScore(Number(e.target.value))} className="text-gray-800 font-medium">
+                  <option value={0}>Select Score</option>
+                  {[...Array(10)].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      {i + 1}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={handleUpdate}
+                className="mt-4 w-full bg-[#1c439b] text-white py-2 rounded font-medium hover:bg-[#162e6a] transition"
+              >
+                Update
+              </button>
+            </div>
+
             {/* Watch Now Button */}
             <Button className="bg-[#B624FF] hover:bg-[#B624FF]/80 text-white px-6 py-3 text-lg w-full">
               Watch Now
             </Button>
           </div>
-          </div>
+        </div>
       </main>
+
       <Footer />
     </div>
-  )};
+  );
+}
