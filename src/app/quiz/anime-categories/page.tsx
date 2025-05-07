@@ -4,7 +4,10 @@ import * as React from "react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
- 
+import { Button } from "@/components/ui/button"
+import { ChevronsLeft, ChevronsRight } from "lucide-react"
+import Link from "next/link"
+
 interface Category {
   id: string
   name: string
@@ -33,44 +36,46 @@ const categories: Category[] = [
   },
 ]
 
-export default function SyntheticV0PageForDeployment() {
-    const [selectedCategories, setSelectedCategories] = React.useState<Set<string>>(new Set())
-    const [selectedOptions, setSelectedOptions] = React.useState<{ [key: string]: Set<string> }>({})
-  
-    const toggleCategory = (categoryId: string) => {
-      const newSelected = new Set(selectedCategories)
-      if (newSelected.has(categoryId)) {
-        newSelected.delete(categoryId)
-        const newOptions = { ...selectedOptions }
-        delete newOptions[categoryId]
-        setSelectedOptions(newOptions)
-      } else {
-        newSelected.add(categoryId)
-        setSelectedOptions({
-          ...selectedOptions,
-          [categoryId]: new Set(),
-        })
-      }
-      setSelectedCategories(newSelected)
-    }
-  
-    const toggleOption = (categoryId: string, option: string) => {
-      const categoryOptions = selectedOptions[categoryId] || new Set()
-      const newOptions = new Set(categoryOptions)
-      if (newOptions.has(option)) {
-        newOptions.delete(option)
-      } else {
-        newOptions.add(option)
-      }
+export default function AnimeCategories() {
+  const [selectedCategories, setSelectedCategories] = React.useState<Set<string>>(new Set())
+  const [selectedOptions, setSelectedOptions] = React.useState<{ [key: string]: Set<string> }>({})
+
+  const toggleCategory = (categoryId: string) => {
+    const newSelected = new Set(selectedCategories)
+    if (newSelected.has(categoryId)) {
+      newSelected.delete(categoryId)
+      const newOptions = { ...selectedOptions }
+      delete newOptions[categoryId]
+      setSelectedOptions(newOptions)
+    } else {
+      newSelected.add(categoryId)
       setSelectedOptions({
         ...selectedOptions,
-        [categoryId]: newOptions,
+        [categoryId]: new Set(),
       })
     }
-  
-    return (
-      <div className="min-h-screen bg-black p-8">
-        <h1 className="text-4xl font-bold text-white text-center mb-12">CHOOSE ONE OR MORE CATEGORIES</h1>
+    setSelectedCategories(newSelected)
+  }
+
+  const toggleOption = (categoryId: string, option: string) => {
+    const categoryOptions = selectedOptions[categoryId] || new Set()
+    const newOptions = new Set(categoryOptions)
+    if (newOptions.has(option)) {
+      newOptions.delete(option)
+    } else {
+      newOptions.add(option)
+    }
+    setSelectedOptions({
+      ...selectedOptions,
+      [categoryId]: newOptions,
+    })
+  }
+
+  return (
+    <div className="min-h-screen bg-black overflow-y-auto relative px-4 py-8">
+      <div className="max-w-2xl mx-auto space-y-6 relative z-10">
+        <h1 className="text-4xl font-bold text-white text-center mb-8">Anime Categories</h1>
+        
         <div className="max-w-6xl mx-auto space-y-8">
           {categories.map((category) => (
             <div key={category.id} className="flex items-center gap-6">
@@ -118,6 +123,22 @@ export default function SyntheticV0PageForDeployment() {
             </div>
           ))}
         </div>
+        
+        <div className="flex justify-between mt-8">
+          <Link href="/quiz/join-communities">
+            <Button className="bg-[#2c2c2c] hover:bg-[#3c3c3c] text-white">
+              <ChevronsLeft className="mr-2 h-5 w-5" />
+              Previous
+            </Button>
+          </Link>
+          <Link href="/quiz/last-quiz">
+            <Button className="bg-[#B624FF] hover:bg-[#B624FF]/80 text-white">
+              Next
+              <ChevronsRight className="ml-2 h-5 w-5" />
+            </Button>
+          </Link>
+        </div>
       </div>
-    )
+    </div>
+  )
 }

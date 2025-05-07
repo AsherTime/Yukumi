@@ -2,8 +2,9 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Play } from "lucide-react"
+import { Play, ChevronsRight } from "lucide-react"
 import { motion } from "framer-motion"
+import { Button } from "@/components/ui/button"
 
 export default function ImportPage() {
   return (
@@ -32,15 +33,23 @@ export default function ImportPage() {
           />
         </div>
 
-        <Link href="/import">
-          <motion.button
-            className="bg-[#2c2c2c] text-white px-8 py-3 rounded-md text-lg font-medium transition-all"
-            whileHover={{ scale: 1.05, backgroundColor: "#3c3c3c" }}
-            whileTap={{ scale: 0.95 }}
-          >
-            IMPORT
-          </motion.button>
-        </Link>
+        <div className="flex justify-center gap-4">
+          <Link href="/import">
+            <motion.button
+              className="bg-[#2c2c2c] text-white px-8 py-3 rounded-md text-lg font-medium transition-all"
+              whileHover={{ scale: 1.05, backgroundColor: "#3c3c3c" }}
+              whileTap={{ scale: 0.95 }}
+            >
+              IMPORT
+            </motion.button>
+          </Link>
+          <Link href="/quiz/join-communities">
+            <Button className="bg-[#B624FF] hover:bg-[#B624FF]/80 text-white px-8 py-3 text-lg">
+              Next
+              <ChevronsRight className="ml-2 h-5 w-5" />
+            </Button>
+          </Link>
+        </div>
       </motion.div>
 
       {/* Navigation button */}

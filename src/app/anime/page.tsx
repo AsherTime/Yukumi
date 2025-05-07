@@ -117,9 +117,11 @@ const AnimeBrowser: React.FC = () => {
       {/* Hero Section */}
       <div className="text-center space-y-8 relative py-20">
         <h1 className="text-4xl md:text-6xl font-bold text-white">FIND THE BEST ANIME FOR YOU</h1>
-        <Button className="bg-[#B624FF] hover:bg-[#B624FF]/80 text-white px-8 py-6 text-xl h-auto">
-          TRY NOW
-        </Button>
+        <Link href="/quiz/find-anime">
+          <Button className="bg-[#B624FF] hover:bg-[#B624FF]/80 text-white px-8 py-6 text-xl h-auto">
+            TRY NOW
+          </Button>
+        </Link>
       </div>
 
       {/* Search Bar */}

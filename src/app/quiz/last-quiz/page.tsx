@@ -2,17 +2,19 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { ChevronsRight } from "lucide-react"
+import { ChevronsRight, ChevronsLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link"
 
 export default function AnimeSurvey() {
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({
     animeCount: [],
     watchHours: [],
     mangakas: [],
+    manga: [],
   })
 
   const handleSelect = (question: string, value: string) => {
@@ -119,7 +121,7 @@ export default function AnimeSurvey() {
               <Select key={option} onValueChange={(value) => handleSelect("manga", value)}>
                 <SelectTrigger
                   className={`w-full mb-2 hover:scale-105 transition-transform ${
-                    selectedOptions.manga === option ? "bg-purple-50 scale-105" : ""
+                    selectedOptions.manga.includes(option) ? "bg-purple-50 scale-105" : ""
                   }`}
                 >
                   <SelectValue placeholder={option} />
@@ -162,13 +164,26 @@ export default function AnimeSurvey() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <Button
-            size="lg"
-            className="hover:scale-105 transition-transform duration-200 bg-white text-black hover:bg-purple-50"
-          >
-            Next
-            <ChevronsRight className="ml-2 h-5 w-5" />
-          </Button>
+          <div className="flex gap-4">
+            <Link href="/quiz/anime-categories">
+              <Button
+                size="lg"
+                className="hover:scale-105 transition-transform duration-200 bg-[#2c2c2c] text-white hover:bg-[#3c3c3c]"
+              >
+                <ChevronsLeft className="mr-2 h-5 w-5" />
+                Previous
+              </Button>
+            </Link>
+            <Link href="/">
+              <Button
+                size="lg"
+                className="hover:scale-105 transition-transform duration-200 bg-white text-black hover:bg-purple-50"
+              >
+                Next
+                <ChevronsRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+          </div>
         </motion.div>
       </div>
     </div>

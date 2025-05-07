@@ -132,7 +132,7 @@ export default function ProfileSetup() {
 
       console.log("Profile update successful:", data)
       toast.success("Profile updated successfully!")
-      router.push("/")
+      router.push("/quiz/anime-database")
     } catch (error: any) {
       console.error("Profile update error details:", {
         message: error.message,
