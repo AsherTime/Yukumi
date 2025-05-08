@@ -46,6 +46,26 @@ const nextConfig = {
         protocol: 'https',
         hostname: 's4.anilist.co',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.discordapp.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'rhspkjpeyewjugifcvil.supabase.co',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.youtube.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.imgur.com',
+        pathname: '/**',
       }
     ],
   },

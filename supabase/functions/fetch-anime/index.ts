@@ -7,42 +7,110 @@ serve(async (req) => {
   const supabaseKey = Deno.env.get('_SUPABASE_SERVICE_KEY')!
   const supabase = createClient(supabaseUrl, supabaseKey)
 
+  const query = `
+    query ($page: Int) {
+      Page(page: $page, perPage: 50) {
+        pageInfo {
+          hasNextPage
+          currentPage
+        }
+        media(type: ANIME, sort: POPULARITY_DESC) {
+          id
+          title {
+            romaji
+          }
+          episodes
+          description(asHtml: false)
+          genres
+          coverImage {
+            extraLarge
+            large
+            medium
+          }
+          startDate {
+            year
+            month
+            day
+          }
+          endDate {
+            year
+            month
+            day
+          }
+          format
+        }
+      }
+    }
+  `
+
+  const MAX_PAGES = 1000
+  let page = 1
+  let totalInserted = 0
+  let errors: string[] = []
+
+  const formatDate = (date: any) => {
+    if (!date?.year) return null
+    return new Date(`${date.year}-${date.month || 1}-${date.day || 1}`)
+  }
+
   try {
-    // Fetch top anime from Jikan API
-    const response = await fetch('https://api.jikan.moe/v4/anime?order_by=popularity&page=1')
-    const data = await response.json()
-
-    if (!data.data) {
-      return new Response(JSON.stringify({ error: 'Invalid response from Jikan' }), {
-        status: 500,
+    while (page <= MAX_PAGES) {
+      console.log(`Fetching page ${page}...`)
+      const res = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, variables: { page } }),
       })
+
+      const json = await res.json()
+      const media = json?.data?.Page?.media
+      const pageInfo = json?.data?.Page?.pageInfo
+
+      if (!media || media.length === 0) break
+
+      const animeToInsert = media.map((anime: any) => ({
+        anilist_id: anime.id,
+        title: anime.title.romaji,
+        episodes: anime.episodes || null,
+        synopsis: anime.description || null,
+        genres: anime.genres || [],
+        image_url: anime.coverImage?.extraLarge || anime.coverImage?.large || anime.coverImage?.medium || null,
+        aired_from: formatDate(anime.startDate),
+        aired_to: formatDate(anime.endDate),
+        type: anime.format || null,
+      }))
+
+      const { error, count } = await supabase
+        .from('Anime')
+        .insert(animeToInsert)
+        .select('*')
+
+      if (error) {
+        console.error(`Error on page ${page}:`, error)
+        errors.push(`Page ${page}: ${error.message}`)
+      } else {
+        totalInserted += animeToInsert.length
+        console.log(`Page ${page}: Inserted ${animeToInsert.length} anime.`)
+      }
+
+      if (!pageInfo?.hasNextPage) break
+      page++
     }
 
-    // Transform and insert anime data into Supabase
-    const animeToInsert = data.data.map((anime: any) => ({
-      image_url: anime.images?.jpg?.image_url || null,
-      title: anime.title,
-      type: anime.type || null,
-      episodes: anime.episodes || null,
-      aired_from: anime.aired?.from ? new Date(anime.aired.from) : null,
-      aired_to: anime.aired?.to ? new Date(anime.aired.to) : null,
-      synopsis: anime.synopsis || null,
-      genres: anime.genres.map(g => g.name)
-    }))
-
-    const { error } = await supabase.from('Anime').insert(animeToInsert)
-
-    if (error) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-      })
-    }
-
-    return new Response(JSON.stringify({ message: 'Anime data inserted successfully' }), {
+    return new Response(JSON.stringify({
+      message: 'Finished inserting anime from AniList',
+      pagesProcessed: page - 1,
+      totalInserted,
+      errors: errors.length > 0 ? errors : undefined,
+    }), {
+      headers: { 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error('Fatal error:', err)
+    return new Response(JSON.stringify({
+      error: err.message || String(err),
+    }), {
       status: 500,
     })
   }
