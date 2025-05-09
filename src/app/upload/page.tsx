@@ -39,6 +39,10 @@ export default function CoverUpload() {
   const { user } = useAuth()
   const router = useRouter()
   const [animeLoading, setAnimeLoading] = useState(false);
+  const [postTags, setPostTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [tagError, setTagError] = useState<string | null>(null);
+  const [showAnimeDropdown, setShowAnimeDropdown] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -78,6 +82,7 @@ export default function CoverUpload() {
     const query = event.target.value;
     setSearchQuery(query);
     setAnimeLoading(true);
+    setShowAnimeDropdown(true);
     if (debounceTimeout) clearTimeout(debounceTimeout);
     debounceTimeout = setTimeout(() => {
       fetchAnimeList(query);
@@ -193,9 +198,20 @@ export default function CoverUpload() {
       return
     }
 
+    if (postTags.length > 5) {
+      setTagError("You can add up to 5 tags only.");
+      return;
+    }
+
+    if (postTags.some(tag => tag.length > 30)) {
+      setTagError("Each tag must be 30 characters or less.");
+      return;
+    }
+
     try {
       setLoading(true)
       setError(null)
+      setTagError(null)
 
       // Upload image
       const fileExt = selectedFile.name.split('.').pop()
@@ -238,10 +254,46 @@ export default function CoverUpload() {
         .from("posts")
         .insert(postData)
         .select()
+        .single()
 
       if (postError) {
         console.error("Post creation error:", postError)
         throw new Error(postError.message)
+      }
+
+      // Tag logic: insert/find tags, then link in post_tags
+      for (const tag of postTags) {
+        // 1. Check if tag exists
+        let tagId: string | null = null;
+        const { data: tagRow, error: tagFetchError } = await supabase
+          .from("tags")
+          .select("id")
+          .eq("name", tag)
+          .maybeSingle();
+        if (tagFetchError) {
+          throw new Error("Error checking tag: " + tag);
+        }
+        if (tagRow && tagRow.id) {
+          tagId = tagRow.id;
+        } else {
+          // 2. Insert tag if not exists
+          const { data: newTag, error: tagInsertError } = await supabase
+            .from("tags")
+            .insert({ name: tag })
+            .select()
+            .single();
+          if (tagInsertError) {
+            throw new Error("Error inserting tag: " + tag);
+          }
+          tagId = newTag.id;
+        }
+        // 3. Insert into post_tags
+        const { error: postTagError } = await supabase
+          .from("post_tags")
+          .insert({ post_id: newPost.id, tag_id: tagId });
+        if (postTagError) {
+          throw new Error("Error linking tag to post: " + tag);
+        }
       }
 
       console.log("Post created successfully:", newPost)
@@ -254,6 +306,37 @@ export default function CoverUpload() {
       setLoading(false)
     }
   }
+
+  // Tag input handlers
+  const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.value.length > 30) return;
+    setTagInput(e.target.value);
+    setTagError(null);
+  };
+  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if ((e.key === "Enter" || e.key === ",") && tagInput.trim() && postTags.length < 5) {
+      e.preventDefault();
+      const newTag = tagInput.trim().toLowerCase();
+      if (newTag.length > 30) {
+        setTagError("Tag must be 30 characters or less.");
+        return;
+      }
+      if (!postTags.includes(newTag)) {
+        setPostTags([...postTags, newTag]);
+        setTagInput("");
+        setTagError(null);
+      } else {
+        setTagError("Duplicate tag.");
+      }
+    } else if (e.key === "Backspace" && !tagInput && postTags.length > 0) {
+      setPostTags(postTags.slice(0, -1));
+      setTagError(null);
+    }
+  };
+  const handleRemoveTag = (tag: string) => {
+    setPostTags(postTags.filter(t => t !== tag));
+    setTagError(null);
+  };
 
   if (!user) {
     return null
@@ -361,10 +444,11 @@ export default function CoverUpload() {
                 type="text"
                 value={searchQuery}
                 onChange={handleSearch}
+                onFocus={() => setShowAnimeDropdown(true)}
                 placeholder="Search anime..."
                 className="bg-[#2e2e2e] border-0"
               />
-              {searchQuery && (
+              {searchQuery && showAnimeDropdown && (
                 <div className="absolute w-full mt-1 bg-[#232323] border border-[#3A3A3A] rounded-lg z-50 shadow-lg">
                   {animeLoading ? (
                     <div className="p-2 text-gray-400">Loading...</div>
@@ -377,6 +461,7 @@ export default function CoverUpload() {
                           onClick={() => {
                             setSelectedAnime(anime.id);
                             setSearchQuery(anime.title);
+                            setShowAnimeDropdown(false);
                           }}
                         >
                           {anime.title}
@@ -430,6 +515,38 @@ export default function CoverUpload() {
                 className="bg-[#2e2e2e] border-0 mt-2"
               />
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Add topic</Label>
+            <div className="flex flex-wrap items-center gap-2 bg-[#2e2e2e] border border-[#3A3A3A] rounded-lg px-2 py-2">
+              {postTags.map((tag) => (
+                <span key={tag} className="flex items-center bg-[#232232] text-white rounded-full px-4 py-1 text-sm mr-1 mb-1">
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTag(tag)}
+                    className="ml-2 text-gray-300 hover:text-red-400 focus:outline-none"
+                    aria-label={`Remove tag ${tag}`}
+                  >
+                    &times;
+                  </button>
+                </span>
+              ))}
+              {postTags.length < 5 && (
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={handleTagInputChange}
+                  onKeyDown={handleTagInputKeyDown}
+                  className="bg-transparent outline-none text-white px-2 py-1 min-w-[80px]"
+                  placeholder={postTags.length === 0 ? "Add a tag..." : ""}
+                  maxLength={30}
+                />
+              )}
+            </div>
+            {tagError && <div className="text-xs text-red-400 mt-1">{tagError}</div>}
+            <div className="text-xs text-gray-400 mt-1">Up to 5 tags. Press Enter or comma to add. Max 30 chars per tag.</div>
           </div>
 
           <Button

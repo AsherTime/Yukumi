@@ -1,32 +1,39 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { motion } from "framer-motion"
 
-export function LeftSidebar() {
-  const pathname = usePathname()
+interface LeftSidebarProps {
+  selectedFilter: string;
+  onFilterChange: (filter: string) => void;
+}
 
+export function LeftSidebar({ selectedFilter, onFilterChange }: LeftSidebarProps) {
   const links = [
-    { name: "Following", href: "/following" },
-    { name: "Recommended", href: "/recommended" },
-    { name: "Events", href: "/events" },
-  ]
+    { name: "Recommended", value: "Recommended" },
+    { name: "Following", value: "Following" },
+    { name: "Events", value: "Events" },
+  ];
 
   return (
-    <div className="w-64 min-h-screen bg-[#2e2e2e] p-4">
+    <div className="w-64 min-h-screen bg-[#1f1f1f] border-r border-zinc-800 p-4">
       <nav className="space-y-2">
         {links.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
+          <motion.button
+            key={link.value}
+            type="button"
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onFilterChange(link.value)}
             className={cn(
-              "block px-4 py-2 rounded-lg transition-colors",
-              pathname === link.href ? "bg-red-500 text-white" : "hover:bg-gray-700",
+              "block w-full text-left px-4 py-3 rounded-xl transition-all duration-200 font-medium focus:outline-none",
+              selectedFilter === link.value
+                ? "bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg shadow-pink-500/20 scale-105"
+                : "text-zinc-400 hover:text-white hover:bg-white/5"
             )}
           >
             {link.name}
-          </Link>
+          </motion.button>
         ))}
       </nav>  
     </div>
