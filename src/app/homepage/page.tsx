@@ -92,6 +92,7 @@ export default function HomePage() {
         `, { count: "exact" })
         .order("created_at", { ascending: false })
         .range(from, to);
+        
       if (postsError) {
         console.error("Error fetching posts:", postsError, postsError?.message, postsError?.details);
         return;
@@ -394,7 +395,7 @@ export default function HomePage() {
                             </span>
                           ))}
                         </div>
-                      )}
+                      )} 
                       {/* Bottom Row: Like, Comment, View */}
                       <div className="flex items-center justify-end gap-6 px-6 py-3">
                         <button

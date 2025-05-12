@@ -25,7 +25,7 @@ interface Post {
     display_name: string;
   };
 }
-
+ 
 export default function Home() {
   const [selectedAnime, setSelectedAnime] = useState<string[]>([]);
   const [recentPosts, setRecentPosts] = useState<Post[]>([]);
