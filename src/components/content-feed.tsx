@@ -27,12 +27,14 @@ interface Post {
     avatar_url: string;
     display_name: string;
   };
+  tags?: string[];
 }
 
 type ContentFeedProps = {
   selectedAnime: string[];
   recentPosts: Post[];
   setRecentPosts: React.Dispatch<React.SetStateAction<Post[]>>;
+  homepageStyle?: boolean;
 };
 
 export function ContentFeed({ selectedAnime, recentPosts, setRecentPosts }: ContentFeedProps) {
@@ -221,86 +223,104 @@ export function ContentFeed({ selectedAnime, recentPosts, setRecentPosts }: Cont
     return <div className="text-white p-4">No posts found.</div>;
 
   return (
-    <div className="p-4 space-y-4">
-      {/* Main Content */}
-      <div className="mx-auto max-w-3xl px-4">
-          {posts.map((post) => (
-            <Card key={post.id} className="bg-[#2e2e2e] border-0 p-4 relative">
-              <div className="absolute top-4 right-4 flex items-center gap-2">
-                <FollowButton 
-                  followedId={post.user_id} 
-                  className="rounded-full px-6 py-2 bg-blue-900 text-blue-400 font-semibold shadow hover:bg-blue-800 transition" 
-                />
-                <button
-                  className="bg-black/30 p-2 rounded-full text-white hover:text-gray-300"
-                  onClick={() => {/* Menu logic if needed */}}
-                >
-                  <FiMoreHorizontal size={20} />
-                </button>
-              </div>
-              <Link
-                href={post.user_id === user?.id ? "/profile" : `/profile/${post.user_id}`}
-                className="flex items-center gap-3 mb-2 hover:underline"
-              >
+    <div className="space-y-0">
+      {posts.map((post, idx) => (
+        <div
+          key={post.id}
+          className={`${idx !== posts.length - 1 ? 'border-b border-zinc-800' : ''} relative`}
+        >
+          {/* Top Row: Avatar, Username, Date, Follow, More */}
+          <div className="flex items-center justify-between px-6 pt-6 pb-2">
+            <Link href={post.user_id === user?.id ? "/profile" : `/profile/${post.user_id}`} className="flex items-center gap-3 group" prefetch={false}>
+              {post.Profiles?.avatar_url ? (
                 <img
-                  src={post.Profiles?.avatar_url || "/placeholder.svg"}
-                  alt={post.Profiles?.display_name || "User"}
-                  className="w-10 h-10 rounded-full object-cover border border-zinc-700"
+                  src={post.Profiles.avatar_url}
+                  alt={post.Profiles.display_name || "User"}
+                  className="w-10 h-10 rounded-full object-cover border border-zinc-700 group-hover:ring-2 group-hover:ring-blue-500 transition"
                 />
-                <span className="text-white font-semibold text-base">{post.Profiles?.display_name || "Anonymous"}</span>
-              </Link>
-              <h3 className="text-lg font-semibold text-white mb-1">{post.title}</h3>
-              {post.image_url && (
-                <div className="relative w-full h-64 mb-4">
-                  <img
-                    src={post.image_url}
-                    alt={post.title}
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-zinc-700" />
               )}
-              <p className="text-gray-400 mb-2" dangerouslySetInnerHTML={{ __html: post.content }}></p>
-              
-              {/* Collection and Anime Tags */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {post.post_collections && (
-                  <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm">
-                    {post.post_collections}
-                  </span>
-                )}
-                {post.animetitle_post && (
-                  <span className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-sm">
-                    {post.animetitle_post}
-                  </span>
-                )}
+              <div>
+                <div className="text-white font-semibold text-base leading-tight group-hover:underline group-hover:text-blue-400 transition">{post.Profiles?.display_name || "Anonymous"}</div>
+                <div className="text-xs text-zinc-400">{formatDate(post.created_at)}</div>
               </div>
-
-              <div className="flex items-center justify-between text-sm text-gray-400 mt-4">
-                <span>{formatDate(post.created_at)}</span>
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={(e) => handleLikeClick(e, post.id, post.liked_by_user)}
-                    className="flex items-center gap-1 hover:text-red-500 transition-colors"
-                  >
-                    {post.liked_by_user ? (
-                      <FaHeart className="text-red-500" />
-                    ) : (
-                      <FiHeart />
-                    )}
-                    <span>{post.likes_count || 0}</span>
-                  </button>
-                  <button
-                    onClick={() => handleCommentClick(post)}
-                    className="flex items-center gap-1"
-                  >
-                    <FiMessageCircle />
-                    {post.comments_count}
-                  </button>
-                </div>
-              </div>
-            </Card>
-          ))}
+            </Link>
+            <div className="flex items-center gap-2">
+              <FollowButton 
+                followedId={post.user_id} 
+                className="rounded-full px-4 py-1 bg-blue-900 text-blue-400 font-semibold shadow hover:bg-blue-800 transition text-xs" 
+              />
+              <button
+                className="bg-black/30 p-2 rounded-full text-white hover:text-gray-300"
+                onClick={() => {/* Menu logic if needed */}}
+              >
+                <FiMoreHorizontal size={20} />
+              </button>
+            </div>
+          </div>
+          {/* Title */}
+          <h3 className="text-2xl font-bold text-white px-6 pb-2">{post.title}</h3>
+          {/* Image */}
+          {post.image_url && (
+            <div className="relative h-64 mb-4 px-6 overflow-hidden rounded-xl">
+              <img
+                src={post.image_url}
+                alt={post.title}
+                className="h-full w-full object-cover mx-auto rounded-xl"
+                loading="lazy"
+              />
+            </div>
+          )}
+          {/* Content */}
+          <p className="text-gray-300 px-6 pb-2" dangerouslySetInnerHTML={{ __html: post.content }}></p>
+          {/* Tags */}
+          <div className="flex flex-wrap gap-2 px-6 pb-2 mt-1">
+            {post.post_collections && (
+              <span className="px-2 py-1 rounded-full text-xs font-semibold text-blue-400 bg-blue-500/10">
+                {post.post_collections}
+              </span>
+            )}
+            {post.animetitle_post && (
+              <span className="px-2 py-1 rounded-full text-xs font-semibold text-purple-400 bg-purple-500/10">
+                {post.animetitle_post}
+              </span>
+            )}
+          </div>
+          {/* User Tags (if any) */}
+          {post.tags && post.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 px-6 pb-2">
+              {post.tags.map((tag: string) => (
+                <span key={tag} className="px-2 py-1 rounded-full text-xs font-semibold text-gray-300 bg-[#232232]">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+          {/* Bottom Row: Like, Comment, View */}
+          <div className="flex items-center gap-6 px-6 pb-4 text-zinc-400">
+            <button
+              onClick={(e) => handleLikeClick(e, post.id, post.liked_by_user)}
+              className={`flex items-center gap-1 text-zinc-400 hover:text-pink-500 transition-colors group ${post.liked_by_user ? 'font-bold text-pink-500' : ''}`}
+            >
+              {post.liked_by_user ? (
+                <FaHeart className="w-5 h-5 mr-1 group-hover:scale-110 transition-transform text-pink-500" />
+              ) : (
+                <FiHeart className="w-5 h-5 mr-1 group-hover:scale-110 transition-transform" />
+              )}
+              <span>{post.likes_count || 0}</span>
+            </button>
+            <button
+              onClick={() => handleCommentClick(post)}
+              className="flex items-center gap-1 text-zinc-400 hover:text-purple-400 transition-colors"
+            >
+              <FiMessageCircle className="w-5 h-5 mr-1" />
+              {post.comments_count}
+            </button>
+            {/* Optionally add view count here if available */}
+          </div>
         </div>
+      ))}
     </div>
   );
 }
