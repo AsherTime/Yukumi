@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ export default function AnimeDetail() {
   const params = useParams();
   const id = params?.id ? String(params.id) : undefined;
   const { user } = useAuth();
+  const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -136,7 +137,13 @@ export default function AnimeDetail() {
             </div>
 
             {/* Join Community Button */}
-            <button className="w-full py-3 bg-[#4f74c8] text-white font-medium rounded hover:bg-[#1c439b] transition-colors">
+            <button
+              className="w-full py-3 bg-[#4f74c8] text-white font-medium rounded hover:bg-[#1c439b] transition-colors"
+              onClick={() => {
+                if (id) localStorage.setItem(`joined-community-${id}`, "true");
+                if (id) router.push(`/community/${id}`);
+              }}
+            >
               JOIN COMMUNITY
             </button>
 
