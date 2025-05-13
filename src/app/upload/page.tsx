@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2, Bold, Italic, Underline, ImageIcon } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
@@ -43,14 +43,41 @@ export default function CoverUpload() {
   const [tagInput, setTagInput] = useState("");
   const [tagError, setTagError] = useState<string | null>(null);
   const [showAnimeDropdown, setShowAnimeDropdown] = useState(false);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (!user) {
       router.push('/auth/login')
       return
     }
-    fetchAnimeList()
-  }, [user, router])
+    // Check for community_id in query params
+    const communityId = searchParams.get('community_id');
+    if (communityId) {
+      // Fetch the community and its anime_id, then pre-select the anime
+      (async () => {
+        const { data: community, error: communityError } = await supabase
+          .from('community')
+          .select('anime_id')
+          .eq('id', communityId)
+          .maybeSingle();
+        if (community && community.anime_id) {
+          // Fetch the anime
+          const { data: anime, error: animeError } = await supabase
+            .from('Anime')
+            .select('id, title')
+            .eq('id', community.anime_id)
+            .maybeSingle();
+          if (anime) {
+            setAnimeList((prev) => [{ id: anime.id, title: anime.title }, ...prev.filter(a => a.id !== anime.id)]);
+            setSelectedAnime(anime.id);
+          }
+        }
+        fetchAnimeList();
+      })();
+    } else {
+      fetchAnimeList();
+    }
+  }, [user, router, searchParams]);
 
   const fetchAnimeList = async (query: string = "") => {
     try {

@@ -93,6 +93,12 @@ export default function HomePage() {
         .order("created_at", { ascending: false })
         .range(from, to);
       if (postsError) {
+        if (postsError.message === "Requested range not satisfiable") {
+          // No more posts to fetch, end pagination
+          setHasMore(false);
+          setLoadingMore(false);
+          return;
+        }
         console.error("Error fetching posts:", postsError, postsError?.message, postsError?.details);
         return;
       }

@@ -5,12 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { TopNav } from "@/components/top-nav";
 import { supabase } from "@/lib/supabase";
-import { Heart, MessageCircle, Share2 } from "lucide-react";
-import { useParams } from "next/navigation";
+import { Heart, MessageCircle, Share2, Upload } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "react-hot-toast";
 
 // Types
 interface Community {
-  id: number;
+  id: string;
   title: string;
   members: number;
   anime_id: string;
@@ -28,6 +30,19 @@ interface Anime {
   banner_url?: string;
 }
 
+interface Post {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  image_url: string;
+  Profiles?: {
+    display_name: string;
+    avatar_url: string;
+  };
+}
+
 export default function CommunityIdPage() {
   const [activeTab, setActiveTab] = useState<"recommended" | "recent">("recommended");
   const [community, setCommunity] = useState<Community | null>(null);
@@ -35,87 +50,51 @@ export default function CommunityIdPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [joined, setJoined] = useState(false);
+  const [posts, setPosts] = useState<Post[]>([]);
   const params = useParams();
+  const router = useRouter();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchCommunityAndAnime = async () => {
       setLoading(true);
       setError(null);
       
-      const animeId = params.id;
-      console.log("Fetching community for anime ID:", animeId);
-      
-      if (!animeId) {
-        setError("No anime ID provided");
+      const communityId = params.id; // this is the community's bigint id
+      if (!communityId) {
+        setError("No community ID provided");
         setLoading(false);
         return;
       }
-      
       try {
-        // First fetch the anime details
+        // 1. Fetch the community by its id
+        const { data: communityData, error: communityError } = await supabase
+          .from("community")
+          .select("*")
+          .eq("id", communityId)
+          .maybeSingle();
+
+        if (communityError || !communityData) {
+          setError(communityError?.message || "Community not found");
+          setLoading(false);
+          return;
+        }
+
+        // 2. Fetch the anime by the community's anime_id
         const { data: animeData, error: animeError } = await supabase
           .from("Anime")
           .select("*")
-          .eq("id", animeId)
+          .eq("id", communityData.anime_id)
           .single();
 
-        if (animeError) {
-          console.error("Error fetching anime:", animeError);
-          setError(animeError.message);
+        if (animeError || !animeData) {
+          setError(animeError?.message || "Anime not found");
+          setLoading(false);
           return;
         }
 
-        if (!animeData) {
-          setError("Anime not found");
-          return;
-        }
-
-        setAnime(animeData);
-
-        // Then fetch or create the community for this anime
-        let { data: communityData, error: communityError } = await supabase
-          .from("community")
-          .select("*")
-          .eq("anime_id", animeId)
-          .maybeSingle();
-
-        if (communityError) {
-          console.error("Error fetching community:", communityError);
-          setError(communityError.message);
-          return;
-        }
-
-        // If community doesn't exist, create it
-        if (!communityData) {
-          console.log("Creating new community for anime:", animeData.title);
-          const { data: newCommunity, error: createError } = await supabase
-            .from("community")
-            .insert([
-              {
-                anime_id: animeId,
-                title: animeData.title,
-                members: 0,
-                banner_url: animeData.banner_url || null,
-                avatar_url: animeData.image_url || null,
-                description: `Welcome to the ${animeData.title} community!`,
-                trending_tags: [],
-                trending_topics: []
-              }
-            ])
-            .select()
-            .single();
-
-          if (createError) {
-            console.error("Error creating community:", createError);
-            setError(createError.message);
-            return;
-          }
-
-          communityData = newCommunity;
-        }
-
-        console.log("Fetched/Created community data:", communityData);
         setCommunity(communityData);
+        setAnime(animeData);
       } catch (error) {
         console.error("Error in fetchCommunityAndAnime:", error);
         setError("Failed to fetch community data");
@@ -126,6 +105,82 @@ export default function CommunityIdPage() {
 
     fetchCommunityAndAnime();
   }, [params.id]);
+
+  useEffect(() => {
+    const checkIfJoined = async () => {
+      if (!user || !community) return;
+      
+      const { data, error } = await supabase
+        .from('follows')
+        .select('id')
+        .eq('follower_id', user.id)
+        .eq('community_id', community.id)
+        .single();
+
+      if (!error && data) {
+        setJoined(true);
+      }
+    };
+
+    checkIfJoined();
+  }, [user, community]);
+
+  useEffect(() => {
+    if (!anime) return;
+    const fetchPosts = async () => {
+      const { data, error } = await supabase
+        .from("posts")
+        .select(`id, title, content, created_at, user_id, image_url, Profiles(display_name, avatar_url)`)
+        .eq("animetitle_post", anime.title)
+        .order("created_at", { ascending: false });
+      if (!error && data) {
+        // Ensure Profiles is always a single object, not an array
+        setPosts(data.map((post: any) => ({
+          ...post,
+          Profiles: Array.isArray(post.Profiles) ? post.Profiles[0] : post.Profiles
+        })));
+      }
+    };
+    fetchPosts();
+  }, [anime]);
+
+  const handleJoinCommunity = async () => {
+    if (!user || !community) return;
+
+    try {
+      // Add to follows table
+      const { error: followError } = await supabase
+        .from('follows')
+        .insert([
+          {
+            follower_id: user.id,
+            community_id: community.id
+          }
+        ]);
+
+      if (followError) {
+        console.error('Error adding follow:', followError);
+        throw followError;
+      }
+
+      // Update community members count
+      const { error: updateError } = await supabase
+        .from('community')
+        .update({ members: community.members + 1 })
+        .eq('id', community.id);
+
+      if (updateError) {
+        console.error('Error updating member count:', updateError);
+        throw updateError;
+      }
+
+      setJoined(true);
+      toast.success('Successfully joined community!');
+    } catch (error) {
+      console.error('Error joining community:', error);
+      toast.error('Failed to join community');
+    }
+  };
 
   if (loading) {
     return <div className="min-h-screen bg-black text-white flex items-center justify-center">Loading...</div>;
@@ -181,19 +236,26 @@ export default function CommunityIdPage() {
             </div>
           </div>
         </div>
-        <div className="flex-1 flex justify-end w-full md:w-auto">
-          <Button
-            className={`px-6 py-2 rounded-full text-lg font-semibold transition-colors ${
-              joined 
-                ? "bg-zinc-700 text-zinc-300 cursor-default" 
-                : "bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700"
-            }`}
-            disabled={joined}
-            onClick={() => setJoined(true)}
-          >
-            {joined ? "Joined" : "+ Join Community"}
-          </Button>
-        </div>
+        
+        <Button
+          className={`px-6 py-2 rounded-full text-lg font-semibold transition-colors ${
+            joined 
+              ? "bg-zinc-700 text-zinc-300 cursor-default" 
+              : "bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700"
+          }`}
+          disabled={joined}
+          onClick={handleJoinCommunity}
+        >
+          {joined ? "Joined" : "+ Join Community"}
+        </Button>
+
+        <Button
+          className="w-full bg-black border border-white/10 hover:bg-white/5"
+          onClick={() => router.push(`/upload?community_id=${community.id}`)}
+        >
+          <Upload className="mr-2 h-4 w-4" />
+          POST NOW
+        </Button>
       </div>
 
       {/* Filter Tabs */}
@@ -227,47 +289,38 @@ export default function CommunityIdPage() {
         {/* Main Posts Feed */}
         <div className="flex-1 min-w-0">
           <div className="space-y-4">
-            {/* Example Post Card - Repeat this structure for each post */}
-            <div className="bg-[#1f1f1f] rounded-xl overflow-hidden">
-              <div className="bg-[#2e2e2e] p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full overflow-hidden">
-                      <Image
-                        src="/avatar-placeholder.png"
-                        alt="User Avatar"
-                        width={40}
-                        height={40}
-                        className="object-cover"
-                      />
-                    </div>
-                    <div>
-                      <p className="font-medium">Username</p>
-                      <p className="text-sm text-zinc-400">2 hours ago</p>
+            {posts.length === 0 ? (
+              <div className="text-zinc-400 text-center py-8">No posts yet for this community.</div>
+            ) : (
+              posts.map((post) => (
+                <div key={post.id} className="bg-[#1f1f1f] rounded-xl overflow-hidden">
+                  <div className="bg-[#2e2e2e] p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full overflow-hidden">
+                        <Image
+                          src={post.Profiles?.avatar_url || "/avatar-placeholder.png"}
+                          alt={post.Profiles?.display_name || "User"}
+                          width={40}
+                          height={40}
+                          className="object-cover"
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium">{post.Profiles?.display_name || "Anonymous"}</p>
+                        <p className="text-sm text-zinc-400">{new Date(post.created_at).toLocaleString()}</p>
+                      </div>
                     </div>
                   </div>
-                  <Button variant="ghost" className="text-zinc-400 hover:text-white">
-                    Follow
-                  </Button>
+                  <div className="px-6 py-4">
+                    <h3 className="text-xl font-bold mb-2">{post.title}</h3>
+                    <p className="mb-4">{post.content}</p>
+                    {post.image_url && (
+                      <img src={post.image_url} alt={post.title} className="rounded-lg max-h-64 mb-4" />
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="px-6 py-4">
-                <p className="text-lg mb-4">Post content goes here...</p>
-                <div className="flex items-center gap-6">
-                  <button className="flex items-center gap-2 text-zinc-400 hover:text-pink-500 transition-colors">
-                    <Heart size={20} />
-                    <span>123</span>
-                  </button>
-                  <button className="flex items-center gap-2 text-zinc-400 hover:text-blue-500 transition-colors">
-                    <MessageCircle size={20} />
-                    <span>45</span>
-                  </button>
-                  <button className="flex items-center gap-2 text-zinc-400 hover:text-green-500 transition-colors">
-                    <Share2 size={20} />
-                  </button>
-                </div>
-              </div>
-            </div>
+              ))
+            )}
           </div>
         </div>
 
