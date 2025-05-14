@@ -14,6 +14,7 @@ import Link from "next/link";
 import { FollowButton } from "@/components/ui/FollowButton";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserCircle, Heart, MessageCircle, Eye, MoreVertical } from "lucide-react";
+import { PostgrestError } from "@supabase/supabase-js";
 
 interface Post {
   id: string;
@@ -232,6 +233,77 @@ export default function HomePage() {
     await toggleLike(postId, liked);
   };
 
+  const deletePostIfOwner = async (
+      postId: string,
+      currentUserId: string
+    ): Promise<{ success: boolean; error?: PostgrestError | string }> => {
+      // Step 1: Fetch the post to check ownership
+      const { data: post, error: fetchError } = await supabase
+        .from('posts')
+        .select('user_id')
+        .eq('id', postId)
+        .single();
+    
+      if (fetchError) {
+        return { success: false, error: fetchError };
+      }
+    
+      if (!post || post.user_id !== currentUserId) {
+        return { success: false, error: 'Unauthorized: You are not the owner of this post.' };
+      }
+    
+      // Step 2: Delete the post
+      const { error: deleteError } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId);
+    
+      if (deleteError) {
+        return { success: false, error: deleteError };
+      }
+    
+      return { success: true };
+    };
+    
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [showConfirmId, setShowConfirmId] = useState<string | null>(null);
+
+  const handleDelete = async (postId: string) => {
+  const result = await deletePostIfOwner(postId, user?.id || "");
+  
+  if (result.success) {
+    alert('Post deleted.');
+  } else {
+    alert(`Failed to delete post: ${result.error}`);
+  }
+
+  setShowConfirmId(null);
+  setMenuOpenId(null);
+};
+
+  const [reportConfirmId, setReportConfirmId] = useState<string | null>(null);
+
+  const handleReport = async (postId: string) => {
+  try {
+    const { error } = await supabase
+      .from("posts")
+      .update({ isReported: true })
+      .eq("id", postId);
+
+    if (error) {
+      console.error("Report failed:", error);
+      alert("Failed to report the post.");
+    } else {
+      alert("Post reported successfully.");
+    }
+  } catch (err) {
+    console.error("Unexpected error reporting post:", err);
+    alert("Something went wrong.");
+  }
+};
+
+
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -356,12 +428,70 @@ export default function HomePage() {
                             followedId={post.user_id} 
                             className="rounded-full px-4 py-1 bg-blue-900 text-blue-400 font-semibold shadow hover:bg-blue-800 transition text-xs" 
                           />
-                          <button
-                            className="bg-black/30 p-2 rounded-full text-white hover:text-gray-300"
-                            onClick={() => {/* Menu logic if needed */}}
-                          >
-                            <MoreVertical size={20} />
-                          </button>
+<div className="relative inline-block text-left">
+      <button
+        className="bg-black/30 p-2 rounded-full text-white hover:text-gray-300"
+        onClick={() =>
+        setMenuOpenId((prev) => (prev === post.id ? null : post.id))
+      }
+      >
+        <FiMoreHorizontal size={20} />
+      </button>
+
+      {menuOpenId === post.id && (
+      <div className="absolute right-0 mt-2 w-28 bg-white rounded shadow z-10">
+        {user?.id === post.user_id ? (
+          <button
+            className="block w-full px-4 py-2 text-left text-red-600 hover:bg-gray-100"
+            onClick={() => {
+              setShowConfirmId(post.id); // this will trigger the popup
+              setMenuOpenId(null);
+            }}
+          >
+            Delete
+          </button>
+        ) : (
+      <button
+        className="block w-full px-4 py-2 text-left text-yellow-600 hover:bg-gray-100"
+        onClick={() => {
+          setReportConfirmId(post.id);
+          setMenuOpenId(null);
+        }}
+      >
+        Report
+      </button>
+    )}
+      </div>
+    )}
+
+      {showConfirmId === post.id && (
+  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-20">
+    <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+      <p className="mb-4 text-black text-lg font-semibold">
+        Are you sure you want to delete this post? This action cannot be undone.
+      </p>
+      <div className="flex justify-center gap-4">
+        <button
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          onClick={() => {
+            handleDelete(post.id);
+            setShowConfirmId(null);
+          }}
+        >
+          Yes
+        </button>
+        <button
+          className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+          onClick={() => setShowConfirmId(null)}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+    </div>
                         </div>
                       </div>
                       {/* Title */}
@@ -430,6 +560,33 @@ export default function HomePage() {
               {loadingMore && (
                 <div className="text-center text-zinc-400 py-4 animate-pulse">Loading more...</div>
               )}
+              {reportConfirmId && (
+  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-20">
+    <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+      <p className="mb-4 text-black text-lg font-semibold">
+        Are you sure you want to report this post?
+      </p>
+      <div className="flex justify-center gap-4">
+        <button
+          className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
+          onClick={() => {
+            handleReport(reportConfirmId);
+            setReportConfirmId(null);
+          }}
+        >
+          Yes
+        </button>
+        <button
+          className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+          onClick={() => setReportConfirmId(null)}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
             </div>
           </div>
 

@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { FollowButton } from "@/components/ui/FollowButton";
+
 
 export function UserProfile({ userId, readOnly = false }: { userId?: string, readOnly?: boolean }) {
   const [avatarUrl, setAvatarUrl] = useState<string>("/placeholder.svg");
@@ -15,16 +17,18 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
   const [editMode, setEditMode] = useState<boolean>(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [followedIds, setFollowedIds] = useState<string[]>([]);
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
   const { user } = useAuth();
 
   const router = useRouter();
+  let profileId = userId || user?.id;
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        let profileId = userId || user?.id;
+        profileId = userId || user?.id;
         if (!profileId) return;
         const { data: profile, error: profileError } = await supabase
           .from('Profiles')
@@ -49,6 +53,20 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
     fetchUserProfile();
   }, [userId, user?.id]);
 
+   useEffect(() => {
+      const fetchFollowedIds = async () => {
+        if (!user?.id) return;
+        const { data, error } = await supabase
+          .from("follows")
+          .select("followed_id")
+          .eq("follower_id", user.id);
+        if (!error && data) {
+          setFollowedIds(data.map((row: any) => row.followed_id));
+        }
+      };
+      if (user) fetchFollowedIds();
+    }, [user]);
+ 
   useEffect(() => {
     // Fetch follower/following counts
     const fetchFollowCounts = async (profileId: string) => {
@@ -293,7 +311,12 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
           </>
         )}
       </div>
-
+        {profileId !== user?.id && (
+  <FollowButton 
+    followedId={profileId||""} 
+    className="rounded-full px-4 py-1 bg-blue-900 text-blue-400 font-semibold shadow hover:bg-blue-800 transition text-xs" 
+  />
+)}
       <div className="flex gap-8 mt-2">
         <div className="flex flex-col items-center">
           <span className="text-lg font-bold">{following}</span>
