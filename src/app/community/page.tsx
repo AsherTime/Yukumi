@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
 import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 
 interface Post {
   id: string;
@@ -36,7 +37,7 @@ interface Post {
 }
 
 interface Community {
-  id: number;
+  id: string;
   title: string;
   members: number;
   banner_url: string;
@@ -50,6 +51,7 @@ interface Tag {
 
 export default function CommunityPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState("Recommended")
   const [searchQuery, setSearchQuery] = useState("")
   const [communities, setCommunities] = useState<Community[]>([])
@@ -58,6 +60,8 @@ export default function CommunityPage() {
   const [joinedCommunities, setJoinedCommunities] = useState<Community[]>([])
   const [recentPosts, setRecentPosts] = useState<Post[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [showAllCommunities, setShowAllCommunities] = useState(false);
+  const [searchResults, setSearchResults] = useState<Community[]>([]);
 
   useEffect(() => {
     fetchCommunities()
@@ -126,17 +130,29 @@ export default function CommunityPage() {
   }
 
   const fetchJoinedCommunities = async () => {
-    if (!user) return;
+    if (!user) {
+      setJoinedCommunities([]);
+      return;
+    }
+
     try {
       // Step 1: Get the list of community_ids the user follows
       const { data: follows, error: followsError } = await supabase
         .from('follows')
         .select('community_id')
-        .eq('user_id', user.id)
+        .eq('follower_id', user.id)
         .limit(10);
-      if (followsError) throw followsError;
 
-      const communityIds = (follows || []).map((row: any) => row.community_id);
+      if (followsError) {
+        console.error('Error fetching follows:', followsError.message);
+        throw new Error(`Failed to fetch follows: ${followsError.message}`);
+      }
+
+      // Filter out any null or undefined community_ids
+      const communityIds = (follows || [])
+        .map((row: { community_id: number | null }) => row.community_id)
+        .filter((id): id is number => id !== null && id !== undefined);
+
       if (communityIds.length === 0) {
         setJoinedCommunities([]);
         return;
@@ -148,10 +164,45 @@ export default function CommunityPage() {
         .select('id, title, members, banner_url, avatar_url')
         .in('id', communityIds);
 
-      if (communitiesError) throw communitiesError;
+      if (communitiesError) {
+        console.error('Error fetching communities:', communitiesError.message);
+        throw new Error(`Failed to fetch communities: ${communitiesError.message}`);
+      }
+
       setJoinedCommunities(communities || []);
     } catch (error) {
-      console.error('Error fetching joined communities:', error);
+      console.error('Error in fetchJoinedCommunities:', error instanceof Error ? error.message : 'Unknown error');
+      setJoinedCommunities([]); // Set empty array on error to prevent UI issues
+    }
+  };
+
+  const handleCommunityClick = (communityId: string) => {
+    if (!communityId) {
+      console.error('Invalid community ID');
+      return;
+    }
+    router.push(`/community/${communityId}`);
+  };
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('community')
+        .select('*')
+        .ilike('title', `%${query}%`)
+        .limit(10);
+
+      if (error) throw error;
+      setSearchResults(data || []);
+    } catch (error) {
+      console.error('Error searching communities:', error);
+      toast.error('Failed to search communities');
     }
   };
 
@@ -178,7 +229,7 @@ export default function CommunityPage() {
                     type="text"
                     placeholder="Search communities..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => handleSearch(e.target.value)}
                     className="pl-10 bg-black/40 border-white/10 focus:border-purple-500"
                   />
                 </div>
@@ -190,7 +241,11 @@ export default function CommunityPage() {
                     <ScrollArea className="max-h-40 mb-4">
                       <div className="space-y-2">
                         {recentCommunities.map((community) => (
-                          <div key={community.id} className="flex items-center gap-2 p-2 rounded-lg bg-zinc-900/60 hover:bg-zinc-800 cursor-pointer">
+                          <div 
+                            key={community.id} 
+                            className="flex items-center gap-2 p-2 rounded-lg bg-zinc-900/60 hover:bg-zinc-800 cursor-pointer transition-colors"
+                            onClick={() => handleCommunityClick(community.id)}
+                          >
                             <img src={community.avatar_url || "/avatar-placeholder.png"} alt={community.title} className="w-8 h-8 rounded-full object-cover" />
                             <span className="text-sm text-white">{community.title}</span>
                           </div>
@@ -199,14 +254,19 @@ export default function CommunityPage() {
                     </ScrollArea>
                   </div>
                 )}
+                
                 {/* Joined Communities */}
                 {joinedCommunities.length > 0 && (
                   <div>
-                    <h4 className="text-xs text-zinc-400 mb-2">Communities</h4>
+                    <h4 className="text-xs text-zinc-400 mb-2">My Communities</h4>
                     <ScrollArea className="max-h-40">
                       <div className="space-y-2">
                         {joinedCommunities.map((community) => (
-                          <div key={community.id} className="flex items-center gap-2 p-2 rounded-lg bg-zinc-900/60 hover:bg-zinc-800 cursor-pointer">
+                          <div 
+                            key={community.id} 
+                            className="flex items-center gap-2 p-2 rounded-lg bg-zinc-900/60 hover:bg-zinc-800 cursor-pointer transition-colors"
+                            onClick={() => handleCommunityClick(community.id)}
+                          >
                             <img src={community.avatar_url || "/avatar-placeholder.png"} alt={community.title} className="w-8 h-8 rounded-full object-cover" />
                             <span className="text-sm text-white">{community.title}</span>
                           </div>
@@ -215,41 +275,44 @@ export default function CommunityPage() {
                     </ScrollArea>
                   </div>
                 )}
-                {/* All Communities (search results) */}
-                <ScrollArea className="h-[calc(100vh-280px)]">
-                  <div className="space-y-2">
-                    {communities
-                      .filter((community) =>
-                        community.title.toLowerCase().includes(searchQuery.toLowerCase())
-                      )
-                      .map((community) => (
-                        <div
-                          key={community.id}
-                          className="p-3 rounded-lg bg-black/40 border border-white/10 hover:bg-white/5 transition-colors cursor-pointer"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
-                              {community.avatar_url ? (
-                                <img
-                                  src={community.avatar_url}
-                                  alt={community.title}
-                                  className="w-full h-full rounded-full object-cover"
-                                />
-                              ) : (
-                                <span className="text-lg font-bold text-purple-400">
-                                  {community.title[0]}
-                                </span>
-                              )}
-                            </div>
-                            <div>
-                              <h3 className="font-medium">{community.title}</h3>
-                              <p className="text-sm text-gray-400">{community.members} members</p>
+                
+                {/* Search Results */}
+                {searchQuery && searchResults.length > 0 && (
+                  <div>
+                    <h4 className="text-xs text-zinc-400 mb-2">Search Results</h4>
+                    <ScrollArea className="max-h-40">
+                      <div className="space-y-2">
+                        {searchResults.map((community) => (
+                          <div
+                            key={community.id}
+                            className="p-3 rounded-lg bg-black/40 border border-white/10 hover:bg-white/5 transition-colors cursor-pointer"
+                            onClick={() => handleCommunityClick(community.id)}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                                {community.avatar_url ? (
+                                  <img
+                                    src={community.avatar_url}
+                                    alt={community.title}
+                                    className="w-full h-full rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-lg font-bold text-purple-400">
+                                    {community.title[0]}
+                                  </span>
+                                )}
+                              </div>
+                              <div>
+                                <h3 className="font-medium">{community.title}</h3>
+                                <p className="text-sm text-gray-400">{community.members} members</p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+                    </ScrollArea>
                   </div>
-                </ScrollArea>
+                )}
               </div>
             </div>
 
@@ -290,7 +353,7 @@ export default function CommunityPage() {
             {/* Right Sidebar */}
             <div className="w-64 flex-shrink-0 lg:block hidden">
               <div className="space-y-6">
-                <Button className="w-full bg-black border border-white/10 hover:bg-white/5">
+                <Button className="w-full bg-black border border-white/10 hover:bg-white/5" onClick={() => router.push('/upload')}>
                   <Upload className="mr-2 h-4 w-4" />
                   POST NOW
                 </Button>
