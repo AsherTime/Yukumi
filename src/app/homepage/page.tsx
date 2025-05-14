@@ -76,7 +76,7 @@ export default function HomePage() {
     };
     if (user) fetchFollowedIds();
   }, [user]);
-
+ 
   const fetchPostsWithMeta = async (reset = false) => {
     try {
       let from = (reset ? 0 : (page - 1) * POSTS_PER_PAGE);
