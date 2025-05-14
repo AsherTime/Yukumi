@@ -7,6 +7,10 @@ import { FaHeart } from "react-icons/fa";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { PostgrestError } from "@supabase/supabase-js";
+import { UserCircle, Heart, MessageCircle, Eye, MoreVertical } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+
 
 
 interface Post {
@@ -39,97 +43,128 @@ type ContentFeedProps = {
 
 export function ContentFeed({ selectedAnime, recentPosts, setRecentPosts }: ContentFeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [selectedSidebarFilter, setSelectedSidebarFilter] = useState<string>("Recommended");
+  const [mounted, setMounted] = useState(false);
+  const [followedIds, setFollowedIds] = useState<string[]>([]);
+  const categories = [
+    { label: "All", value: "All" },
+    { label: "Fanart", value: "Fanart" },
+    { label: "Memes", value: "Memes" },
+    { label: "Discussion", value: "Discussion" },
+    { label: "News", value: "News" },
+  ];
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
+  const POSTS_PER_PAGE = 10;
 
+    // Ensuring content is only rendered after hydration
+    useEffect(() => {
+      setMounted(true);
+    }, []);
+  
+    // Fetch followed user IDs for 'Following' filter
+    useEffect(() => {
+      const fetchFollowedIds = async () => {
+        if (!user?.id) return;
+        const { data, error } = await supabase
+          .from("follows")
+          .select("followed_id")
+          .eq("follower_id", user.id);
+        if (!error && data) {
+          setFollowedIds(data.map((row: any) => row.followed_id));
+        }
+      };
+      if (user) fetchFollowedIds();
+    }, [user]);
 
-    const fetchPostsWithMeta = async () => {
-      try {
-        console.log("Fetching posts with meta data...");
-    
-        let baseQuery = supabase
-          .from("posts")
-          .select(
-            "id, title, content, created_at, user_id, image_url, Profiles(display_name, avatar_url), animetitle_post, post_collections, original_work, reference_link"
+  const fetchPostsWithMeta = async (reset = false) => {
+    try {
+      let from = (reset ? 0 : (page - 1) * POSTS_PER_PAGE);
+      let to = from + POSTS_PER_PAGE - 1;
+      let baseQuery = supabase
+        .from("posts")
+        .select(`
+          id, title, content, created_at, user_id, image_url, 
+          Profiles(display_name, avatar_url), 
+          animetitle_post, post_collections, original_work, reference_link,
+          post_tags (
+            tags (name)
           )
-          .order("created_at", { ascending: false });
-    
-        // Apply filtering if selectedAnime has items
+        `, { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(from, to);
         if (selectedAnime.length > 0) {
           baseQuery = baseQuery.in("animetitle_post", selectedAnime);
         }
-    
-        const { data: posts, error: postsError } = await baseQuery;
-    
-        if (postsError) {
-          console.error("Error fetching posts:", postsError);
-          return;
-        }
-    
-        if (!posts || posts.length === 0) {
-          console.log("No posts found");
-          setPosts([]);
-          return;
-        }
-    
-        console.log("Fetched posts:", posts.length);
-    
-        const postsWithMeta = await Promise.all(
-          posts.map(async (post) => {
-            const [
-              { count: likesCount, error: likesError },
-              { count: commentsCount },
-              { data: likeRecord },
-            ] = await Promise.all([
-              supabase
-                .from("likes")
-                .select("*", { count: "exact", head: true })
-                .eq("post_id", post.id),
-              supabase
-                .from("comments")
-                .select("*", { count: "exact", head: true })
-                .eq("post_id", post.id),
-              supabase
-                .from("likes")
-                .select("*")
-                .eq("post_id", post.id)
-                .eq("user_id", user?.id)
-                .maybeSingle(),
-            ]);
-    
-            if (likesError) {
-              console.error("Error fetching likes for post:", post.id, likesError);
-            }
-    
-            return {
-              ...post,
-              likes_count: likesCount || 0,
-              comments_count: commentsCount || 0,
-              liked_by_user: !!likeRecord,
-              Profiles: post.Profiles && Array.isArray(post.Profiles)
-                ? post.Profiles[0]
-                : post.Profiles,
-            };
-          })
-        );
-    
-        console.log("Setting posts data with meta:", postsWithMeta.length);
-        setPosts(postsWithMeta);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error in fetchPostsWithMeta:", err);
+        const { data: posts, error: postsError, count } = await baseQuery;
+      if (postsError) {
+        console.error("Error fetching posts:", postsError, postsError?.message, postsError?.details);
+        return;
       }
-    };
+      if (!posts) return;
+      const postsWithMeta = await Promise.all(
+        posts.map(async (post) => {
+          // Map tags from join
+          const tags = post.post_tags?.map((pt: any) => pt.tags?.name).filter(Boolean) || [];
+          const [{ count: likesCount }, { count: commentsCount }, { data: likeRecord }] = await Promise.all([
+            supabase.from("likes").select("*", { count: "exact", head: true }).eq("post_id", post.id),
+            supabase.from("comments").select("*", { count: "exact", head: true }).eq("post_id", post.id),
+            supabase.from("likes").select("*").eq("post_id", post.id).eq("user_id", user?.id).maybeSingle(),
+          ]);
+          return {
+            ...post,
+            tags,
+            likes_count: likesCount || 0,
+            comments_count: commentsCount || 0,
+            liked_by_user: !!likeRecord,
+            Profiles: post.Profiles && Array.isArray(post.Profiles) ? post.Profiles[0] : post.Profiles,
+          };
+        })
+      );
+      if (reset) {
+        setPosts(postsWithMeta);
+      } else {
+        setPosts(prev => [...prev, ...postsWithMeta]);
+      }
+      setHasMore(postsWithMeta.length === POSTS_PER_PAGE);
+      setLoadingMore(false);
+    } catch (err) {
+      console.error("Error in fetchPostsWithMeta:", err);
+    }
+  };
     
-
-
-
-
   useEffect(() => {
     if (!user) return;
+    setPage(1);
+    fetchPostsWithMeta(true);
+  }, [user, selectedAnime, selectedCategory, selectedSidebarFilter]);
+
+  useEffect(() => {
+    if (page === 1) return;
     fetchPostsWithMeta();
-  }, [user, selectedAnime]);
+    // eslint-disable-next-line
+  }, [page, selectedAnime, selectedCategory, selectedSidebarFilter]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 300 &&
+        hasMore &&
+        !loadingMore
+      ) {
+        setLoadingMore(true);
+        setPage(prev => prev + 1);
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [hasMore, loadingMore]);
+  
 
   const toggleLike = async (postId: string, liked: boolean) => {
     if (!user) {
@@ -208,6 +243,54 @@ export function ContentFeed({ selectedAnime, recentPosts, setRecentPosts }: Cont
     await toggleLike(postId, liked);
   };
 
+  const deletePostIfOwner = async (
+    postId: string,
+    currentUserId: string
+  ): Promise<{ success: boolean; error?: PostgrestError | string }> => {
+    // Step 1: Fetch the post to check ownership
+    const { data: post, error: fetchError } = await supabase
+      .from('posts')
+      .select('user_id')
+      .eq('id', postId)
+      .single();
+  
+    if (fetchError) {
+      return { success: false, error: fetchError };
+    }
+  
+    if (!post || post.user_id !== currentUserId) {
+      return { success: false, error: 'Unauthorized: You are not the owner of this post.' };
+    }
+  
+    // Step 2: Delete the post
+    const { error: deleteError } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', postId);
+  
+    if (deleteError) {
+      return { success: false, error: deleteError };
+    }
+  
+    return { success: true };
+  };
+  
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [showConfirmId, setShowConfirmId] = useState<string | null>(null);
+
+  const handleDelete = async (postId: string) => {
+  const result = await deletePostIfOwner(postId, user?.id || "");
+  
+  if (result.success) {
+    alert('Post deleted.');
+  } else {
+    alert(`Failed to delete post: ${result.error}`);
+  }
+
+  setShowConfirmId(null);
+  setMenuOpenId(null);
+};
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -216,11 +299,38 @@ export function ContentFeed({ selectedAnime, recentPosts, setRecentPosts }: Cont
       year: "numeric",
     });
   };
-
-  if (loading) return <div className="text-white p-4">Loading posts...</div>;
+  // Filter posts based on selected category and sidebar filter
+  const filteredPosts = posts.filter(post => {
+    // Category filter
+    const categoryMatch = selectedCategory === "All" || post.post_collections === selectedCategory;
+    // Sidebar filter
+    if (selectedSidebarFilter === "Following") {
+      return categoryMatch && followedIds.includes(post.user_id);
+    }
+    // 'Recommended' (default) just returns all matching category
+    return categoryMatch;
+  });
 
   if (posts.length === 0)
     return <div className="text-white p-4">No posts found.</div>;
+
+  if (!mounted) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="bg-[#2e2e2e] border-0 p-4 relative">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-700 rounded w-3/4 mb-4"></div>
+                <div className="h-4 bg-gray-700 rounded w-1/2"></div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="space-y-0">
@@ -251,12 +361,60 @@ export function ContentFeed({ selectedAnime, recentPosts, setRecentPosts }: Cont
                 followedId={post.user_id} 
                 className="rounded-full px-4 py-1 bg-blue-900 text-blue-400 font-semibold shadow hover:bg-blue-800 transition text-xs" 
               />
-              <button
-                className="bg-black/30 p-2 rounded-full text-white hover:text-gray-300"
-                onClick={() => {/* Menu logic if needed */}}
-              >
-                <FiMoreHorizontal size={20} />
-              </button>
+             <div className="relative inline-block text-left">
+      <button
+        className="bg-black/30 p-2 rounded-full text-white hover:text-gray-300"
+        onClick={() =>
+        setMenuOpenId((prev) => (prev === post.id ? null : post.id))
+      }
+      >
+        <FiMoreHorizontal size={20} />
+      </button>
+
+      {menuOpenId === post.id && (
+      <div className="absolute right-0 mt-2 w-28 bg-white rounded shadow z-10">
+        {user?.id === post.user_id && (
+          <button
+            className="block w-full px-4 py-2 text-left text-red-600 hover:bg-gray-100"
+            onClick={() => {
+              setShowConfirmId(post.id); // this will trigger the popup
+              setMenuOpenId(null);
+            }}
+          >
+            Delete
+          </button>
+        )}
+      </div>
+    )}
+
+      {showConfirmId === post.id && (
+  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-20">
+    <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+      <p className="mb-4 text-black text-lg font-semibold">
+        Are you sure you want to delete this post? This action cannot be undone.
+      </p>
+      <div className="flex justify-center gap-4">
+        <button
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          onClick={() => {
+            handleDelete(post.id);
+            setShowConfirmId(null);
+          }}
+        >
+          Yes
+        </button>
+        <button
+          className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+          onClick={() => setShowConfirmId(null)}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+    </div>
             </div>
           </div>
           {/* Title */}

@@ -61,7 +61,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
               </select>
               <input
                 type="text"
-                placeholder="Search Anime, Manga, and more..."
+                placeholder="Search Anime, Communities, and more..."
                 className="w-full pl-24 pr-10 py-2 bg-[#f8f8f8] text-black rounded focus:outline-none"
               />
               <button className="absolute inset-y-0 right-0 px-3 flex items-center">
