@@ -371,7 +371,15 @@ export default function CoverUpload() {
 
   return (
     <div className="min-h-screen bg-[#1E1E1E] text-white p-6">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto relative">
+        {/* Cancel/Cross Button */}
+        <button
+          onClick={() => router.push('/homepage')}
+          className="absolute top-0 right-0 mt-2 mr-2 text-gray-400 hover:text-white text-2xl z-20"
+          aria-label="Cancel and go back"
+        >
+          &times;
+        </button>
         <h1 className="text-2xl font-bold mb-6">Upload New Post</h1>
         
         <form onSubmit={handleSubmit} className="space-y-6">

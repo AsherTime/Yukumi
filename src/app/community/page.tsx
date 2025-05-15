@@ -63,6 +63,8 @@ export default function CommunityPage() {
   const [showAllCommunities, setShowAllCommunities] = useState(false);
   const [searchResults, setSearchResults] = useState<Community[]>([]);
 
+  const uuidRegex = /^[0-9a-fA-F-]{36}$/;
+
   useEffect(() => {
     fetchCommunities()
     fetchTrendingTags()
@@ -148,10 +150,10 @@ export default function CommunityPage() {
         throw new Error(`Failed to fetch follows: ${followsError.message}`);
       }
 
-      // Filter out any null or undefined community_ids
+      // Filter out any null or invalid community_ids (must be uuid)
       const communityIds = (follows || [])
-        .map((row: { community_id: number | null }) => row.community_id)
-        .filter((id): id is number => id !== null && id !== undefined);
+        .map((row: { community_id: string | null }) => row.community_id)
+        .filter((id): id is string => !!id && uuidRegex.test(id));
 
       if (communityIds.length === 0) {
         setJoinedCommunities([]);
@@ -177,7 +179,7 @@ export default function CommunityPage() {
   };
 
   const handleCommunityClick = (communityId: string) => {
-    if (!communityId) {
+    if (!communityId || !uuidRegex.test(communityId)) {
       console.error('Invalid community ID');
       return;
     }
@@ -199,7 +201,8 @@ export default function CommunityPage() {
         .limit(10);
 
       if (error) throw error;
-      setSearchResults(data || []);
+      // Filter out any communities with invalid uuid ids
+      setSearchResults((data || []).filter((c: any) => uuidRegex.test(c.id)));
     } catch (error) {
       console.error('Error searching communities:', error);
       toast.error('Failed to search communities');

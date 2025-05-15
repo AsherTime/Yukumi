@@ -115,6 +115,21 @@ export default function AnimeDetail() {
     }
   };
 
+  const handleJoinCommunity = async () => {
+    if (!id) return;
+    // Fetch the community for this anime
+    const { data: community, error } = await supabase
+      .from('community')
+      .select('id')
+      .eq('anime_id', id)
+      .maybeSingle();
+    if (error || !community) {
+      alert('Community not found for this anime!');
+      return;
+    }
+    router.push(`/community/${community.id}`);
+  };
+
   if (error) return <p className="text-center text-red-500">{error}</p>;
   if (!anime) return <p className="text-center text-gray-400">Anime not found</p>;
 
@@ -139,10 +154,7 @@ export default function AnimeDetail() {
             {/* Join Community Button */}
             <button
               className="w-full py-3 bg-[#4f74c8] text-white font-medium rounded hover:bg-[#1c439b] transition-colors"
-              onClick={() => {
-                if (id) localStorage.setItem(`joined-community-${id}`, "true");
-                if (id) router.push(`/community/${id}`);
-              }}
+              onClick={handleJoinCommunity}
             >
               JOIN COMMUNITY
             </button>

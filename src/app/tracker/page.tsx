@@ -110,36 +110,108 @@ export default function Page() {
 
   useEffect(() => {
     const fetchFavoriteAnime = async () => {
-      if (!user?.id) return;
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
-
-      if (error || !session) {
-        console.error("Error getting session:", error);
+      if (!user?.id) {
+        console.log("No user ID available");
         return;
       }
+      
+      console.log("Starting fetchFavoriteAnime with user ID:", user.id);
+      
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error("Session error:", sessionError);
+        return;
+      }
+
+      if (!session) {
+        console.error("No active session found");
+        return;
+      }
+
+      if (!session.access_token) {
+        console.error("No access token in session");
+        return;
+      }
+
+      console.log("Session and token available, attempting fetch...");
+
       try {
+        const requestBody = { user_id: user.id };
+        console.log("Request body:", requestBody);
+        
         const response = await fetch("https://rhspkjpeyewjugifcvil.supabase.co/functions/v1/get-favourite-anime", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ user_id: user.id }),
+          body: JSON.stringify(requestBody),
+          mode: 'cors',
+          credentials: 'omit'
+        });
+
+        console.log("Response received:", {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries())
         });
 
         if (!response.ok) {
-          console.error("Failed to fetch favorites:", await response.text());
+          let errorText;
+          try {
+            errorText = await response.text();
+            console.log("Error response text:", errorText);
+          } catch (e) {
+            errorText = "Could not read error response";
+            console.error("Error reading response:", e);
+          }
+
+          console.error("Failed to fetch favorites:", {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText,
+            headers: Object.fromEntries(response.headers.entries()),
+            requestBody: requestBody,
+            hasToken: !!session.access_token,
+            tokenLength: session.access_token?.length
+          });
           return;
         }
 
-        const data = await response.json();
+        let data;
+        try {
+          data = await response.json();
+          console.log("Response data:", data);
+        } catch (e) {
+          console.error("Error parsing JSON response:", e);
+          return;
+        }
+
+        if (!Array.isArray(data)) {
+          console.error("Invalid response format:", {
+            received: typeof data,
+            data: data
+          });
+          return;
+        }
+
         const validAnimeList = data.filter((anime: any) => anime.image_url);
+        console.log("Processed anime list:", validAnimeList);
         setFavoriteAnimeList(validAnimeList);
       } catch (err) {
-        console.error("Error fetching favorites:", err);
+        console.error("Error fetching favorites:", {
+          error: err,
+          message: err instanceof Error ? err.message : 'Unknown error',
+          stack: err instanceof Error ? err.stack : undefined,
+          user_id: user.id,
+          has_session: !!session,
+          has_token: !!session?.access_token,
+          token_length: session?.access_token?.length
+        });
       }
     };
 
