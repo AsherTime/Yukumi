@@ -111,7 +111,7 @@ export default function CommunityIdPage() {
       if (!user || !community) return;
       
       const { data, error } = await supabase
-        .from('follows')
+        .from('members')
         .select('id')
         .eq('follower_id', user.id)
         .eq('community_id', community.id)
@@ -150,7 +150,7 @@ export default function CommunityIdPage() {
     try {
       // Add to follows table
       const { error: followError } = await supabase
-        .from('follows')
+        .from('members')
         .insert([
           {
             follower_id: user.id,
@@ -159,6 +159,7 @@ export default function CommunityIdPage() {
         ]);
 
       if (followError) {
+        console.log('Follow error details:', followError?.message, followError?.code, followError?.details);
         console.error('Error adding follow:', followError);
         throw followError;
       }
@@ -173,7 +174,7 @@ export default function CommunityIdPage() {
         console.error('Error updating member count:', updateError);
         throw updateError;
       }
-
+      console.log('Successfully joined community!');
       setJoined(true);
       toast.success('Successfully joined community!');
     } catch (error) {
