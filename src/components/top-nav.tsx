@@ -14,7 +14,7 @@ import { usePathname } from "next/navigation";
 const NAV_LINKS = [
   { href: "/homepage", label: "Home" },
   { href: "/anime", label: "Anime" },
-  { href: "/community", label: "Community" },
+  { href: "/community/00a7b80e-2c63-404b-adb5-cb3d0c753551", label: "Community" },
   { href: "/tracker", label: "Tracker" },
 ]
 
