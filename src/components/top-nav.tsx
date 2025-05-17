@@ -1,28 +1,107 @@
 "use client"
 
-import { useEffect, useState } from "react";
-import { auth } from "@/app/auth/register-form/firebase";
+import { useEffect, useState, useCallback } from "react";
 import Image from "next/image"
 import Link from "next/link"
 import { Search, Bell, User, Upload } from "lucide-react"
 import LogoutButton from "./logout";
-import { getAuth, onAuthStateChanged, User as FirebaseUser, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 
 const NAV_LINKS = [
   { href: "/homepage", label: "Home" },
   { href: "/anime", label: "Anime" },
-  { href: "/community/00a7b80e-2c63-404b-adb5-cb3d0c753551", label: "Community" },
+  { href: "/community/a8a96442-c394-41dd-9632-8a968e53a7fe", label: "Community" },
   { href: "/tracker", label: "Tracker" },
 ]
 
+type Anime = { id: number | string; title: string };
+type Community = { id: number | string; title: string };
+type User = { id: number | string; username: string };
+
+type SearchResults = {
+  anime: Anime[];
+  community: Community[];
+  users: User[];
+} | null; // allow null when no results or cleared
 
 export function TopNav({ children }: { children?: React.ReactNode }) {
   const { user } = useAuth();
   const pathname = usePathname();
   const isDashboard = pathname === "/dashboard"; // Change the path if needed
+  const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResults>({
+  anime: [],
+  community: [],
+  users: [],
+});
+const [selectedCategory, setSelectedCategory] = useState<'anime' | 'community' | 'users'>('anime');
+
+
+  const performSearch = async (query: string) => {
+
+  const { data, error } = await supabase
+  .from('Anime')
+  .select('id, title')
+  .textSearch('title', query, { type: 'websearch' });
+
+  const [animeRes, communityRes, userRes] = await Promise.all([
+    supabase.from('Anime')
+      .select('id, title')
+      .ilike('title', `%${query}%`),
+
+    supabase.from('community')
+      .select('id, title')
+      .ilike('title', `%${query}%`),
+
+    supabase.from('Profiles')
+      .select('id, username')
+      .ilike('username', `%${query}%`)
+  ]);
+
+  return {
+    anime: animeRes.data || [],
+    community: communityRes.data || [],
+    users: userRes.data || [],
+  };
+};
+
+function debounce<T extends (...args: any[]) => void>(
+  fn: T,
+  delay = 300
+): (...args: Parameters<T>) => void {
+  let timer: ReturnType<typeof setTimeout>;
+
+  return (...args: Parameters<T>) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+
+   const debouncedSearch = useCallback(
+    debounce(async (query) => {
+      if (query.trim()) {
+        const results = await performSearch(query);
+        setSearchResults(results);
+      } else {
+        setSearchResults(null);
+      }
+    }, 300),
+    []
+  );
+
+ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    debouncedSearch(value);
+  };   
+
+
 
   return (
     <div className={`overflow-hidden ${isDashboard ? "min-h-screen" : ""}`}> 
@@ -53,21 +132,95 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
           </div>
           <div className="flex justify-end w-full">
             <div className="relative flex-1 max-w-md mr-10">
-              <select className="absolute inset-y-0 left-0 w-20 appearance-none bg-[#f8f8f8] text-black px-2 py-2 rounded-l border-r border-gray-300 focus:outline-none">
-                <option>All</option>
-                <option>Anime</option>
-                <option>Community</option>  
-                <option>Users</option>
-              </select>
-              <input
-                type="text"
-                placeholder="Search Anime, Communities, and more..."
-                className="w-full pl-24 pr-10 py-2 bg-[#f8f8f8] text-black rounded focus:outline-none"
-              />
-              <button className="absolute inset-y-0 right-0 px-3 flex items-center">
-                <Search className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
+  <select
+  value={selectedCategory}
+  onChange={(e) => setSelectedCategory(e.target.value as 'anime' | 'community' | 'users')}
+  className="absolute inset-y-0 left-0 w-20 appearance-none bg-[#f8f8f8] text-black px-2 py-2 rounded-l border-r border-gray-300 focus:outline-none"
+>
+  <option value="anime">Anime</option>
+  <option value="community">Community</option>
+  <option value="users">Users</option>
+</select>
+
+
+   <input
+      type="text"
+      placeholder="Search anime, community, users..."
+      value={searchTerm}
+      onChange={handleChange}
+      className="w-full pl-24 pr-10 py-2 bg-[#f8f8f8] text-black rounded focus:outline-none"
+    />
+
+
+
+ {searchResults && (
+  <div className="absolute bg-white shadow-lg z-10 w-full max-w-md border border-gray-300 rounded mt-1">
+    
+    {selectedCategory === 'anime' && searchResults.anime.length > 0 && (
+      <div>
+        {searchResults.anime.map((anime) => (
+          <button
+            key={anime.id}
+            onClick={() => router.push(`/anime/${anime.id}`)}
+            className="cursor-pointer text-black hover:bg-gray-100 p-2 w-full text-left"
+          >
+            {anime.title}
+          </button>
+        ))}
+      </div>
+    )}
+
+    {selectedCategory === 'community' && searchResults.community.length > 0 && (
+      <div>
+        {searchResults.community.map((community) => (
+          <button
+            key={community.id}
+            onClick={() => router.push(`/community/${community.id}`)}
+            className="cursor-pointer text-black hover:bg-gray-100 p-2 w-full text-left"
+          >
+            {community.title}
+          </button>
+        ))}
+      </div>
+    )}
+
+    {selectedCategory === 'users' && searchResults.users.length > 0 && (
+      <div>
+        {searchResults.users.map((user) => (
+          <button
+            key={user.id}
+            onClick={() => router.push(`/profile/${user.id}`)}
+            className="cursor-pointer text-black hover:bg-gray-100 p-2 w-full text-left"
+          >
+            {user.username}
+          </button>
+        ))}
+      </div>
+    )}
+
+    {/* Optional: Show a message if no results in the selected category */}
+    {selectedCategory === 'anime' && searchTerm.trim() !== '' && searchResults.anime.length === 0 && (
+  <div className="text-gray-500 p-2">No anime found.</div>
+)}
+{selectedCategory === 'community' && searchTerm.trim() !== '' && searchResults.community.length === 0 && (
+  <div className="text-gray-500 p-2">No communities found.</div>
+)}
+{selectedCategory === 'users' && searchTerm.trim() !== '' && searchResults.users.length === 0 && (
+  <div className="text-gray-500 p-2">No users found.</div>
+)}
+
+  </div>
+)}
+
+
+  <button
+    type="button"
+    className="absolute inset-y-0 right-0 px-3 flex items-center"
+  >
+    <Search className="h-5 w-5 text-gray-500" />
+  </button>
+</div>
+
           </div>
           <div className="flex items-center gap-6 ml-auto">
             {user ? (
