@@ -117,6 +117,22 @@ const PostPage = () => {
     fetchPostAndComments();
   }, [id, user]);
 
+  // View counting effect (1 second)
+  useEffect(() => {
+    if (!id) return;
+    const timer = setTimeout(() => {
+      supabase.rpc("increment_post_view", { post_id: id })
+        .then(({ error }) => {
+          if (error) {
+            console.error("Failed to increment view:", error);
+          } else {
+            console.log("View counted (detail page) for", id);
+          }
+        });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [id]);
+
   const handleAddComment = async () => {
     if (!user) {
       toast.error('Please log in to comment');
