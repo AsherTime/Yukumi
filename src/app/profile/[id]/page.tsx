@@ -13,7 +13,6 @@ export default function ProfileIdPage() {
       <TopNav />
       <main className="container mx-auto px-4 py-8">
         <UserProfile userId={userId} readOnly={true} />
-        <UserPosts userId={userId} />
       </main>
     </div>
   );
