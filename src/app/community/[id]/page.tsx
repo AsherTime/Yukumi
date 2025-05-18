@@ -1,14 +1,20 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { TopNav } from "@/components/top-nav";
 import { supabase } from "@/lib/supabase";
-import { Heart, MessageCircle, Share2, Upload } from "lucide-react";
+import { Heart, MessageCircle, Share2, Upload, UserCircle, Eye } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-hot-toast";
+import JoinedCommunitiesSidebar from "@/components/joined-communities";
+import { motion, AnimatePresence } from "framer-motion";
+import { FiMoreHorizontal } from "react-icons/fi";
+import Link from "next/link";
+import { FollowButton } from "@/components/ui/FollowButton";
+import { PostgrestError } from "@supabase/supabase-js";
 
 // Types
 interface Community {
@@ -36,14 +42,243 @@ interface Post {
   content: string;
   created_at: string;
   user_id: string;
+  likes_count: number;
+  comments_count: number;
+  liked_by_user: boolean;
   image_url: string;
+  animetitle_post: string | null;
+  post_collections: string | null;
+  original_work: boolean;
+  reference_link: string | null;
   Profiles?: {
-    display_name: string;
     avatar_url: string;
+    display_name: string;
   };
+  tags?: string[];
 }
 
 const bgImageUrl = "https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Flux_Dev_a_stunning_illustration_of_Create_a_highquality_origi_2.jpg?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5X2EwNWE5MzA2LTNiZGItNDliNC1hZGQ2LTFjMjEzNjhiYzcwMSJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9GbHV4X0Rldl9hX3N0dW5uaW5nX2lsbHVzdHJhdGlvbl9vZl9DcmVhdGVfYV9oaWdocXVhbGl0eV9vcmlnaV8yLmpwZyIsImlhdCI6MTc0NzUxMjU1NiwiZXhwIjoxNzc5MDQ4NTU2fQ.Yr4W2KUDf1CWy5aI4dcTEWkJVTR0okuddtHugyA_niM";
+
+// Custom hook for view counting on visible post
+function useViewCountOnVisible(postId: string) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasCountedRef = useRef(false);
+  useEffect(() => {
+    if (!ref.current) return;
+    const observer = new window.IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && !hasCountedRef.current) {
+          timerRef.current = setTimeout(() => {
+            supabase.rpc("increment_post_view", { post_id: postId })
+              .then(({ error }) => {
+                if (error) {
+                  console.error("Failed to increment view (feed):", error);
+                } else {
+                  console.log("View counted (feed) for", postId);
+                  hasCountedRef.current = true;
+                }
+              });
+          }, 8000);
+        } else {
+          if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
+          }
+        }
+      },
+      { threshold: 0.5 }
+    );
+    observer.observe(ref.current);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      observer.disconnect();
+    };
+  }, [postId]);
+  return ref;
+}
+
+function PostCard({ post, idx, total, formatDate, setMenuOpenId, menuOpenId, user, setShowConfirmId, showConfirmId, setReportConfirmId, handleDelete, handleLikeClick, handleCommentClick }: {
+  post: Post,
+  idx: number,
+  total: number,
+  formatDate: (dateString: string) => string,
+  setMenuOpenId: React.Dispatch<React.SetStateAction<string | null>>,
+  menuOpenId: string | null,
+  user: any,
+  setShowConfirmId: React.Dispatch<React.SetStateAction<string | null>>,
+  showConfirmId: string | null,
+  setReportConfirmId: React.Dispatch<React.SetStateAction<string | null>>,
+  handleDelete: (postId: string) => void,
+  handleLikeClick: (e: React.MouseEvent, postId: string, liked: boolean) => void,
+  handleCommentClick: (postId: string) => void,
+}) {
+  const viewRef = useViewCountOnVisible(post.id);
+  return (
+    <motion.section
+      ref={viewRef}
+      key={post.id}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.3, delay: idx * 0.04 }}
+      className={
+        idx !== total - 1
+          ? "border-b border-zinc-800"
+          : ""
+      }
+    >
+      {/* Top Row: Avatar, Username, Timestamp, Follow, More */}
+      <div className="flex items-center justify-between px-6 pt-5 pb-2">
+        <div className="flex items-center gap-3">
+          <Link href={`/profile/${post.user_id}`} className="flex items-center gap-3 group" prefetch={false}>
+            {post.Profiles?.avatar_url ? (
+              <img
+                src={post.Profiles.avatar_url}
+                alt={post.Profiles.display_name || "User"}
+                className="w-10 h-10 rounded-full object-cover border border-zinc-700 group-hover:ring-2 group-hover:ring-blue-500 transition"
+              />
+            ) : (
+              <UserCircle className="w-10 h-10 text-zinc-500 group-hover:text-blue-400 transition" />
+            )}
+            <div>
+              <div className="text-white font-semibold text-base leading-tight group-hover:underline group-hover:text-blue-400 transition">{post.Profiles?.display_name || "Anonymous"}</div>
+              <div className="text-xs text-zinc-400">{formatDate(post.created_at)}</div>
+            </div>
+          </Link>
+        </div>
+        <div className="flex items-center gap-2">
+          <FollowButton 
+            followedId={post.user_id} 
+            className="rounded-full px-4 py-1 bg-blue-900 text-blue-400 font-semibold shadow hover:bg-blue-800 transition text-xs" 
+          />
+          <div className="relative inline-block text-left">
+            <button
+              className="bg-black/30 p-2 rounded-full text-white hover:text-gray-300"
+              onClick={() =>
+                setMenuOpenId((prev) => (prev === post.id ? null : post.id))
+              }
+            >
+              <FiMoreHorizontal size={20} />
+            </button>
+            {menuOpenId === post.id && (
+              <div className="absolute right-0 mt-2 w-28 bg-white rounded shadow z-10">
+                {user?.id === post.user_id ? (
+                  <button
+                    className="block w-full px-4 py-2 text-left text-red-600 hover:bg-gray-100"
+                    onClick={() => {
+                      setShowConfirmId(post.id); // this will trigger the popup
+                      setMenuOpenId(null);
+                    }}
+                  >
+                    Delete
+                  </button>
+                ) : (
+                  <button
+                    className="block w-full px-4 py-2 text-left text-yellow-600 hover:bg-gray-100"
+                    onClick={() => {
+                      setReportConfirmId(post.id);
+                      setMenuOpenId(null);
+                    }}
+                  >
+                    Report
+                  </button>
+                )}
+              </div>
+            )}
+            {showConfirmId === post.id && (
+              <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-20">
+                <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+                  <p className="mb-4 text-black text-lg font-semibold">
+                    Are you sure you want to delete this post? This action cannot be undone.
+                  </p>
+                  <div className="flex justify-center gap-4">
+                    <button
+                      className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                      onClick={() => {
+                        handleDelete(post.id);
+                        setShowConfirmId(null);
+                      }}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+                      onClick={() => setShowConfirmId(null)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      {/* Title */}
+      <h3 className="text-2xl font-bold text-white px-6 pb-2">{post.title}</h3>
+      {/* Image */}
+      {post.image_url && (
+        <div className="relative h-64 mb-4 px-6 overflow-hidden rounded-xl">
+          <img
+            src={post.image_url}
+            alt={post.title}
+            className="h-full w-full object-cover mx-auto"
+            loading="lazy"
+          />
+        </div>
+      )}
+      {/* Content */}
+      <p className="text-gray-300 px-6 pb-2" dangerouslySetInnerHTML={{ __html: post.content }}></p>
+      {/* Tags */}
+      <div className="flex flex-wrap gap-2 px-6 pb-2 mt-1">
+        {post.post_collections && (
+          <span className="px-2 py-1 rounded-full text-xs font-semibold text-blue-400 bg-blue-500/10">
+            {post.post_collections}
+          </span>
+        )}
+        {post.animetitle_post && (
+          <span className="px-2 py-1 rounded-full text-xs font-semibold text-purple-400 bg-purple-500/10">
+            {post.animetitle_post}
+          </span>
+        )}
+      </div>
+      {/* User Tags */}
+      {post.tags && post.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2 px-6 pb-2">
+          {post.tags.map((tag: string) => (
+            <span key={tag} className="px-2 py-1 rounded-full text-xs font-semibold text-gray-300 bg-[#232232]">
+              #{tag}
+            </span>
+          ))}
+        </div>
+      )} 
+      {/* Bottom Row: Like, Comment, View */}
+      <div className="flex items-center justify-end gap-6 px-6 py-3">
+        <button
+          onClick={(e) => handleLikeClick(e, post.id, post.liked_by_user)}
+          className={`flex items-center gap-1 text-zinc-400 hover:text-pink-500 transition-colors group ${post.liked_by_user ? 'font-bold text-pink-500' : ''}`}
+        >
+          <Heart className="w-5 h-5 mr-1 group-hover:scale-110 transition-transform" fill={post.liked_by_user ? '#ec4899' : 'none'} />
+          <span>{post.likes_count || 0}</span>
+        </button>
+        <button
+          onClick={() => handleCommentClick(post.id)}
+          className="flex items-center gap-1 text-zinc-400 hover:text-purple-400 transition-colors"
+        >
+          <MessageCircle className="w-5 h-5 mr-1" />
+          {post.comments_count}
+        </button>
+        <span className="flex items-center gap-1 text-zinc-500">
+          <Eye className="w-5 h-5 mr-1" />
+          {/* Optional: Add view count if available */}
+        </span>
+      </div>
+    </motion.section>
+  );
+}
+
 
 export default function CommunityIdPage() {
   const [activeTab, setActiveTab] = useState<"recommended" | "recent">("recommended");
@@ -54,8 +289,13 @@ export default function CommunityIdPage() {
   const [joined, setJoined] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const params = useParams();
-  const router = useRouter();
-  const { user } = useAuth();
+  const [postsData, setPostsData] = useState<Post[]>([]);
+    const { user } = useAuth();
+    const router = useRouter();
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const POSTS_PER_PAGE = 10;
 
   useEffect(() => {
     const fetchCommunityAndAnime = async () => {
@@ -115,7 +355,7 @@ export default function CommunityIdPage() {
       const { data, error } = await supabase
         .from('members')
         .select('id')
-        .eq('follower_id', user.id)
+        .eq('user_id', user.id)
         .eq('community_id', community.id)
         .single();
 
@@ -127,24 +367,7 @@ export default function CommunityIdPage() {
     checkIfJoined();
   }, [user, community]);
 
-  useEffect(() => {
-    if (!anime) return;
-    const fetchPosts = async () => {
-      const { data, error } = await supabase
-        .from("posts")
-        .select(`id, title, content, created_at, user_id, image_url, Profiles(display_name, avatar_url)`)
-        .eq("animetitle_post", anime.title)
-        .order("created_at", { ascending: false });
-      if (!error && data) {
-        // Ensure Profiles is always a single object, not an array
-        setPosts(data.map((post: any) => ({
-          ...post,
-          Profiles: Array.isArray(post.Profiles) ? post.Profiles[0] : post.Profiles
-        })));
-      }
-    };
-    fetchPosts();
-  }, [anime]);
+
 
   const handleJoinCommunity = async () => {
     if (!user || !community) return;
@@ -155,7 +378,7 @@ export default function CommunityIdPage() {
         .from('members')
         .insert([
           {
-            follower_id: user.id,
+            user_id: user.id,
             community_id: community.id
           }
         ]);
@@ -185,6 +408,248 @@ export default function CommunityIdPage() {
     }
   };
 
+ const fetchPostsWithMeta = async (reset = false) => {
+    try {
+      let from = (reset ? 0 : (page - 1) * POSTS_PER_PAGE);
+      let to = from + POSTS_PER_PAGE - 1;
+      const { data: posts, error: postsError, count } = await supabase
+        .from("posts")
+        .select(`
+          id, title, content, created_at, user_id, image_url, 
+          Profiles(display_name, avatar_url), 
+          animetitle_post, post_collections, original_work, reference_link,
+          post_tags (
+            tags (name)
+          )
+        `, { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(from, to);
+        
+      if (postsError) {
+        if (postsError.message === "Requested range not satisfiable") {
+          // No more posts to fetch, end pagination
+          setHasMore(false);
+          setLoadingMore(false);
+          return;
+        }
+        console.error("Error fetching posts:", postsError, postsError?.message, postsError?.details);
+        return;
+      }
+      if (!posts) return;
+      const postsWithMeta = await Promise.all(
+        posts.map(async (post) => {
+          // Map tags from join
+          const tags = post.post_tags?.map((pt: any) => pt.tags?.name).filter(Boolean) || [];
+          const [{ count: likesCount }, { count: commentsCount }, { data: likeRecord }] = await Promise.all([
+            supabase.from("likes").select("*", { count: "exact", head: true }).eq("post_id", post.id),
+            supabase.from("comments").select("*", { count: "exact", head: true }).eq("post_id", post.id),
+            supabase.from("likes").select("*").eq("post_id", post.id).eq("user_id", user?.id).maybeSingle(),
+          ]);
+          return {
+            ...post,
+            tags,
+            likes_count: likesCount || 0,
+            comments_count: commentsCount || 0,
+            liked_by_user: !!likeRecord,
+            Profiles: post.Profiles && Array.isArray(post.Profiles) ? post.Profiles[0] : post.Profiles,
+          };
+        })
+      );
+      if (reset) {
+    setPostsData(postsWithMeta);
+  } else {
+    // Deduplicate when appending
+    setPostsData(prev => {
+      const combined = [...prev, ...postsWithMeta];
+      const uniqueMap = new Map();
+      combined.forEach(p => uniqueMap.set(p.id, p));
+      return Array.from(uniqueMap.values());
+    });
+  }
+      setHasMore(postsWithMeta.length === POSTS_PER_PAGE);
+      setLoadingMore(false);
+    } catch (err) {
+      console.error("Error in fetchPostsWithMeta:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    setPage(1);
+    fetchPostsWithMeta(true);
+  }, [user]);
+
+  useEffect(() => {
+    if (page === 1) return;
+    fetchPostsWithMeta();
+    // eslint-disable-next-line
+  }, [page]);
+
+    const toggleLike = async (postId: string, liked: boolean) => {
+      if (!user) {
+        console.log("No user found, cannot like");
+        return;
+      }
+  
+      try {
+        console.log("Attempting to toggle like:", { postId, liked, userId: user.id });
+  
+        if (liked) {
+          // Unlike the post
+          const { error: unlikeError } = await supabase
+            .from("likes")
+            .delete()
+            .eq("post_id", postId)
+            .eq("user_id", user.id);
+  
+          if (unlikeError) {
+            console.error("Error unliking post:", unlikeError);
+            return;
+          }
+          console.log("Successfully unliked post");
+        } else {
+          // Like the post
+          const { error: likeError } = await supabase
+            .from("likes")
+            .insert({
+              post_id: postId,
+              user_id: user.id
+            });
+  
+          if (likeError) {
+            console.error("Error liking post:", likeError);
+            return;
+          }
+          console.log("Successfully liked post");
+        }
+  
+        // Update the UI immediately
+        setPostsData(prevPosts => 
+          prevPosts.map(post => 
+            post.id === postId 
+              ? {
+                  ...post,
+                  liked_by_user: !liked,
+                  likes_count: liked ? post.likes_count - 1 : post.likes_count + 1
+                }
+              : post
+          )
+        );
+  
+        // Then refresh the data in the background
+        fetchPostsWithMeta(true); // Ensure this call uses reset = true
+
+      } catch (error) {
+        console.error("Error in toggleLike:", error);
+      }
+    };
+
+  const handleCommentClick = (postId: string) => {
+    router.push(`/post/${postId}`);
+  };
+
+  // Add a click handler with event prevention
+  const handleLikeClick = async (e: React.MouseEvent, postId: string, liked: boolean) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await toggleLike(postId, liked);
+  };
+
+   const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+const toggleTag = (tag: string) => {
+  setSelectedTags((prev) =>
+    prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+  );
+};
+
+    const deletePostIfOwner = async (
+        postId: string,
+        currentUserId: string
+      ): Promise<{ success: boolean; error?: PostgrestError | string }> => {
+        // Step 1: Fetch the post to check ownership
+        const { data: post, error: fetchError } = await supabase
+          .from('posts')
+          .select('user_id')
+          .eq('id', postId)
+          .single();
+      
+        if (fetchError) {
+          return { success: false, error: fetchError };
+        }
+      
+        if (!post || post.user_id !== currentUserId) {
+          return { success: false, error: 'Unauthorized: You are not the owner of this post.' };
+        }
+      
+        // Step 2: Delete the post
+        const { error: deleteError } = await supabase
+          .from('posts')
+          .delete()
+          .eq('id', postId);
+      
+        if (deleteError) {
+          return { success: false, error: deleteError };
+        }
+      
+        return { success: true };
+      };
+
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [showConfirmId, setShowConfirmId] = useState<string | null>(null);
+
+  const handleDelete = async (postId: string) => {
+  const result = await deletePostIfOwner(postId, user?.id || "");
+  
+  if (result.success) {
+    alert('Post deleted.');
+  } else {
+    alert(`Failed to delete post: ${result.error}`);
+  }
+
+  setShowConfirmId(null);
+  setMenuOpenId(null);
+};
+
+  const [reportConfirmId, setReportConfirmId] = useState<string | null>(null);
+
+  const handleReport = async (postId: string) => {
+  try {
+    const { error } = await supabase
+      .from("posts")
+      .update({ isReported: true })
+      .eq("id", postId);
+
+    if (error) {
+      console.error("Report failed:", error);
+      alert("Failed to report the post.");
+    } else {
+      alert("Post reported successfully.");
+    }
+  } catch (err) {
+    console.error("Unexpected error reporting post:", err);
+    alert("Something went wrong.");
+  }
+};
+
+const filteredPosts = postsData
+  .filter((post) => post.animetitle_post === anime?.title)
+  .filter((post) => 
+    selectedTags.length === 0 || 
+    selectedTags.every(tag => post.tags?.includes(tag))
+  );
+
+
+
   if (loading) {
     return <div className="min-h-screen bg-black text-white flex items-center justify-center">Loading...</div>;
   }
@@ -208,18 +673,21 @@ export default function CommunityIdPage() {
     <div className="relative min-h-screen">
       {/* Background image with gradient overlay */}
       <div
-        className="absolute inset-0 z-0"
-        style={{
-          backgroundImage: `linear-gradient(to bottom, rgba(30, 27, 75, 0.7), rgba(0,0,0,0.85)), url('${bgImageUrl}')`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          filter: "brightness(0.95)"
-        }}
-      />
+  className="fixed inset-0 z-0"
+  style={{
+    backgroundImage: `linear-gradient(to bottom, rgba(30, 27, 75, 0.7), rgba(0,0,0,0.85)), url('${bgImageUrl}')`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    backgroundAttachment: "fixed",  // this is optional if you're using `fixed` position
+    filter: "brightness(0.95)"
+  }}
+/>
+
       {/* Main content */}
       <div className="relative z-10">
         <TopNav />
+
         
         {/* Banner */}
         <div className="w-full h-48 md:h-64 relative">
@@ -299,61 +767,73 @@ export default function CommunityIdPage() {
             </button>
           </div>
         </div>
+<div className="flex">
+{/* Left Sidebar */}
+    <div className="hidden md:block w-64 min-h-screen bg-[#18181b] border-r border-zinc-800 px-4 py-6">
+    <JoinedCommunitiesSidebar userId={user?.id ?? null} />
+  </div>        
 
-        {/* Main Content Layout */}
-        <div className="max-w-5xl mx-auto mt-4 flex flex-col md:flex-row gap-8 px-4 pb-8">
-          {/* Main Posts Feed */}
-          <div className="flex-1 min-w-0">
-            <div className="space-y-4">
-              {posts.length === 0 ? (
-                <div className="text-zinc-400 text-center py-8">No posts yet for this community.</div>
-              ) : (
-                posts.map((post) => (
-                  <div key={post.id} className="bg-[#1f1f1f] rounded-xl overflow-hidden">
-                    <div className="bg-[#2e2e2e] p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full overflow-hidden">
-                          <Image
-                            src={post.Profiles?.avatar_url || "/avatar-placeholder.png"}
-                            alt={post.Profiles?.display_name || "User"}
-                            width={40}
-                            height={40}
-                            className="object-cover"
-                          />
-                        </div>
-                        <div>
-                          <p className="font-medium">{post.Profiles?.display_name || "Anonymous"}</p>
-                          <p className="text-sm text-zinc-400">{new Date(post.created_at).toLocaleString()}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="px-6 py-4">
-                      <h3 className="text-xl font-bold mb-2">{post.title}</h3>
-                      <p className="mb-4">{post.content}</p>
-                      {post.image_url && (
-                        <img src={post.image_url} alt={post.title} className="rounded-lg max-h-64 mb-4" />
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+       {/* Main Content Layout */}
+<div className="flex-1">
+  <div className="max-w-5xl mx-auto mt-4 px-4 pb-8">
+    <div className="flex flex-col md:flex-row gap-8">
 
-          {/* Right Sidebar */}
-          <div className="w-full md:w-80 flex-shrink-0 space-y-8">
-            {/* Trending Tags */}
-            <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
+      {/* ➜ Main Posts Feed column */}
+      <div className="flex-1 flex flex-col space-y-4">     {/* ← NEW wrapper */}
+        <AnimatePresence mode="wait">
+          {filteredPosts.length === 0 ? (
+            <motion.div
+              key="no-posts"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="text-center text-zinc-400 py-12"
+            >
+              No posts found in this category.
+            </motion.div>
+          ) : (
+            filteredPosts.map((post, idx) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                idx={idx}
+                total={posts.length}
+                formatDate={formatDate}
+                setMenuOpenId={setMenuOpenId}
+                menuOpenId={menuOpenId}
+                user={user}
+                setShowConfirmId={setShowConfirmId}
+                showConfirmId={showConfirmId}
+                setReportConfirmId={setReportConfirmId}
+                handleDelete={handleDelete}
+                handleLikeClick={handleLikeClick}
+                handleCommentClick={handleCommentClick}
+              />
+            ))
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Right Sidebar */}
+      <div className="w-full md:w-80 flex-shrink-0 space-y-8">
+        {/* Trending Tags */}
+        <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
               <h3 className="text-lg font-semibold mb-4">Trending Topics</h3>
               <div className="flex flex-wrap gap-2">
                 {community.trending_tags?.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 rounded-full font-medium text-sm bg-gradient-to-r from-pink-500 to-purple-600 text-white"
-                  >
-                    {tag}
-                  </span>
-                ))}
+  <button
+    key={index}
+    onClick={() => toggleTag(tag)}
+    className={`px-3 py-1 rounded-full font-medium text-sm ${
+      selectedTags.includes(tag)
+        ? "bg-purple-700 text-white"
+        : "bg-zinc-700 text-zinc-300"
+    }`}
+  >
+    {tag}
+  </button>
+))}
+
               </div>
             </div>
 
@@ -364,9 +844,13 @@ export default function CommunityIdPage() {
                 <p className="text-zinc-300">{community.description}</p>
               </div>
             )}
-          </div>
-        </div>
       </div>
     </div>
+  </div>
+</div>
+
+    </div>
+    </div>
+  </div>
   );
 } 
