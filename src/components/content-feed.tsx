@@ -39,9 +39,10 @@ type ContentFeedProps = {
   recentPosts: Post[];
   setRecentPosts: React.Dispatch<React.SetStateAction<Post[]>>;
   homepageStyle?: boolean;
+  filterType?: "Recommended" | "Recents";
 };
 
-export function ContentFeed({ selectedAnime, recentPosts, setRecentPosts }: ContentFeedProps) {
+export function ContentFeed({ selectedAnime, recentPosts, setRecentPosts, homepageStyle, filterType }: ContentFeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedSidebarFilter, setSelectedSidebarFilter] = useState<string>("Recommended");
@@ -95,13 +96,19 @@ export function ContentFeed({ selectedAnime, recentPosts, setRecentPosts }: Cont
           post_tags (
             tags (name)
           )
-        `, { count: "exact" })
-        .order("created_at", { ascending: false })
-        .range(from, to);
-        if (selectedAnime.length > 0) {
-          baseQuery = baseQuery.in("animetitle_post", selectedAnime);
-        }
-        const { data: posts, error: postsError, count } = await baseQuery;
+        `, { count: "exact" });
+      // Order by filterType
+      if (filterType === "Recents") {
+        baseQuery = baseQuery.order("created_at", { ascending: false });
+      } else {
+        // Default: Recommended (could be custom logic, for now use created_at desc)
+        baseQuery = baseQuery.order("created_at", { ascending: false });
+      }
+      baseQuery = baseQuery.range(from, to);
+      if (selectedAnime.length > 0) {
+        baseQuery = baseQuery.in("animetitle_post", selectedAnime);
+      }
+      const { data: posts, error: postsError, count } = await baseQuery;
       if (postsError) {
         console.error("Error fetching posts:", postsError, postsError?.message, postsError?.details);
         return;

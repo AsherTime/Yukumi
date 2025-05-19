@@ -15,6 +15,7 @@ import { FiMoreHorizontal } from "react-icons/fi";
 import Link from "next/link";
 import { FollowButton } from "@/components/ui/FollowButton";
 import { PostgrestError } from "@supabase/supabase-js";
+import { ContentFeed } from "@/components/content-feed";
 
 // Types
 interface Community {
@@ -281,7 +282,7 @@ function PostCard({ post, idx, total, formatDate, setMenuOpenId, menuOpenId, use
 
 
 export default function CommunityIdPage() {
-  const [activeTab, setActiveTab] = useState<"recommended" | "recent">("recommended");
+  const [activeTab, setActiveTab] = useState<"Recommended" | "Recents">("Recommended");
   const [community, setCommunity] = useState<Community | null>(null);
   const [anime, setAnime] = useState<Anime | null>(null);
   const [loading, setLoading] = useState(true);
@@ -673,38 +674,34 @@ const filteredPosts = postsData
     <div className="relative min-h-screen">
       {/* Background image with gradient overlay */}
       <div
-  className="fixed inset-0 z-0"
-  style={{
-    backgroundImage: `linear-gradient(to bottom, rgba(30, 27, 75, 0.7), rgba(0,0,0,0.85)), url('${bgImageUrl}')`,
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
-    backgroundAttachment: "fixed",  // this is optional if you're using `fixed` position
-    filter: "brightness(0.95)"
-  }}
-/>
-
+        className="fixed inset-0 z-0"
+        style={{
+          backgroundImage: `linear-gradient(to bottom, rgba(30, 27, 75, 0.7), rgba(0,0,0,0.85)), url('${bgImageUrl}')`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
+          filter: "brightness(0.95)"
+        }}
+      />
       {/* Main content */}
       <div className="relative z-10">
         <TopNav />
-
-        
         {/* Banner */}
-        <div className="w-full h-48 md:h-64 relative">
-          <Image
-            src={community.banner_url || anime.banner_url || "/banner-placeholder.jpg"}
-            alt="Community Banner"
-            fill
-            className="object-cover w-full h-full"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent" />
-        </div>
-
-        {/* Header Section */}
-        <div className="relative z-10 max-w-5xl mx-auto -mt-16 flex flex-col md:flex-row items-center md:items-end gap-6 px-4">
-          <div className="flex items-end gap-4 w-full md:w-auto">
-            <div className="w-32 h-32 rounded-full border-4 border-white overflow-hidden bg-zinc-800">
+        <div className="w-full flex justify-center relative">
+          <div className="w-[80%] h-48 md:h-64 relative rounded-2xl shadow-2xl">
+            <Image
+              src={community.banner_url || anime.banner_url || "/banner-placeholder.jpg"}
+              alt="Community Banner"
+              fill
+              className="object-cover w-full h-full rounded-2xl"
+              priority
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent rounded-2xl" />
+          </div>
+          {/* Overlapping Avatar and Header - now outside the banner container */}
+          <div className="absolute left-1/2 -translate-x-1/2 -bottom-12 flex items-end gap-6 z-20 w-[80%]">
+            <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white overflow-hidden bg-zinc-800 shadow-lg">
               <Image 
                 src={community.avatar_url || anime.image_url || "/avatar-placeholder.png"} 
                 alt="Community Avatar" 
@@ -713,130 +710,95 @@ const filteredPosts = postsData
                 className="object-cover w-full h-full" 
               />
             </div>
-            <div className="flex flex-col gap-2">
-              <h1 className="text-3xl md:text-4xl font-bold leading-tight">{community.title || anime.title}</h1>
+            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6 pb-4 md:pb-0 flex-1">
+              <h1 className="text-2xl md:text-3xl font-bold leading-tight text-white drop-shadow-lg">{community.title || anime.title}</h1>
               <div className="flex gap-4 text-zinc-300 text-sm md:text-base">
                 <span>Members: <span className="font-semibold text-white">{community.members}</span></span>
               </div>
+              <Button
+                className={`px-6 py-2 rounded-full text-lg font-semibold transition-colors ml-0 md:ml-4 ${
+                  joined 
+                    ? "bg-zinc-700 text-zinc-300 cursor-default" 
+                    : "bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700"
+                }`}
+                disabled={joined}
+                onClick={handleJoinCommunity}
+              >
+                {joined ? "Joined" : "+ Join Community"}
+              </Button>
+              <Button
+                className="w-auto bg-black border border-white/10 hover:bg-white/5 ml-0 md:ml-2"
+                onClick={() => router.push(`/upload?community_id=${community.id}`)}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Create Post
+              </Button>
             </div>
           </div>
-          
-          <Button
-            className={`px-6 py-2 rounded-full text-lg font-semibold transition-colors ${
-              joined 
-                ? "bg-zinc-700 text-zinc-300 cursor-default" 
-                : "bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700"
-            }`}
-            disabled={joined}
-            onClick={handleJoinCommunity}
-          >
-            {joined ? "Joined" : "+ Join Community"}
-          </Button>
-
-          <Button
-            className="w-full bg-black border border-white/10 hover:bg-white/5"
-            onClick={() => router.push(`/upload?community_id=${community.id}`)}
-          >
-            <Upload className="mr-2 h-4 w-4" />
-            POST NOW
-          </Button>
         </div>
-
-        {/* Filter Tabs */}
-        <div className="max-w-5xl mx-auto mt-8 px-4">
-          <div className="flex gap-4 mb-6">
-            <button
-              onClick={() => setActiveTab("recommended")}
-              className={`px-6 py-2 rounded-full font-medium transition-all ${
-                activeTab === "recommended"
-                  ? "bg-gradient-to-r from-pink-500 to-purple-600 text-white"
-                  : "bg-[#1f1f1f] text-zinc-400 hover:bg-[#2a2a2a]"
-              }`}
-            >
-              Recommended
-            </button>
-            <button
-              onClick={() => setActiveTab("recent")}
-              className={`px-6 py-2 rounded-full font-medium transition-all ${
-                activeTab === "recent"
-                  ? "bg-gradient-to-r from-pink-500 to-purple-600 text-white"
-                  : "bg-[#1f1f1f] text-zinc-400 hover:bg-[#2a2a2a]"
-              }`}
-            >
-              Recent
-            </button>
+        {/* Header Spacer for Overlap */}
+        <div className="h-20 md:h-24" />
+        {/* Main 3-column layout - move upward by reducing mt-6 to mt-2 */}
+        <div className="flex flex-row max-w-7xl mx-auto px-4 mt-2 gap-6">
+          {/* Left Sidebar */}
+          <div className="hidden md:block w-64 min-h-screen bg-[#18181b] border-r border-zinc-800 px-4 py-6 flex-shrink-0">
+            <JoinedCommunitiesSidebar userId={user?.id ?? null} />
           </div>
-        </div>
-<div className="flex">
-{/* Left Sidebar */}
-    <div className="hidden md:block w-64 min-h-screen bg-[#18181b] border-r border-zinc-800 px-4 py-6">
-    <JoinedCommunitiesSidebar userId={user?.id ?? null} />
-  </div>        
-
-       {/* Main Content Layout */}
-<div className="flex-1">
-  <div className="max-w-5xl mx-auto mt-4 px-4 pb-8">
-    <div className="flex flex-col md:flex-row gap-8">
-
-      {/* ➜ Main Posts Feed column */}
-      <div className="flex-1 flex flex-col space-y-4">     {/* ← NEW wrapper */}
-        <AnimatePresence mode="wait">
-          {filteredPosts.length === 0 ? (
-            <motion.div
-              key="no-posts"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="text-center text-zinc-400 py-12"
-            >
-              No posts found in this category.
-            </motion.div>
-          ) : (
-            filteredPosts.map((post, idx) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                idx={idx}
-                total={posts.length}
-                formatDate={formatDate}
-                setMenuOpenId={setMenuOpenId}
-                menuOpenId={menuOpenId}
-                user={user}
-                setShowConfirmId={setShowConfirmId}
-                showConfirmId={showConfirmId}
-                setReportConfirmId={setReportConfirmId}
-                handleDelete={handleDelete}
-                handleLikeClick={handleLikeClick}
-                handleCommentClick={handleCommentClick}
-              />
-            ))
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Right Sidebar */}
-      <div className="w-full md:w-80 flex-shrink-0 space-y-8">
-        {/* Trending Tags */}
-        <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
+          {/* Main Feed Column */}
+          <div className="flex-1 max-w-2xl w-full">
+            <div className="bg-[#1f1f1f] border border-zinc-800 rounded-2xl shadow-md w-full">
+              {/* Filter Bar inside card, sticky */}
+              <div className="sticky top-0 z-10 w-full bg-[#1f1f1f] border-b border-zinc-800 rounded-t-2xl">
+                <div className="flex gap-3 min-w-max py-2 px-4">
+                  {["Recommended", "Recents"].map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab as "Recommended" | "Recents")}
+                      className={`px-6 py-2 rounded-full font-semibold transition-all duration-200 whitespace-nowrap focus:outline-none
+                        ${activeTab === tab
+                          ? "bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold shadow scale-105"
+                          : "bg-[#232232] text-zinc-300 hover:bg-gradient-to-r hover:from-pink-500 hover:to-purple-600 hover:text-white"}
+                      `}
+                      style={{ boxShadow: activeTab === tab ? '0 2px 16px 0 rgba(236,72,153,0.2)' : undefined }}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Posts Feed */}
+              <div className="flex flex-col space-y-4">
+                <ContentFeed
+                  selectedAnime={anime ? [anime.title] : []}
+                  recentPosts={postsData}
+                  setRecentPosts={setPostsData}
+                  homepageStyle={true}
+                  filterType={activeTab}
+                />
+              </div>
+            </div>
+          </div>
+          {/* Right Sidebar */}
+          <div className="hidden lg:block w-80 flex-shrink-0 space-y-8">
+            {/* Trending Tags */}
+            <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
               <h3 className="text-lg font-semibold mb-4">Trending Topics</h3>
               <div className="flex flex-wrap gap-2">
                 {community.trending_tags?.map((tag, index) => (
-  <button
-    key={index}
-    onClick={() => toggleTag(tag)}
-    className={`px-3 py-1 rounded-full font-medium text-sm ${
-      selectedTags.includes(tag)
-        ? "bg-purple-700 text-white"
-        : "bg-zinc-700 text-zinc-300"
-    }`}
-  >
-    {tag}
-  </button>
-))}
-
+                  <button
+                    key={index}
+                    onClick={() => toggleTag(tag)}
+                    className={`px-3 py-1 rounded-full font-medium text-sm ${
+                      selectedTags.includes(tag)
+                        ? "bg-purple-700 text-white"
+                        : "bg-zinc-700 text-zinc-300"
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
               </div>
             </div>
-
             {/* Community Description */}
             {community.description && (
               <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
@@ -844,13 +806,9 @@ const filteredPosts = postsData
                 <p className="text-zinc-300">{community.description}</p>
               </div>
             )}
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
-
-    </div>
-    </div>
-  </div>
   );
 } 
