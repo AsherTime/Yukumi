@@ -32,7 +32,7 @@ const scoreOptions = Array.from({ length: 10 }, (_, i) => i + 1);
 const statusOptions = [
   { label: "Watching", value: "Watching" },
   { label: "Completed", value: "Completed" },
-  { label: "On‑Hold", value: "On-Hold" },
+  { label: "On-Hold", value: "On-Hold" },
   { label: "Dropped", value: "Dropped" },
   { label: "Planning", value: "Planning" },
   { label: "Remove from List", value: "Remove from List" },
@@ -52,6 +52,7 @@ type Props = {
 
 interface AnimeCardProps {
   anime: Anime;
+  favourites: string[];
   selectedStatus: string;
   score: number | null;
   onViewDetails: () => void;
@@ -59,10 +60,10 @@ interface AnimeCardProps {
   selectedTag: string | null;
   handleScoreChange: (animeId: string, newScore: number, selectedStatus: string) => Promise<void>;
   handleStatusChange: (animeId: string, newStatus: string) => Promise<void>;
-  toggleFavorite: (animeId: string) => void;
+  toggleFavourite: (animeId: string) => void;
 }
 
-const AnimeCard = ({ anime, selectedStatus,  score, onViewDetails, onTagClick, selectedTag, handleScoreChange, handleStatusChange, toggleFavorite }: AnimeCardProps) => {
+const AnimeCard = ({ anime, favourites, selectedStatus,  score, onViewDetails, onTagClick, selectedTag, handleScoreChange, handleStatusChange, toggleFavourite }: AnimeCardProps) => {
   const [openScore, setOpenScore] = useState(false);
   const [openStatus, setOpenStatus] = useState(false);
   const isInList = !!selectedStatus && selectedStatus !== "";
@@ -71,7 +72,16 @@ const AnimeCard = ({ anime, selectedStatus,  score, onViewDetails, onTagClick, s
   const tags = Array.from(tagSet).slice(0, 3);
   return (
     <Card className="bg-[#181828] border-zinc-800 shadow-lg hover:scale-[1.025] hover:shadow-xl transition-transform duration-200 relative flex flex-col">
-      <button className="absolute top-3 left-3 z-10 bg-black/60 rounded-full p-1 hover:bg-pink-600 transition-colors"><Heart className="w-5 h-5 text-pink-400" onClick={() => {toggleFavorite(anime.id)}}/></button>
+<button
+  className="absolute top-3 left-3 z-10 bg-black/60 rounded-full p-1 hover:bg-pink-600 transition-colors"
+  onClick={() => toggleFavourite(anime.id)}
+>
+  {favourites.includes(anime.id) ? (
+    <Heart className="w-5 h-5 text-pink-500 fill-pink-500" />
+  ) : (
+    <Heart className="w-5 h-5 text-pink-400" />
+  )}
+</button>
       <div className="relative w-full h-48 rounded-t-lg overflow-hidden">
         <Image src={anime.image_url || "/placeholder.svg"} alt={anime.title} fill className="object-cover" />
       </div>
@@ -223,6 +233,7 @@ const AnimeBrowser: React.FC = () => {
   const [score, setScore] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("All");
+  const [favourites, setFavourites] = useState<string[]>([]);
 
 
 
@@ -272,15 +283,45 @@ const AnimeBrowser: React.FC = () => {
   }
 */
 
-const toggleFavorite = (animeId: string) => {
-    const alreadyFavorite = favorites.some(f => f.id === animeId)
-    if (alreadyFavorite) {
-      setFavorites(favorites.filter(f => f.id !== animeId))
+useEffect(() => {
+  const fetchFavourites = async () => {
+    const { data, error } = await supabase
+      .from("Profiles")
+      .select("favourites")
+      .eq("id", userId)
+      .single();
+
+    if (error) {
+      console.error("Failed to fetch favourites:", error.message);
     } else {
-      const anime = animeList.find(a => a.id === animeId)
-      if (anime) setFavorites([...favorites, anime])
+      setFavourites(data?.favourites ?? []); // Set local state
     }
-}
+  };
+
+  if (userId) fetchFavourites();
+}, [userId]);
+
+
+const toggleFavourite = async (animeId: string) => {
+  const isFavourited = favourites.includes(animeId);
+
+  const updatedFavourites = isFavourited
+    ? favourites.filter((id) => id !== animeId)
+    : [...favourites, animeId];
+
+  const { error } = await supabase
+    .from("Profiles")
+    .update({ favourites: updatedFavourites })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("Failed to update favourites:", error.message);
+  } else {
+    setFavourites(updatedFavourites); // Update local state
+  }
+};
+
+
 
 // Fetch current status and score from Supabase if exists
 const fetchUserAnimeData = async (
@@ -458,7 +499,8 @@ setStatusMap(prev => ({
     if (error) console.error("Error updating score:", error.message);
   };
 
-
+  const [showFavouritesOnly, setShowFavouritesOnly] = useState(false);
+  
 
   return (
     <div className="min-h-screen bg-[#10101a] flex flex-col">
@@ -483,6 +525,13 @@ setStatusMap(prev => ({
       <option value="Planning">Planning</option>
     </select>
   </div>
+    <button
+  onClick={() => setShowFavouritesOnly(prev => !prev)}
+  className={`px-3 py-2 rounded text-sm font-medium whitespace-nowrap min-w-[140px] ${showFavouritesOnly ? "bg-zinc-800 text-zinc-200" : "bg-pink-600 text-white"}`}
+>
+  {showFavouritesOnly ? "Show All" : "Show Favourites"}
+</button>
+
 </div>
         {selectedTag && (
           <div className="max-w-7xl mx-auto w-full px-4 pb-2 flex items-center gap-2">
@@ -497,13 +546,16 @@ setStatusMap(prev => ({
               <div className="col-span-full text-center text-zinc-400 py-16 text-lg">No anime found.</div>
             ) : (
               animeList
-               .filter((anime) => {
-    return filterStatus === "All" || anime.status === filterStatus;
-  })
+              .filter((anime) => {
+      const matchesStatus = filterStatus === "All" || anime.status === filterStatus;
+      const isFavourited = !showFavouritesOnly || favourites.includes(anime.id);
+      return matchesStatus && isFavourited;
+    })
               .map((anime) => (
                 <AnimeCard
                   key={anime.id}
                   anime={anime}
+                  favourites={favourites}
                   selectedStatus={anime.status}
                   score={anime.score}
                   onViewDetails={() => window.location.href = `/anime/${anime.id}`}
@@ -511,7 +563,7 @@ setStatusMap(prev => ({
                   selectedTag={selectedTag}
                   handleScoreChange={handleScoreChange}
                   handleStatusChange={handleStatusChange}
-                  toggleFavorite={toggleFavorite}
+                  toggleFavourite={toggleFavourite}
                 />
               ))
             )}
