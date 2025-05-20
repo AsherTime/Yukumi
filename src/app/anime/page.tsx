@@ -9,13 +9,128 @@ import { TopNav } from "@/components/top-nav";
 import Footer from "@/components/footer"
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase"
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Twitter, Github, Mail } from "lucide-react";
 
 interface Anime {
   id: number
   title: string
   image_url: string
   avg_score: number
+  tags?: string[]
+  genres?: string[]
 } 
+
+const ANIME_BANNER_URL = "https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Leonardo_Phoenix_10_Highresolution_cinematic_animestyle_hero_b_3.jpg?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5X2EwNWE5MzA2LTNiZGItNDliNC1hZGQ2LTFjMjEzNjhiYzcwMSJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9MZW9uYXJkb19QaG9lbml4XzEwX0hpZ2hyZXNvbHV0aW9uX2NpbmVtYXRpY19hbmltZXN0eWxlX2hlcm9fYl8zLmpwZyIsImlhdCI6MTc0NzY2MjAwMywiZXhwIjoxNzc5MTk4MDAzfQ.hLX59XtwEW2FHByKn_5YqBlTB23Tjse5urv4q761b-k";
+
+// Dummy data for tags and status
+const STATUS = ["Completed", "Watching", "Planning"];
+
+function getRandomStatus() {
+  return STATUS[Math.floor(Math.random() * STATUS.length)];
+}
+
+interface AnimeCardProps {
+  anime: Anime;
+  userScore: number | string;
+  status: string;
+  onViewDetails: () => void;
+  onTagClick: (tag: string) => void;
+  selectedTag: string | null;
+}
+
+const AnimeCard = ({ anime, userScore, status, onViewDetails, onTagClick, selectedTag }: AnimeCardProps) => {
+  // Combine tags and genres, deduplicate, and show up to 3
+  const tagSet = new Set([...(anime.tags || []), ...(anime.genres || [])]);
+  const tags = Array.from(tagSet).slice(0, 3);
+  return (
+    <Card className="bg-[#181828] border-zinc-800 shadow-lg hover:scale-[1.025] hover:shadow-xl transition-transform duration-200 relative flex flex-col">
+      <button className="absolute top-3 left-3 z-10 bg-black/60 rounded-full p-1 hover:bg-pink-600 transition-colors"><Heart className="w-5 h-5 text-pink-400" /></button>
+      <div className="relative w-full h-48 rounded-t-lg overflow-hidden">
+        <Image src={anime.image_url || "/placeholder.svg"} alt={anime.title} fill className="object-cover" />
+      </div>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg font-bold text-white truncate">{anime.title}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-wrap gap-2 pb-2">
+        {tags.map((tag) => (
+          <Badge
+            key={tag + anime.id}
+            variant={selectedTag === tag ? "default" : "secondary"}
+            className={`cursor-pointer hover:bg-purple-700 hover:text-white transition-colors ${selectedTag === tag ? "bg-purple-700 text-white" : ""}`}
+            onClick={() => onTagClick(tag)}
+          >
+            #{tag}
+          </Badge>
+        ))}
+      </CardContent>
+      <CardContent className="flex flex-col gap-1 text-sm text-zinc-300 pb-2">
+        <span>Your Score: <span className="font-semibold text-white">{userScore ?? "-"}</span></span>
+        <span>
+          <Badge variant="outline" className="bg-zinc-700 text-zinc-200 px-2 py-0.5 text-xs font-medium">{status}</Badge>
+        </span>
+      </CardContent>
+      <CardFooter className="flex gap-2 mt-auto">
+        <Button variant="outline" className="flex-1">Join Community</Button>
+        <Button variant="secondary" className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 text-white" onClick={onViewDetails}>View Details</Button>
+      </CardFooter>
+    </Card>
+  );
+};
+
+interface AnimeSearchBarProps {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+const AnimeSearchBar = ({ value, onChange }: AnimeSearchBarProps) => (
+  <div className="flex justify-center w-full py-8">
+    <div className="relative w-full max-w-xl">
+      <Input
+        type="text"
+        placeholder="Search anime..."
+        value={value}
+        onChange={onChange}
+        className="pl-10 pr-4 py-3 bg-[#181828] border border-zinc-700 text-white rounded-lg shadow focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-zinc-400"
+      />
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
+    </div>
+  </div>
+);
+
+const AnimeBanner = () => (
+  <section className="w-full relative h-[260px] md:h-[340px] flex items-end justify-center overflow-hidden">
+    <Image src={ANIME_BANNER_URL} alt="Anime Banner" fill className="object-cover w-full h-full" priority />
+    <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-black/90 flex flex-col items-center justify-center text-center px-4">
+      <h1 className="text-2xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-2">FIND THE BEST ANIME FOR YOU</h1>
+      <p className="text-zinc-300 mb-4">Take the quiz and discover what fits your vibe</p>
+      <Link href="/quiz/find-anime">
+        <Button className="px-8 py-3 text-lg font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg hover:scale-105 hover:shadow-pink-500/40 transition-transform">TRY NOW</Button>
+      </Link>
+    </div>
+  </section>
+);
+
+const AnimeFooter = () => (
+  <footer className="w-full py-8 bg-[#181828] border-t border-zinc-800 mt-12">
+    <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 px-4">
+      <div className="flex gap-4 text-zinc-400 text-sm mb-2 md:mb-0">
+        <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+        <span>|</span>
+        <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy</Link>
+        <span>|</span>
+        <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
+      </div>
+      <div className="flex gap-4 text-zinc-400">
+        <a href="https://twitter.com/" target="_blank" rel="noopener noreferrer" className="hover:text-pink-400 transition-colors"><Twitter /></a>
+        <a href="https://github.com/" target="_blank" rel="noopener noreferrer" className="hover:text-pink-400 transition-colors"><Github /></a>
+        <a href="mailto:info@yukumi.com" className="hover:text-pink-400 transition-colors"><Mail /></a>
+      </div>
+    </div>
+  </footer>
+);
 
 const AnimeBrowser: React.FC = () => {
   const [animeList, setAnimeList] = useState<Anime[]>([])
@@ -25,6 +140,7 @@ const AnimeBrowser: React.FC = () => {
   const [favorites, setFavorites] = useState<Anime[]>([])
   const [userScores, setUserScores] = useState<Record<number, number>>({})
   const [userStatuses, setUserStatuses] = useState<Record<number, string>>({})
+  const [selectedTag, setSelectedTag] = useState<string | null>(null)
 
   const { user } = useAuth()
 
@@ -35,28 +151,27 @@ const AnimeBrowser: React.FC = () => {
   useEffect(() => {
     const start = (page - 1) * 50
     const end = start + 50
-    // If searchQuery is empty, just show paginated animeList
-  if (!searchQuery.trim()) {
-    console.log(animeList.slice(start, end)); 
-    setDisplayedAnime(animeList.slice(start, end));
-    return;
-  }
-
-  // Filter based on search query
-  const filtered = animeList.filter(anime =>
-    anime.title?.toLowerCase().includes(searchQuery.toLowerCase())
-  ); 
-
-  // If there are no results, fall back to full list for current page
-  if (filtered.length === 0) {
-    setDisplayedAnime(animeList.slice(start, end));
-  } else {
-    setDisplayedAnime(filtered.slice(start, end));
-  }
-  }, [animeList, searchQuery, page])
+    let filtered = animeList
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(anime =>
+        anime.title?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    }
+    if (selectedTag) {
+      filtered = [
+        ...filtered.filter(anime =>
+          [...(anime.tags || []), ...(anime.genres || [])].includes(selectedTag)
+        ),
+        ...filtered.filter(anime =>
+          ![...(anime.tags || []), ...(anime.genres || [])].includes(selectedTag)
+        ),
+      ]
+    }
+    setDisplayedAnime(filtered.slice(start, end))
+  }, [animeList, searchQuery, page, selectedTag])
 
   const fetchAnimeList = async () => {
-    const { data, error } = await supabase.from("Anime").select("*").order("rank")
+    const { data, error } = await supabase.from("Anime").select("*, tags, genres").order("rank")
     if (error) console.error("Failed to fetch anime list:", error)
     else setAnimeList(data || [])
   }
@@ -111,99 +226,39 @@ const AnimeBrowser: React.FC = () => {
   }, [user])
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-12">
+    <div className="min-h-screen bg-[#10101a] flex flex-col">
       <TopNav />
-
-      {/* Hero Section */}
-      <div className="text-center space-y-8 relative py-20">
-        <h1 className="text-4xl md:text-6xl font-bold text-white">FIND THE BEST ANIME FOR YOU</h1>
-        <Link href="/quiz/find-anime">
-          <Button className="bg-[#B624FF] hover:bg-[#B624FF]/80 text-white px-8 py-6 text-xl h-auto">
-            TRY NOW
-          </Button>
-        </Link>
-      </div>
-
-      {/* Search Bar */}
-      <div className="flex justify-center mb-4">
-        <div className="relative w-full max-w-lg">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search anime..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-500 rounded-md bg-black text-white"
-          />
-        </div>
-      </div>
-
-      {/* Anime List */}
-      <div className="anime-list-container overflow-auto rounded-lg border border-white/10 bg-card">
-        <table className="w-full anime-table">
-          <thead>
-            <tr className="bg-black/20">
-              <th className="p-4 text-left">Number</th>
-              <th className="p-4 text-center">Anime Title</th>
-              <th className="p-4 text-center">Score</th>
-              <th className="p-4 text-center">Your Score</th>
-              <th className="p-4 text-center">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayedAnime.map((anime) => (
-              <tr key={anime.id} className="border-t border-white/10 hover:bg-white/5">
-                <td className="p-4">
-                  <div className="flex items-center gap-4">
-                  <div className="relative w-[60px] h-[80px]">
-                    <Image
-                      src={anime.image_url || "/placeholder.svg"}
-                      alt={anime.title}
-                      fill
-                      sizes="(max-width: 768px) 40px, (max-width: 1200px) 60px, 80px"
-                      className="rounded object-contain"
-                    />
-                  </div>
-
-                  </div>
-                </td>
-                <td className="p-4">
-                  <div className="flex items-center gap-2">
-                    {/* Clickable Link to Anime Detail Page */}
-                    <Link href={`/anime/${anime.id}`} className="font-medium text-blue-400 hover:underline">
-                      {anime.title}
-                    </Link>
-                    <button onClick={() => toggleFavorite(anime.id)} className="text-red-500 hover:text-red-400">
-                      <Heart className={`w-4 h-4 ${favorites.some(fav => fav.id === anime.id) ? "fill-current" : ""}`} />
-                    </button>
-                  </div>
-                </td>
-                <td>{anime.avg_score?.toFixed(2) || "-"}</td>
-                <td>{user ? userScores[anime.id] ?? "-" : "-"}</td>
-                <td>{user ? userStatuses[anime.id] ?? "-" : "-"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="flex justify-center mt-4 gap-4">
-        <button
-          onClick={loadPreviousPage}
-          disabled={page === 1}
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-orange-600 disabled:bg-gray-300"
-        >
-          Previous 50
-        </button>
-
-        <button
-          onClick={loadNextPage}
-          disabled={page * 50 >= animeList.length}
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-orange-600 disabled:bg-gray-300"
-        >
-          Next 50
-        </button>
-      </div>
-      <Footer />
+      <main className="flex-1 flex flex-col">
+        <AnimeBanner />
+        <AnimeSearchBar value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+        {selectedTag && (
+          <div className="max-w-7xl mx-auto w-full px-4 pb-2 flex items-center gap-2">
+            <span className="text-zinc-300 text-sm">Filtering by tag:</span>
+            <Badge variant="default" className="bg-purple-700 text-white">#{selectedTag}</Badge>
+            <Button size="sm" variant="ghost" className="text-xs px-2 py-1" onClick={() => setSelectedTag(null)}>Clear</Button>
+          </div>
+        )}
+        <section className="max-w-7xl mx-auto w-full px-4 pb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {displayedAnime.length === 0 ? (
+              <div className="col-span-full text-center text-zinc-400 py-16 text-lg">No anime found.</div>
+            ) : (
+              displayedAnime.map((anime) => (
+                <AnimeCard
+                  key={anime.id}
+                  anime={anime}
+                  userScore={userScores[anime.id] ?? "-"}
+                  status={userStatuses[anime.id] ?? getRandomStatus()}
+                  onViewDetails={() => window.location.href = `/anime/${anime.id}`}
+                  onTagClick={setSelectedTag}
+                  selectedTag={selectedTag}
+                />
+              ))
+            )}
+          </div>
+        </section>
+      </main>
+      <AnimeFooter />
     </div>
   );
 }
