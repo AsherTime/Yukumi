@@ -20,7 +20,7 @@ interface StatsData {
 }
 
 export default function Page() {
-  type AnimeStatus = "ALL ANIME" | "Currently Watching" | "Completed" | "On-Hold" | "Dropped" | "Plan to Watch"
+  type AnimeStatus = "ALL ANIME" | "Watching" | "Completed" | "On-Hold" | "Dropped" | "Planning"
 
   type FavAnime = {
     id: number;
@@ -59,7 +59,7 @@ export default function Page() {
     },
     planToWatch: {
       color: "#847f7c",
-      label: "Plan to Watch",
+      label: "Planning",
       hover: "hover:bg-[#847f7c]/80",
     },
   }
@@ -69,21 +69,21 @@ export default function Page() {
   const totalScore = userAnime.reduce((sum, anime) => sum + (anime.score || 0), 0);
   const Mean = userAnime.length > 0 ? parseFloat((totalScore / userAnime.length).toFixed(2)) : 0;
   const stats: StatsData = {
-    watching: userAnime.filter((anime) => anime.status === "Currently Watching").length,
+    watching: userAnime.filter((anime) => anime.status === "Watching").length,
     completed: userAnime.filter((anime) => anime.status === "Completed").length,
     onHold: userAnime.filter((anime) => anime.status === "On-Hold").length,
     dropped: userAnime.filter((anime) => anime.status === "Dropped").length,
-    planToWatch: userAnime.filter((anime) => anime.status === "Plan to Watch").length,
+    planToWatch: userAnime.filter((anime) => anime.status === "Planning").length,
   };
   const total = Object.values(stats).reduce((acc, curr) => acc + curr, 0)
 
   const handleStatusClick = (status: keyof StatsData) => {
     const statusMap = {
-      watching: "Currently Watching",
+      watching: "Watching",
       completed: "Completed",
       onHold: "On-Hold",
       dropped: "Dropped",
-      planToWatch: "Plan to Watch",
+      planToWatch: "Planning",
     }
     setActiveTab(statusMap[status]);
     setActiveStatusKey(status);
@@ -361,7 +361,7 @@ export default function Page() {
 
           {/* Filter Tabs */}
           <div className="flex gap-2 overflow-x-auto pb-2">
-            {["ALL ANIME", "Currently Watching", "Completed", "On-Hold", "Dropped", "Plan to Watch"].map((tab) => (
+            {["ALL ANIME", "Watching", "Completed", "On-Hold", "Dropped", "Planning"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab as AnimeStatus)}

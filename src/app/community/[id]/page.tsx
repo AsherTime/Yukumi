@@ -738,50 +738,57 @@ const filteredPosts = postsData
         </div>
         {/* Header Spacer for Overlap */}
         <div className="h-20 md:h-24" />
-        {/* Main 3-column layout - move upward by reducing mt-6 to mt-2 */}
-        <div className="flex flex-row max-w-7xl mx-auto px-4 mt-2 gap-6">
-          {/* Left Sidebar */}
-          <div className="hidden md:block w-64 min-h-screen bg-[#18181b] border-r border-zinc-800 px-4 py-6 flex-shrink-0">
-            <JoinedCommunitiesSidebar userId={user?.id ?? null} />
-          </div>
-          {/* Main Feed Column */}
-          <div className="flex-1 max-w-2xl w-full">
-            <div className="bg-[#1f1f1f] border border-zinc-800 rounded-2xl shadow-md w-full">
-              {/* Filter Bar inside card, sticky */}
-              <div className="sticky top-0 z-10 w-full bg-[#1f1f1f] border-b border-zinc-800 rounded-t-2xl">
-                <div className="flex gap-3 min-w-max py-2 px-4">
-                  {["Recommended", "Recents"].map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab as "Recommended" | "Recents")}
-                      className={`px-6 py-2 rounded-full font-semibold transition-all duration-200 whitespace-nowrap focus:outline-none
-                        ${activeTab === tab
-                          ? "bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold shadow scale-105"
-                          : "bg-[#232232] text-zinc-300 hover:bg-gradient-to-r hover:from-pink-500 hover:to-purple-600 hover:text-white"}
-                      `}
-                      style={{ boxShadow: activeTab === tab ? '0 2px 16px 0 rgba(236,72,153,0.2)' : undefined }}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* Posts Feed */}
-              <div className="flex flex-col space-y-4">
-                <ContentFeed
-                  selectedAnime={anime ? [anime.title] : []}
-                  recentPosts={postsData}
-                  setRecentPosts={setPostsData}
-                  homepageStyle={true}
-                  filterType={activeTab}
-                />
-              </div>
-            </div>
-          </div>
-          {/* Right Sidebar */}
-          <div className="hidden lg:block w-80 flex-shrink-0 space-y-8">
-            {/* Trending Tags */}
-            <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
+<div className="flex">
+{/* Left Sidebar */}
+    <div className="hidden md:block w-64 min-h-screen bg-[#18181b] border-r border-zinc-800 px-4 py-6">
+    <JoinedCommunitiesSidebar userId={user?.id ?? null} />
+  </div>        
+
+       {/* Main Content Layout */}
+<div className="flex-1">
+  <div className="max-w-5xl mx-auto mt-4 px-4 pb-8">
+    <div className="flex flex-col md:flex-row gap-8">
+
+      {/* ➜ Main Posts Feed column */}
+      <div className="flex-1 flex flex-col bg-[#18181b] space-y-4">     {/* ← NEW wrapper */}
+        <AnimatePresence mode="wait">
+          {filteredPosts.length === 0 ? (
+            <motion.div
+              key="no-posts"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="text-center text-zinc-400 py-12"
+            >
+              No posts found in this category.
+            </motion.div>
+          ) : (
+            filteredPosts.map((post, idx) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                idx={idx}
+                total={posts.length}
+                formatDate={formatDate}
+                setMenuOpenId={setMenuOpenId}
+                menuOpenId={menuOpenId}
+                user={user}
+                setShowConfirmId={setShowConfirmId}
+                showConfirmId={showConfirmId}
+                setReportConfirmId={setReportConfirmId}
+                handleDelete={handleDelete}
+                handleLikeClick={handleLikeClick}
+                handleCommentClick={handleCommentClick}
+              />
+            ))
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Right Sidebar */}
+      <div className="w-full md:w-80 flex-shrink-0 space-y-8">
+        {/* Trending Tags */}
+        <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
               <h3 className="text-lg font-semibold mb-4">Trending Topics</h3>
               <div className="flex flex-wrap gap-2">
                 {community.trending_tags?.map((tag, index) => (
@@ -810,5 +817,8 @@ const filteredPosts = postsData
         </div>
       </div>
     </div>
+    </div>
+  </div>
+  </div>
   );
-} 
+}
