@@ -738,13 +738,6 @@ const filteredPosts = postsData
         </div>
         {/* Header Spacer for Overlap */}
         <div className="h-20 md:h-24" />
-        {/* Main 3-column layout - move upward by reducing mt-6 to mt-2 */}
-        <div className="flex flex-row max-w-7xl mx-auto px-4 mt-2 gap-6">
-          {/* Left Sidebar */}
-          <div className="hidden md:block w-64 min-h-screen bg-[#18181b] border-r border-zinc-800 px-4 py-6 flex-shrink-0">
-            <JoinedCommunitiesSidebar userId={user?.id ?? null} />
-          </div>
-        </div>
 <div className="flex">
 {/* Left Sidebar */}
     <div className="hidden md:block w-64 min-h-screen bg-[#18181b] border-r border-zinc-800 px-4 py-6">

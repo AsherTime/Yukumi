@@ -13,41 +13,65 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Twitter, Github, Mail } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Command, CommandItem } from "@/components/ui/command";
 
 interface Anime {
-  id: number
+  id: string
   title: string
   image_url: string
-  avg_score: number
+  score: number | null
+  status: string
   tags?: string[]
   genres?: string[]
 } 
 
 const ANIME_BANNER_URL = "https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Leonardo_Phoenix_10_Highresolution_cinematic_animestyle_hero_b_3.jpg?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5X2EwNWE5MzA2LTNiZGItNDliNC1hZGQ2LTFjMjEzNjhiYzcwMSJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9MZW9uYXJkb19QaG9lbml4XzEwX0hpZ2hyZXNvbHV0aW9uX2NpbmVtYXRpY19hbmltZXN0eWxlX2hlcm9fYl8zLmpwZyIsImlhdCI6MTc0NzY2MjAwMywiZXhwIjoxNzc5MTk4MDAzfQ.hLX59XtwEW2FHByKn_5YqBlTB23Tjse5urv4q761b-k";
 
-// Dummy data for tags and status
-const STATUS = ["Completed", "Watching", "Planning"];
-
-function getRandomStatus() {
-  return STATUS[Math.floor(Math.random() * STATUS.length)];
-}
+const scoreOptions = Array.from({ length: 10 }, (_, i) => i + 1);
+const statusOptions = [
+  { label: "Watching", value: "Watching" },
+  { label: "Completed", value: "Completed" },
+  { label: "On‑Hold", value: "On-Hold" },
+  { label: "Dropped", value: "Dropped" },
+  { label: "Planning", value: "Planning" },
+  { label: "Remove from List", value: "Remove from List" },
+];
+const statusColors: Record<string, string> = {
+  "Remove from List": "text-grey-500",
+  Watching: "text-green-500",
+  Completed: "text-purple-500",
+  "On-Hold": "text-yellow-500",
+  Dropped: "text-red-500",
+  Planning: "text-blue-500",
+};
+type Props = {
+  userId: string;
+  animeId: string;
+};
 
 interface AnimeCardProps {
   anime: Anime;
-  userScore: number | string;
-  status: string;
+  selectedStatus: string;
+  score: number | null;
   onViewDetails: () => void;
   onTagClick: (tag: string) => void;
   selectedTag: string | null;
+  handleScoreChange: (animeId: string, newScore: number, selectedStatus: string) => Promise<void>;
+  handleStatusChange: (animeId: string, newStatus: string) => Promise<void>;
+  toggleFavorite: (animeId: string) => void;
 }
 
-const AnimeCard = ({ anime, userScore, status, onViewDetails, onTagClick, selectedTag }: AnimeCardProps) => {
+const AnimeCard = ({ anime, selectedStatus,  score, onViewDetails, onTagClick, selectedTag, handleScoreChange, handleStatusChange, toggleFavorite }: AnimeCardProps) => {
+  const [openScore, setOpenScore] = useState(false);
+  const [openStatus, setOpenStatus] = useState(false);
+  const isInList = !!selectedStatus && selectedStatus !== "";
   // Combine tags and genres, deduplicate, and show up to 3
   const tagSet = new Set([...(anime.tags || []), ...(anime.genres || [])]);
   const tags = Array.from(tagSet).slice(0, 3);
   return (
     <Card className="bg-[#181828] border-zinc-800 shadow-lg hover:scale-[1.025] hover:shadow-xl transition-transform duration-200 relative flex flex-col">
-      <button className="absolute top-3 left-3 z-10 bg-black/60 rounded-full p-1 hover:bg-pink-600 transition-colors"><Heart className="w-5 h-5 text-pink-400" /></button>
+      <button className="absolute top-3 left-3 z-10 bg-black/60 rounded-full p-1 hover:bg-pink-600 transition-colors"><Heart className="w-5 h-5 text-pink-400" onClick={() => {toggleFavorite(anime.id)}}/></button>
       <div className="relative w-full h-48 rounded-t-lg overflow-hidden">
         <Image src={anime.image_url || "/placeholder.svg"} alt={anime.title} fill className="object-cover" />
       </div>
@@ -66,12 +90,66 @@ const AnimeCard = ({ anime, userScore, status, onViewDetails, onTagClick, select
           </Badge>
         ))}
       </CardContent>
-      <CardContent className="flex flex-col gap-1 text-sm text-zinc-300 pb-2">
-        <span>Your Score: <span className="font-semibold text-white">{userScore ?? "-"}</span></span>
-        <span>
-          <Badge variant="outline" className="bg-zinc-700 text-zinc-200 px-2 py-0.5 text-xs font-medium">{status}</Badge>
-        </span>
-      </CardContent>
+       <div className="flex flex-col gap-1 text-sm text-zinc-300 pb-2 ml-[30px]">
+      {/* ─────────── Score dropdown ─────────── */}
+      {isInList && (
+        <Popover open={openScore} onOpenChange={setOpenScore}>
+          <PopoverTrigger asChild>
+            <button className="text-left w-full">
+              Your Score:&nbsp;
+              <span className="font-semibold text-white">{score ?? "-"}</span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="p-0 w-32 bg-zinc-800 border-zinc-700">
+            <Command>
+              {scoreOptions.map((n) => (
+                <CommandItem
+                  key={n}
+                  onSelect={() => {
+                    setOpenScore(false);
+                    handleScoreChange(anime.id, n, selectedStatus);
+                  }}
+                >
+                  {n}
+                </CommandItem>
+              ))}
+            </Command>
+          </PopoverContent>
+        </Popover>
+      )}
+
+      {/* ─────────── Status Dropdown ─────────── */}
+      <Popover open={openStatus} onOpenChange={setOpenStatus}>
+        <PopoverTrigger asChild>
+          <button className="w-full text-left">
+            <Badge
+              variant="outline"
+              className={`bg-zinc-700 px-2 py-0.5 text-xs font-medium ${
+                statusColors[selectedStatus] ?? "text-zinc-200"
+              }`}
+            >
+              {isInList ? selectedStatus : "Add to List"}
+            </Badge>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="p-0 w-44 bg-zinc-800 border-zinc-700">
+          <Command>
+            {(isInList ? statusOptions : statusOptions.filter(opt => opt.value !== "Remove from List")).map(({ label, value }) => (
+              <CommandItem
+                key={value}
+                onSelect={() => {
+                  setOpenStatus(false);
+                  handleStatusChange(anime.id, value);
+                }}
+                className={statusColors[value] ?? ""}
+              >
+                {label}
+              </CommandItem>
+            ))}
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
       <CardFooter className="flex gap-2 mt-auto">
         <Button variant="outline" className="flex-1">Join Community</Button>
         <Button variant="secondary" className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 text-white" onClick={onViewDetails}>View Details</Button>
@@ -133,21 +211,25 @@ const AnimeFooter = () => (
 );
 
 const AnimeBrowser: React.FC = () => {
-  const [animeList, setAnimeList] = useState<Anime[]>([])
+    const [animeList, setAnimeList] = useState<Anime[]>([])
   const [displayedAnime, setDisplayedAnime] = useState<Anime[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [page, setPage] = useState(1)
   const [favorites, setFavorites] = useState<Anime[]>([])
-  const [userScores, setUserScores] = useState<Record<number, number>>({})
+  const [userScores, setUserScores] = useState<Record<number, string>>({})
   const [userStatuses, setUserStatuses] = useState<Record<number, string>>({})
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
+  const [score, setScore] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>("All");
+
+
 
   const { user } = useAuth()
+  const userId = user?.id || "";
 
-  useEffect(() => {
-    fetchAnimeList()
-  }, [])
-
+/*
   useEffect(() => {
     const start = (page - 1) * 50
     const end = start + 50
@@ -168,14 +250,19 @@ const AnimeBrowser: React.FC = () => {
       ]
     }
     setDisplayedAnime(filtered.slice(start, end))
-  }, [animeList, searchQuery, page, selectedTag])
+  }, [animeList, searchQuery, page, selectedTag])*/
 
-  const fetchAnimeList = async () => {
-    const { data, error } = await supabase.from("Anime").select("*, tags, genres").order("rank")
-    if (error) console.error("Failed to fetch anime list:", error)
-    else setAnimeList(data || [])
+  const fetchAnimeList = async (): Promise<Anime[]> => {
+  const { data, error } = await supabase.from("Anime").select("*, tags, genres").order("rank");
+  if (error) {
+    console.error("Failed to fetch anime list:", error);
+    return [];
+  } else {
+    return data || [];
   }
+};
 
+/*
   const loadNextPage = () => {
     setPage((prev) => prev + 1)
   }
@@ -183,8 +270,9 @@ const AnimeBrowser: React.FC = () => {
   const loadPreviousPage = () => {
     setPage((prev) => Math.max(1, prev - 1))
   }
+*/
 
-  const toggleFavorite = (animeId: number) => {
+const toggleFavorite = (animeId: string) => {
     const alreadyFavorite = favorites.some(f => f.id === animeId)
     if (alreadyFavorite) {
       setFavorites(favorites.filter(f => f.id !== animeId))
@@ -192,45 +280,210 @@ const AnimeBrowser: React.FC = () => {
       const anime = animeList.find(a => a.id === animeId)
       if (anime) setFavorites([...favorites, anime])
     }
+}
+
+// Fetch current status and score from Supabase if exists
+const fetchUserAnimeData = async (
+  userId: string,
+  animeList: Anime[]
+): Promise<{
+  enrichedAnimeList: Anime[],
+  statusMap: Record<string, string>,
+  scoreMap: Record<string, number | null>
+}> => {
+  // 1. Fetch user's anime data from Supabase
+  const { data: userAnimeRows, error } = await supabase
+    .from("UserAnime")
+    .select("anime_id, status, score")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Failed to fetch user anime:", error.message);
+    return {
+      enrichedAnimeList: animeList,
+      statusMap: {},
+      scoreMap: {},
+    };
   }
 
-  // Fetch user-specific scores and statuses if logged in
-  useEffect(() => {
-    if (!user) return
+  // 2. Map userAnimeRows by anime_id for quick lookup
+  const userAnimeMap = new Map<string, { status: string; score: number | null }>();
+  userAnimeRows.forEach((row) => {
+    userAnimeMap.set(row.anime_id, {
+      status: row.status,
+      score: row.score,
+    });
+  });
 
-    const fetchUserData = async () => {
-      const { data, error } = await supabase
-        .from("UserAnime")
-        .select("anime_id, score, status")
-        .eq("user_id", user.id)
+  // 3. Prepare status and score maps
+  const statusMap: Record<string, string> = {};
+  const scoreMap: Record<string, number | null> = {};
 
-      if (data) {
-        //console.log(data);
-        const scores: Record<string, number> = {}
-        const statuses: Record<string, string> = {}
-        data.forEach((entry) => {
-          scores[entry.anime_id] = entry.score
-          statuses[entry.anime_id] = entry.status
-        })
-        //console.log(scores, statuses);
-        setUserScores(scores)
-        setUserStatuses(statuses)
-      }
+  // 4. Enrich each anime in animeList with user's status/score
+  const enrichedAnimeList = animeList.map((anime) => {
+    const userData = userAnimeMap.get(anime.id);
+    const status = userData?.status ?? "";
+    const score = userData?.score ?? null;
 
-      if (error) {
-        console.error("Failed to fetch user scores/statuses:", error)
-      }
+    statusMap[anime.id] = status;
+    scoreMap[anime.id] = score;
+
+    return {
+      ...anime,
+      status,
+      score,
+    };
+  });
+
+  return { enrichedAnimeList, statusMap, scoreMap };
+};
+const [statusMap, setStatusMap] = useState<Record<string, string>>({});
+const [scoreMap, setScoreMap] = useState<Record<string, number | null>>({});
+
+useEffect(() => {
+  async function loadData() {
+      if (!userId) {
+      console.warn("No userId available, skipping fetchUserAnimeData");
+      return;
     }
+    const fetchedAnimeList = await fetchAnimeList();
+    const { enrichedAnimeList, statusMap, scoreMap } = await fetchUserAnimeData(userId, fetchedAnimeList);
+    setAnimeList(enrichedAnimeList);
+    setStatusMap(statusMap);
+    setScoreMap(scoreMap);
+  }
+  loadData();
+}, [userId]);
 
-    fetchUserData()
-  }, [user])
+
+
+
+
+  // Handle status change
+const handleStatusChange = async (animeId: string, newStatus: string) => {
+  setLoading(true);
+
+  if (newStatus === "Remove from List") {
+    // Delete from Supabase
+    const { error } = await supabase
+      .from("UserAnime")
+      .delete()
+      .match({ user_id: userId, anime_id: animeId });
+
+    if (error) console.error("Error removing from list:", error.message);
+
+    // Update local state
+    setStatusMap((prev) => {
+      const updated = { ...prev };
+      delete updated[animeId];
+      return updated;
+    });
+
+    setScoreMap((prev) => {
+      const updated = { ...prev };
+      delete updated[animeId];
+      return updated;
+    });
+
+    setAnimeList((prevList) =>
+      prevList.map((anime) =>
+        anime.id === animeId ? { ...anime, status: "", score: null } : anime
+      )
+    );
+  } else {
+    // Normal status update
+    const { error } = await supabase
+      .from("UserAnime")
+      .upsert(
+        {
+          user_id: userId,
+          anime_id: animeId,
+          status: newStatus,
+        },
+        {
+          onConflict: "user_id,anime_id",
+        }
+      );
+
+    if (error) console.error("Error updating status:", error.message);
+
+    setStatusMap((prev) => ({ ...prev, [animeId]: newStatus }));
+
+    setAnimeList((prevList) =>
+      prevList.map((anime) =>
+        anime.id === animeId ? { ...anime, status: newStatus } : anime
+      )
+    );
+  }
+
+  setLoading(false);
+};
+
+  // Handle score change
+  const handleScoreChange = async (animeId: string, newScore: number, selectedStatus: string) => {
+  setScoreMap((prev) => ({ ...prev, [animeId]: newScore }));
+    setLoading(true);
+    const { error } = await supabase
+  .from("UserAnime")
+  .upsert(
+    {
+      user_id: userId,
+      anime_id: animeId,
+      score: newScore,
+      status: selectedStatus,
+    },
+    {
+      onConflict: "user_id,anime_id",
+    }
+  );
+  // Update local animeList state immediately
+  setAnimeList((prevList) =>
+    prevList.map((anime) =>
+      anime.id === animeId
+        ? { ...anime, score: newScore, status: selectedStatus }
+        : anime
+    )
+  );
+
+  // If you have separate score or status maps, update them too
+setScoreMap(prev => ({
+  ...prev,
+  [animeId]: newScore,
+}));
+setStatusMap(prev => ({
+  ...prev,
+  [animeId]: selectedStatus,
+}));
+    setLoading(false);
+    if (error) console.error("Error updating score:", error.message);
+  };
+
+
 
   return (
     <div className="min-h-screen bg-[#10101a] flex flex-col">
       <TopNav />
       <main className="flex-1 flex flex-col">
         <AnimeBanner />
-        <AnimeSearchBar value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+<div className="max-w-7xl mx-auto px-4 flex items-center gap-4 mb-6">        
+  <AnimeSearchBar value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+  <div>
+    <label htmlFor="status-filter" className="sr-only">Filter by Status</label>
+    <select
+      id="status-filter"
+      value={filterStatus}
+      onChange={(e) => setFilterStatus(e.target.value)}
+      className="px-3 py-2 rounded border text-sm bg-zinc-800 text-white"
+    >
+      <option value="All">All</option>
+      <option value="Watching">Watching</option>
+      <option value="Completed">Completed</option>
+      <option value="On-Hold">On-Hold</option>
+      <option value="Dropped">Dropped</option>
+      <option value="Planning">Planning</option>
+    </select>
+  </div>
+</div>
         {selectedTag && (
           <div className="max-w-7xl mx-auto w-full px-4 pb-2 flex items-center gap-2">
             <span className="text-zinc-300 text-sm">Filtering by tag:</span>
@@ -240,18 +493,25 @@ const AnimeBrowser: React.FC = () => {
         )}
         <section className="max-w-7xl mx-auto w-full px-4 pb-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {displayedAnime.length === 0 ? (
+            {animeList.length === 0 ? (
               <div className="col-span-full text-center text-zinc-400 py-16 text-lg">No anime found.</div>
             ) : (
-              displayedAnime.map((anime) => (
+              animeList
+               .filter((anime) => {
+    return filterStatus === "All" || anime.status === filterStatus;
+  })
+              .map((anime) => (
                 <AnimeCard
                   key={anime.id}
                   anime={anime}
-                  userScore={userScores[anime.id] ?? "-"}
-                  status={userStatuses[anime.id] ?? getRandomStatus()}
+                  selectedStatus={anime.status}
+                  score={anime.score}
                   onViewDetails={() => window.location.href = `/anime/${anime.id}`}
                   onTagClick={setSelectedTag}
                   selectedTag={selectedTag}
+                  handleScoreChange={handleScoreChange}
+                  handleStatusChange={handleStatusChange}
+                  toggleFavorite={toggleFavorite}
                 />
               ))
             )}
