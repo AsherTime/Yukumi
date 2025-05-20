@@ -779,7 +779,7 @@ const filteredPosts = postsData
     <div className="flex flex-col md:flex-row gap-8">
 
       {/* ➜ Main Posts Feed column */}
-      <div className="flex-1 flex flex-col space-y-4">     {/* ← NEW wrapper */}
+      <div className="flex-1 flex flex-col bg-[#18181b] space-y-4">     {/* ← NEW wrapper */}
         <AnimatePresence mode="wait">
           {filteredPosts.length === 0 ? (
             <motion.div
