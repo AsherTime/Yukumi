@@ -17,6 +17,7 @@ import { toast } from "sonner"
 import Image from "next/image"
 import { ChevronsLeft, ChevronsRight, Heart, RefreshCw, Play } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 interface QuizAnswer {
   watchType: string
@@ -48,6 +49,7 @@ interface Question {
 
 export default function FindAnimeQuiz() {
   const { user } = useAuth()
+  const router = useRouter()
   const [currentStep, setCurrentStep] = useState(0)
   const [answers, setAnswers] = useState<QuizAnswer>({
     watchType: "",
@@ -60,7 +62,6 @@ export default function FindAnimeQuiz() {
     streamingOnly: false,
     countryPreference: "",
   })
-  const [suggestions, setSuggestions] = useState<Anime[]>([])
   const [loading, setLoading] = useState(false)
 
   const questions: Question[] = [
@@ -203,29 +204,9 @@ export default function FindAnimeQuiz() {
 
       if (quizError) throw quizError
 
-      // Fetch suggested anime based on preferences
-      const { data: suggestedAnime, error: animeError } = await supabase
-        .from('anime')
-        .select('*')
-        .contains('genres', answers.genres)
-        .limit(3)
-
-      if (animeError) throw animeError
-
-      // Insert suggestions
-      const suggestions = suggestedAnime.map(anime => ({
-        quiz_id: quizResult.id,
-        anime_id: anime.id,
-      }))
-
-      const { error: suggestionsError } = await supabase
-        .from('quiz_suggestions')
-        .insert(suggestions)
-
-      if (suggestionsError) throw suggestionsError
-
-      setSuggestions(suggestedAnime)
-      toast.success("Quiz completed! Here are your recommendations.")
+      // No need to fetch or set suggestions here, just redirect
+      toast.success("Quiz completed! Redirecting to your recommendations...")
+      router.push("/recommended-anime")
     } catch (error: any) {
       console.error("Error submitting quiz:", error)
       toast.error("Failed to submit quiz. Please try again.")
@@ -330,61 +311,6 @@ export default function FindAnimeQuiz() {
     }
   }
 
-  const renderSuggestions = () => {
-    if (!suggestions.length) return null
-
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {suggestions.map((anime, index) => (
-          <motion.div
-            key={anime.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.2 }}
-          >
-            <Card className="overflow-hidden bg-black/40 backdrop-blur-sm border-white/10 hover:border-white/20 transition-colors">
-              <div className="relative h-64">
-                <Image
-                  src={anime.image_url}
-                  alt={anime.title}
-                  fill
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-              </div>
-              <CardHeader>
-                <CardTitle className="text-xl">{anime.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-300 mb-4 line-clamp-3">{anime.synopsis}</p>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {anime.genres.map((genre) => (
-                    <Badge
-                      key={genre}
-                      variant="secondary"
-                      className="bg-purple-500/20 text-purple-300 hover:bg-purple-500/30"
-                    >
-                      {genre}
-                    </Badge>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <Button className="flex-1 bg-purple-600 hover:bg-purple-700">
-                    <Play className="mr-2 h-4 w-4" />
-                    Watch Now
-                  </Button>
-                  <Button variant="outline" size="icon" className="border-white/20 hover:bg-white/10">
-                    <Heart className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       {/* Animated background */}
@@ -395,91 +321,61 @@ export default function FindAnimeQuiz() {
       <div className="relative z-10 p-8">
         <div className="max-w-4xl mx-auto">
           <AnimatePresence mode="wait">
-            {!suggestions.length ? (
-              <motion.div
-                key="quiz"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-8"
-              >
-                {/* Progress bar */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm text-gray-400">
-                    <span>Question {currentStep + 1} of {questions.length}</span>
-                    <span>{Math.round(((currentStep + 1) / questions.length) * 100)}%</span>
-                  </div>
-                  <Progress
-                    value={((currentStep + 1) / questions.length) * 100}
-                    className="h-2 bg-white/10"
-                  />
+            <motion.div
+              key="quiz"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-8"
+            >
+              {/* Progress bar */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm text-gray-400">
+                  <span>Question {currentStep + 1} of {questions.length}</span>
+                  <span>{Math.round(((currentStep + 1) / questions.length) * 100)}%</span>
                 </div>
+                <Progress
+                  value={((currentStep + 1) / questions.length) * 100}
+                  className="h-2 bg-white/10"
+                />
+              </div>
 
-                {/* Question card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-black/40 backdrop-blur-sm rounded-xl p-8 border border-white/10"
-                >
-                  <h1 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                    {questions[currentStep].question}
-                  </h1>
-
-                  <div className="space-y-6">
-                    {renderQuestion()}
-                  </div>
-                </motion.div>
-
-                {/* Navigation buttons */}
-                <div className="flex justify-between">
-                  <Button
-                    onClick={handlePrevious}
-                    disabled={currentStep === 0}
-                    variant="outline"
-                    className="border-white/20 hover:bg-white/10"
-                  >
-                    <ChevronsLeft className="mr-2 h-4 w-4" />
-                    Previous
-                  </Button>
-                  <Button
-                    onClick={handleNext}
-                    disabled={loading}
-                    className="bg-purple-600 hover:bg-purple-700"
-                  >
-                    {currentStep === questions.length - 1 ? "Submit" : "Next"}
-                    <ChevronsRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </motion.div>
-            ) : (
+              {/* Question card */}
               <motion.div
-                key="results"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-8"
+                className="bg-black/40 backdrop-blur-sm rounded-xl p-8 border border-white/10"
               >
-                <div className="text-center space-y-4">
-                  <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                    Your Anime Recommendations
-                  </h1>
-                  <p className="text-gray-400">Based on your preferences, we've found these anime for you</p>
-                </div>
+                <h1 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  {questions[currentStep].question}
+                </h1>
 
-                {renderSuggestions()}
-
-                <div className="flex justify-center mt-8">
-                  <Link href="/quiz/find-anime">
-                    <Button
-                      variant="outline"
-                      className="border-white/20 hover:bg-white/10"
-                    >
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Retake Quiz
-                    </Button>
-                  </Link>
+                <div className="space-y-6">
+                  {renderQuestion()}
                 </div>
               </motion.div>
-            )}
+
+              {/* Navigation buttons */}
+              <div className="flex justify-between">
+                <Button
+                  onClick={handlePrevious}
+                  disabled={currentStep === 0}
+                  variant="outline"
+                  className="border-white/20 hover:bg-white/10"
+                >
+                  <ChevronsLeft className="mr-2 h-4 w-4" />
+                  Previous
+                </Button>
+                <Button
+                  onClick={handleNext}
+                  disabled={loading}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  {currentStep === questions.length - 1 ? "Submit" : "Next"}
+                  <ChevronsRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </motion.div>
           </AnimatePresence>
         </div>
       </div>
