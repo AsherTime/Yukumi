@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { useUser } from "@/hooks/useUser";
 import { Loader2 } from "lucide-react";
 import styles from "./styles.module.css";
+import { useRouter } from "next/navigation";
 
 interface Anime {
   id: string;
@@ -19,6 +20,7 @@ const RecommendedAnimePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useUser();
+  const router = useRouter();
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -68,6 +70,10 @@ const RecommendedAnimePage = () => {
     );
   }
 
+  const handleAnimeClick = (animeId: string) => {
+    router.push(`/anime/${animeId}`);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-900 via-gray-900 to-black p-6">
       <div className="max-w-7xl mx-auto">
@@ -94,7 +100,15 @@ const RecommendedAnimePage = () => {
                 {recommendations.map((anime) => (
                   <div
                     key={anime.id}
-                    className="flex-none w-72 bg-gray-900/60 backdrop-blur-sm rounded-xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+                    onClick={() => handleAnimeClick(anime.id)}
+                    className="flex-none w-72 bg-gray-900/60 backdrop-blur-sm rounded-xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        handleAnimeClick(anime.id);
+                      }
+                    }}
                   >
                     <div className="relative h-96 w-full">
                       <img
