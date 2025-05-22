@@ -213,27 +213,6 @@ export default function TrackerPage() {
           </div>
         </div>
 
-        {/* Badge Carousel */}
-        <div className="bg-[#181828] rounded-xl p-4 mb-4 shadow-lg border-l-4 border-[#FF00FF]">
-          <h3 className="font-bold uppercase text-[#FF00FF] mb-2">Badge Carousel</h3>
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {badgesData.map((badge) => (
-              <div
-                key={badge.id}
-                className="min-w-[140px] bg-[#2A2A2A] rounded-xl p-3 flex flex-col items-center gap-1 border border-[#222]"
-              >
-                <Image src={badge.icon} alt={badge.title} width={40} height={40} className="mb-1" />
-                <h4 className="font-bold text-[#FF00FF] text-xs">{badge.title}</h4>
-                <p className="text-xs text-gray-400">{badge.description}</p>
-                <div className="flex justify-between items-center w-full mt-1">
-                  <span className="text-xs">{badge.status === 'unlocked' ? '🔓 Unlocked' : '🔒 Locked'}</span>
-                  <span className="text-xs text-gray-500">Level {badge.level}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Activity Timeline */}
         <div className="bg-[#181828] rounded-xl p-4 mb-4 shadow-lg border-l-4 border-[#FFA500]">
           <h3 className="font-bold uppercase text-[#FFA500] mb-2">Activity Timeline</h3>
@@ -297,45 +276,6 @@ export default function TrackerPage() {
               <span>🕒</span>
               <span>Next perk unlocks in 300 XP</span>
             </div>
-          </div>
-        </div>
-
-        {/* Boosts & Limited-Time Events */}
-        <div className="bg-[#181828] rounded-xl p-4 mb-4 shadow-lg border-l-4 border-[#FF00FF]">
-          <h3 className="font-bold uppercase text-[#FF00FF] mb-2">Boosts & Limited-Time Events</h3>
-          <div className="space-y-2 text-xs">
-            <div className="flex items-center gap-2 text-[#FF00FF]">
-              <span>🔥</span>
-              <span>XP x2 Active for new posts</span>
-            </div>
-            <div className="flex items-center gap-2 text-[#00FFFF]">
-              <span>🎊</span>
-              <span>Weekend Bonus: +25 XP on comments</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Calendar Contribution Graph */}
-        <div className="bg-[#181828] rounded-xl p-4 mb-4 shadow-lg border-l-4 border-[#FFA500]">
-          <h3 className="font-bold uppercase text-[#FFA500] mb-2">Calendar Contribution Graph</h3>
-          <div className="grid grid-cols-7 gap-1">
-            {activityCalendar.map((day, i) => (
-              <div
-                key={i}
-                className={`
-                  aspect-square rounded-sm cursor-pointer
-                  ${[
-                    'bg-[#FFA500] opacity-20',
-                    'bg-[#FFA500] opacity-40',
-                    'bg-[#FFA500] opacity-60',
-                    'bg-[#FFA500] opacity-80',
-                    'bg-[#FFA500] opacity-100',
-                  ][day.intensity]}
-                  transition-opacity
-                `}
-                title={`Logged in – ${day.date} – ${day.xp} XP`}
-              />
-            ))}
           </div>
         </div>
       </main>
