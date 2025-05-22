@@ -26,6 +26,7 @@ interface Community {
   banner_url: string;
   avatar_url: string;
   description: string;
+  rules:string;
   trending_tags: string[];
   trending_topics: string[];
 }
@@ -56,6 +57,7 @@ interface Post {
     display_name: string;
   };
   tags?: string[];
+  views: number;
 }
 
 const bgImageUrl = "https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Flux_Dev_a_stunning_illustration_of_Create_a_highquality_origi_2.jpg?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5X2EwNWE5MzA2LTNiZGItNDliNC1hZGQ2LTFjMjEzNjhiYzcwMSJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9GbHV4X0Rldl9hX3N0dW5uaW5nX2lsbHVzdHJhdGlvbl9vZl9DcmVhdGVfYV9oaWdocXVhbGl0eV9vcmlnaV8yLmpwZyIsImlhdCI6MTc0NzUxMjU1NiwiZXhwIjoxNzc5MDQ4NTU2fQ.Yr4W2KUDf1CWy5aI4dcTEWkJVTR0okuddtHugyA_niM";
@@ -273,7 +275,7 @@ function PostCard({ post, idx, total, formatDate, setMenuOpenId, menuOpenId, use
         </button>
         <span className="flex items-center gap-1 text-zinc-500">
           <Eye className="w-5 h-5 mr-1" />
-          {/* Optional: Add view count if available */}
+          {post.views}
         </span>
       </div>
     </motion.section>
@@ -421,7 +423,7 @@ export default function CommunityIdPage() {
           animetitle_post, post_collections, original_work, reference_link,
           post_tags (
             tags (name)
-          )
+          ), views
         `, { count: "exact" })
         .order("created_at", { ascending: false })
         .range(from, to);
@@ -689,7 +691,11 @@ const filteredPosts = postsData
         <TopNav />
         {/* Banner */}
         <div className="w-full flex justify-center relative">
-          <div className="w-[80%] h-48 md:h-64 relative rounded-2xl shadow-2xl">
+          <div className="hidden md:block fixed top-16 left-0 w-64 h-[calc(100vh-4rem)] bg-[#18181b] border-r border-zinc-800 px-4 py-6 z-30">
+  <JoinedCommunitiesSidebar userId={user?.id ?? null} />
+</div>
+
+          <div className="w-[80%] h-48 md:h-64 relative rounded-2xl shadow-2xl ml-[14.5rem]">
             <Image
               src={community.banner_url || anime.banner_url || "/banner-placeholder.jpg"}
               alt="Community Banner"
@@ -700,7 +706,7 @@ const filteredPosts = postsData
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent rounded-2xl" />
           </div>
           {/* Overlapping Avatar and Header - now outside the banner container */}
-          <div className="absolute left-1/2 -translate-x-1/2 -bottom-12 flex items-end gap-6 z-20 w-[80%]">
+          <div className="absolute left-1/2 -translate-x-1/2 -bottom-12 flex items-end justify-between z-20 w-[80%] ml-[7.5rem]">
             <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white overflow-hidden bg-zinc-800 shadow-lg">
               <Image 
                 src={community.avatar_url || anime.image_url || "/avatar-placeholder.png"} 
@@ -740,14 +746,12 @@ const filteredPosts = postsData
         <div className="h-20 md:h-24" />
 <div className="flex">
 {/* Left Sidebar */}
-    <div className="hidden md:block w-64 min-h-screen bg-[#18181b] border-r border-zinc-800 px-4 py-6">
-    <JoinedCommunitiesSidebar userId={user?.id ?? null} />
-  </div>        
+       
 
        {/* Main Content Layout */}
 <div className="flex-1">
-  <div className="max-w-5xl mx-auto mt-4 px-4 pb-8">
-    <div className="flex flex-col md:flex-row gap-8">
+  <div className="max-w-7xl mx-auto mt-4 px-4 pb-8">
+    <div className="flex flex-col md:flex-row gap-8 md:ml-32">
 
       {/* ➜ Main Posts Feed column */}
       <div className="flex-1 flex flex-col bg-[#18181b] space-y-4">     {/* ← NEW wrapper */}
@@ -786,7 +790,7 @@ const filteredPosts = postsData
       </div>
 
       {/* Right Sidebar */}
-      <div className="w-full md:w-80 flex-shrink-0 space-y-8">
+      <div className="w-full md:w-80 flex-shrink-0 space-y-8 ml-auto">
         {/* Trending Tags */}
         <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
               <h3 className="text-lg font-semibold mb-4">Trending Topics</h3>
@@ -811,6 +815,12 @@ const filteredPosts = postsData
               <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
                 <h3 className="text-lg font-semibold mb-4">About</h3>
                 <p className="text-zinc-300">{community.description}</p>
+              </div>
+            )}
+            {community.rules && (
+              <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
+                <h3 className="text-lg font-semibold mb-4">Rules</h3>
+                <p className="text-zinc-300">{community.rules}</p>
               </div>
             )}
           </div>

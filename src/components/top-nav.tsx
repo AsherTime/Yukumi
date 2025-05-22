@@ -11,12 +11,6 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 
-const NAV_LINKS = [
-  { href: "/homepage", label: "Home" },
-  { href: "/anime", label: "Anime" },
-  { href: "/community/a8a96442-c394-41dd-9632-8a968e53a7fe", label: "Community" },
-  { href: "/tracker", label: "Tracker" },
-]
 
 type Anime = { id: number | string; title: string };
 type Community = { id: number | string; title: string };
@@ -40,7 +34,42 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
   users: [],
 });
 const [selectedCategory, setSelectedCategory] = useState<'anime' | 'community' | 'users'>('anime');
+const [navLinks, setNavLinks] = useState([
+  { href: "/homepage", label: "Home" },
+  { href: "/anime", label: "Anime" },
+  { href: "/community", label: "Community" }, // placeholder
+  { href: "/tracker", label: "Tracker" },
+]);
 
+
+  useEffect(() => {
+  const fetchFirstCommunity = async () => {
+    const user = supabase.auth.getUser(); // or however you get the user ID
+    const userId = (await user).data.user?.id;
+
+    if (!userId) return;
+
+    const { data, error } = await supabase
+      .from("members")
+      .select("community_id")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true }) // assuming joined_at column exists
+      .limit(1)
+      .single();
+
+    if (data?.community_id) {
+      setNavLinks((prev) =>
+        prev.map((link) =>
+          link.label === "Community"
+            ? { ...link, href: `/community/${data.community_id}` }
+            : link
+        )
+      );
+    }
+  };
+
+  fetchFirstCommunity();
+}, []);
 
   const performSearch = async (query: string) => {
 
@@ -119,7 +148,7 @@ function debounce<T extends (...args: any[]) => void>(
             />
           </Link>
           <div className="flex items-center gap-6">
-            {NAV_LINKS.map((link) => (
+            {navLinks.map((link) => (
               <Link
                 key={link.label}
                 href={link.href}

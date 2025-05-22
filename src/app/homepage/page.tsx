@@ -35,6 +35,7 @@ interface Post {
     display_name: string;
   };
   tags?: string[];
+  views: number;
 }
 
 // Custom hook for view counting on visible post
@@ -251,7 +252,7 @@ function PostCard({ post, idx, total, formatDate, setMenuOpenId, menuOpenId, use
         </button>
         <span className="flex items-center gap-1 text-zinc-500">
           <Eye className="w-5 h-5 mr-1" />
-          {/* Optional: Add view count if available */}
+          {post.views}
         </span>
       </div>
     </motion.section>
@@ -310,7 +311,7 @@ export default function HomePage() {
           animetitle_post, post_collections, original_work, reference_link,
           post_tags (
             tags (name)
-          )
+          ), views
         `, { count: "exact" })
         .order("created_at", { ascending: false })
         .range(from, to);

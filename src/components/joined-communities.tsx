@@ -48,14 +48,14 @@ export default function JoinedCommunitiesSidebar({ userId }: Props) {
 
   return (
     <aside className="w-60 shrink-0 border-r border-gray-200 p-4">
-      <h2 className="mb-3 text-lg font-semibold">Your Communities</h2>
+      <h2 className="mb-3 text-lg font-semibold">Joined Communities</h2>
 
       <ul className="space-y-1">
         {communities.map((c) => (
           <li key={c.id}>
             <button
               onClick={() => router.push(`/community/${c.id}`)}
-              className="w-full rounded px-3 py-2 text-left hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full rounded px-3 py-2 text-left hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               {c.title}
             </button>
