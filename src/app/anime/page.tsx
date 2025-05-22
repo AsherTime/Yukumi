@@ -57,19 +57,19 @@ interface AnimeCardProps {
   score: number | null;
   onViewDetails: () => void;
   onTagClick: (tag: string) => void;
-  selectedTag: string | null;
+  selectedTags: string[];
   handleScoreChange: (animeId: string, newScore: number, selectedStatus: string) => Promise<void>;
   handleStatusChange: (animeId: string, newStatus: string) => Promise<void>;
   toggleFavourite: (animeId: string) => void;
 }
 
-const AnimeCard = ({ anime, favourites, selectedStatus,  score, onViewDetails, onTagClick, selectedTag, handleScoreChange, handleStatusChange, toggleFavourite }: AnimeCardProps) => {
+const AnimeCard = ({ anime, favourites, selectedStatus,  score, onViewDetails, onTagClick, selectedTags, handleScoreChange, handleStatusChange, toggleFavourite }: AnimeCardProps) => {
   const [openScore, setOpenScore] = useState(false);
   const [openStatus, setOpenStatus] = useState(false);
   const isInList = !!selectedStatus && selectedStatus !== "";
   // Combine tags and genres, deduplicate, and show up to 3
-  const tagSet = new Set([...(anime.tags || []), ...(anime.genres || [])]);
-  const tags = Array.from(tagSet).slice(0, 3);
+  //const tagSet = new Set([...(anime.tags || []), ...(anime.genres || [])]);
+  const tags = anime.tags || [];
   return (
     <Card className="bg-[#181828] border-zinc-800 shadow-lg hover:scale-[1.025] hover:shadow-xl transition-transform duration-200 relative flex flex-col">
 <button
@@ -89,16 +89,19 @@ const AnimeCard = ({ anime, favourites, selectedStatus,  score, onViewDetails, o
         <CardTitle className="text-lg font-bold text-white truncate">{anime.title}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2 pb-2">
-        {tags.map((tag) => (
-          <Badge
-            key={tag + anime.id}
-            variant={selectedTag === tag ? "default" : "secondary"}
-            className={`cursor-pointer hover:bg-purple-700 hover:text-white transition-colors ${selectedTag === tag ? "bg-purple-700 text-white" : ""}`}
-            onClick={() => onTagClick(tag)}
-          >
-            #{tag}
-          </Badge>
-        ))}
+        {tags.map((tag) => {
+  const isSelected = selectedTags.includes(tag);
+  return (
+    <Badge
+      key={tag + anime.id}
+      variant={isSelected ? "default" : "secondary"}
+      className={`cursor-pointer hover:bg-purple-700 hover:text-white transition-colors ${isSelected ? "bg-purple-700 text-white" : ""}`}
+      onClick={() => onTagClick(tag)}
+    >
+      #{tag}
+    </Badge>
+  );
+})}
       </CardContent>
        <div className="flex flex-col gap-1 text-sm text-zinc-300 pb-2 ml-[30px]">
       {/* ─────────── Score dropdown ─────────── */}
@@ -228,7 +231,7 @@ const AnimeBrowser: React.FC = () => {
   const [favorites, setFavorites] = useState<Anime[]>([])
   const [userScores, setUserScores] = useState<Record<number, string>>({})
   const [userStatuses, setUserStatuses] = useState<Record<number, string>>({})
-  const [selectedTag, setSelectedTag] = useState<string | null>(null)
+const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [score, setScore] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -396,6 +399,13 @@ useEffect(() => {
   loadData();
 }, [userId]);
 
+const handleTagClick = (tag: string) => {
+  setSelectedTags((prevTags) =>
+    prevTags.includes(tag)
+      ? prevTags.filter((t) => t !== tag)
+      : [...prevTags, tag]
+  );
+};
 
 
 
@@ -533,24 +543,46 @@ setStatusMap(prev => ({
 </button>
 
 </div>
-        {selectedTag && (
-          <div className="max-w-7xl mx-auto w-full px-4 pb-2 flex items-center gap-2">
-            <span className="text-zinc-300 text-sm">Filtering by tag:</span>
-            <Badge variant="default" className="bg-purple-700 text-white">#{selectedTag}</Badge>
-            <Button size="sm" variant="ghost" className="text-xs px-2 py-1" onClick={() => setSelectedTag(null)}>Clear</Button>
-          </div>
-        )}
+       {selectedTags.length > 0 && (
+  <div className="max-w-7xl mx-auto w-full px-4 pb-2 flex items-center gap-2">
+    <span className="text-zinc-300 text-sm">Filtering by tag:</span>
+    {/* Render each selected tag as a Badge */}
+    {selectedTags.map((tag) => (
+      <Badge key={tag} variant="default" className="bg-purple-700 text-white">
+        #{tag}
+      </Badge>
+    ))}
+    <Button
+      size="sm"
+      variant="ghost"
+      className="text-xs px-2 py-1"
+      onClick={() => setSelectedTags([])}
+    >
+      Clear
+    </Button>
+  </div>
+)}
+
         <section className="max-w-7xl mx-auto w-full px-4 pb-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {animeList.length === 0 ? (
               <div className="col-span-full text-center text-zinc-400 py-16 text-lg">No anime found.</div>
             ) : (
               animeList
-              .filter((anime) => {
-      const matchesStatus = filterStatus === "All" || anime.status === filterStatus;
-      const isFavourited = !showFavouritesOnly || favourites.includes(anime.id);
-      return matchesStatus && isFavourited;
-    })
+  .filter((anime) => {
+    const matchesStatus = filterStatus === "All" || anime.status === filterStatus;
+    const isFavourited = !showFavouritesOnly || favourites.includes(anime.id);
+    const matchesTags =
+      selectedTags.length === 0 ||
+      selectedTags.every(tag => anime.tags?.includes(tag)); // assuming anime.tags is an array
+    const matchesSearch =
+      searchQuery.trim() === "" ||
+      anime.title.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchesStatus && isFavourited && matchesTags && matchesSearch;
+  })
+
+
               .map((anime) => (
                 <AnimeCard
                   key={anime.id}
@@ -559,8 +591,8 @@ setStatusMap(prev => ({
                   selectedStatus={anime.status}
                   score={anime.score}
                   onViewDetails={() => window.location.href = `/anime/${anime.id}`}
-                  onTagClick={setSelectedTag}
-                  selectedTag={selectedTag}
+                  onTagClick={handleTagClick}
+                  selectedTags={selectedTags}
                   handleScoreChange={handleScoreChange}
                   handleStatusChange={handleStatusChange}
                   toggleFavourite={toggleFavourite}
