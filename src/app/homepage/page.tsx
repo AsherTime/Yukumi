@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { LeftSidebar } from "@/components/left-sidebar";
-import { RightSidebar } from "@/components/right-sidebar";
+import { FeaturePanel } from "@/components/feature-panel";
 import { TopNav } from "@/components/top-nav";
 import { Card } from "@/components/ui/card";
 import { FiFlag, FiHeart, FiMessageCircle, FiMoreHorizontal } from "react-icons/fi";
@@ -669,9 +669,9 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right Sidebar */}
+          {/* Right Sidebar - Feature Panel */}
           <div className="w-1/4 hidden lg:block">
-            <RightSidebar />
+            <FeaturePanel />
           </div>
         </div>
       </div>
