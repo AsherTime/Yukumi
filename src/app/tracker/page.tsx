@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
-import { FiCalendar, FiAward, FiGift, FiClock, FiStar, FiTrendingUp } from 'react-icons/fi';
+import { FiCalendar, FiAward, FiGift, FiClock, FiStar, FiTrendingUp, FiThumbsUp, FiMessageCircle } from 'react-icons/fi';
 import { FaFire } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
@@ -78,210 +78,137 @@ export default function TrackerPage() {
     { id: 2, title: 'Quiz Master', description: 'Completed 10 quizzes', status: 'locked', level: 3, icon: '/badges/quiz-master.png' },
   ];
 
+  // Remove graph, leaderboard, and streak tracker. Add tracker score section.
+  const trackerScore = 742;
+  let scoreColor = "bg-gray-700";
+  let glow = "shadow-gray-500/50";
+  let badge = null;
+  if (trackerScore > 800) {
+    scoreColor = "bg-purple-700";
+    glow = "shadow-purple-500/70";
+    badge = <span className="ml-3 px-3 py-1 rounded-full bg-purple-500 text-white text-xs font-bold animate-pulse">Legendary</span>;
+  } else if (trackerScore > 600) {
+    scoreColor = "bg-blue-700";
+    glow = "shadow-blue-500/70";
+  } else if (trackerScore > 400) {
+    scoreColor = "bg-green-600";
+    glow = "shadow-green-400/60";
+  } else if (trackerScore > 200) {
+    scoreColor = "bg-yellow-400";
+    glow = "shadow-yellow-300/60";
+  }
+
+  // Example interaction stats (replace with real data as needed)
+  const interactions = [
+    { label: 'Posts', value: 62 },
+    { label: 'Communities', value: 8 },
+    { label: 'Events', value: 5 },
+    { label: 'Quizzes', value: 12 },
+  ];
+
+  // Score gradient logic
+  let scoreGradient = 'from-gray-400 via-gray-500 to-gray-700';
+  if (trackerScore > 800) scoreGradient = 'from-blue-500 via-blue-400 to-indigo-500';
+  else if (trackerScore > 600) scoreGradient = 'from-green-400 via-green-500 to-emerald-500';
+  else if (trackerScore > 400) scoreGradient = 'from-yellow-300 via-yellow-400 to-yellow-500';
+  else if (trackerScore > 200) scoreGradient = 'from-gray-400 via-gray-500 to-gray-700';
+  else scoreGradient = 'from-red-500 via-pink-500 to-red-700';
+
+  // Score color logic for ring and progress bar (updated colors)
+  let ringColor = '#64748b'; // Slate Blue
+  if (trackerScore > 900) ringColor = '#8b5cf6'; // Electric Purple
+  else if (trackerScore > 700) ringColor = '#6366f1'; // Vivid Indigo
+  else if (trackerScore > 500) ringColor = '#0ea5e9'; // Bright Aqua Blue
+  else if (trackerScore > 300) ringColor = '#22d3ee'; // Neon Cyan
+
+  const { user } = useAuth();
+  const [postCount, setPostCount] = useState(0);
+  const [likeCount, setLikeCount] = useState(0);
+  const [commentCount, setCommentCount] = useState(0);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    // Fetch posts count
+    supabase.from('posts').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+      .then(({ count }) => setPostCount(count || 0));
+    // Fetch likes count
+    supabase.from('likes').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+      .then(({ count }) => setLikeCount(count || 0));
+    // Fetch comments count
+    supabase.from('comments').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+      .then(({ count }) => setCommentCount(count || 0));
+  }, [user?.id]);
+
+  // Stats row data (dynamic)
+  const stats = [
+    { icon: <FiStar />, label: 'Posts', value: postCount },
+    { icon: <FiThumbsUp />, label: 'Likes', value: likeCount },
+    { icon: <FiMessageCircle />, label: 'Comments', value: commentCount },
+    { icon: <FiCalendar />, label: 'Events', value: 0 },
+  ];
+
   return (
     <>
       <TopNav />
-      {/* XP & Level Header - now above main */}
-      <div className="bg-[#181828] rounded-xl mx-2 md:mx-6 mt-4 mb-6 shadow-lg flex flex-col md:flex-row items-center justify-between border-l-4 border-[#FF00FF] z-10 relative">
-        <div className="flex items-center gap-2">
-          <span className="text-[#FF00FF] text-lg font-bold uppercase tracking-wider">LEVEL {currentLevel}</span>
-          <span className="w-3 h-3 bg-[#FF00FF] rounded-full inline-block"></span>
-        </div>
-        <span className="text-[#FF00FF] font-bold text-lg ml-auto">{currentXP} XP</span>
-        <div className="w-full md:w-1/2 h-3 bg-gray-800 rounded-full overflow-hidden mt-4 md:mt-0 md:ml-6">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${(currentXP / xpToNextLevel) * 100}%` }}
-            className="h-full bg-[#FF00FF] rounded-full"
-          />
-        </div>
-      </div>
-      <main className="min-h-screen bg-[#0F0F0F] text-white p-2 md:p-6">
-        {/* First Row Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          {/* Score Card */}
-          <div className="bg-[#181828] rounded-xl p-4 shadow-lg border-l-4 border-[#FFA500]">
-            <h3 className="font-bold uppercase text-[#FFA500] mb-2">Score</h3>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between"><span>Posts</span><span className="text-[#00FFFF]">62 XP</span></div>
-              <div className="flex justify-between"><span>Comments</span><span className="text-[#00FFFF]">450 XP</span></div>
-              <div className="flex justify-between"><span>Events</span><span className="text-[#00FFFF]">920 XP</span></div>
-              <div className="flex justify-between"><span>List</span><span className="text-[#00FFFF]">20 XP</span></div>
-              <div className="flex justify-between"><span>Logins</span><span className="text-[#00FFFF]">12 XP</span></div>
-              <div className="flex justify-between"><span>Quizzes</span><span className="text-[#00FFFF]">30 XP</span></div>
+      <div className="flex flex-row w-full min-h-[90vh] bg-[#0d0d0d] pt-8 px-4 gap-8">
+        {/* Left Main Tracker Panel */}
+        <div className="w-full max-w-sm flex flex-col items-center rounded-3xl bg-gradient-to-br from-[#181828]/80 via-[#232232]/90 to-[#181828]/80 backdrop-blur-md border-2 border-[#a21caf] p-8 shadow-2xl relative mt-16 mb-8" style={{boxShadow: '0 0 32px 0 #a21caf99, 0 4px 32px 0 #0008'}}>
+          {/* Soft radial glow behind score */}
+          <div className="absolute top-8 left-1/2 -translate-x-1/2 w-72 h-72 bg-gradient-radial from-purple-500/30 via-fuchsia-500/10 to-transparent rounded-full blur-2xl opacity-80 z-0" />
+          {/* Smooth single-color ring with hover effect, no square background behind number */}
+          <div className={`relative flex items-center justify-center w-60 h-60 mb-6 group`}> 
+            <svg
+              className="relative z-10 transition-transform duration-300"
+              width="240" height="240" viewBox="0 0 240 240"
+              style={{
+                filter: `drop-shadow(0 0 0px ${ringColor})`,
+                transition: 'filter 0.3s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.filter = `drop-shadow(0 0 24px ${ringColor})`}
+              onMouseLeave={e => e.currentTarget.style.filter = `drop-shadow(0 0 0px ${ringColor})`}
+            >
+              <circle cx="120" cy="120" r="100" strokeWidth="20" fill="none" stroke="#232232" />
+              <circle
+                cx="120" cy="120" r="100" strokeWidth="10" fill="none"
+                stroke={ringColor}
+                strokeDasharray={2 * Math.PI * 100}
+                strokeDashoffset={2 * Math.PI * 100 * (1 - trackerScore / 1000)}
+                strokeLinecap="round"
+                style={{ filter: `drop-shadow(0 0 12px ${ringColor}cc)` }}
+              />
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center text-[4rem] font-extrabold text-white font-[Orbitron,Oxanium,sans-serif] drop-shadow-[0_2px_16px_rgba(168,85,247,0.7)] select-none">{trackerScore}{badge}</span>
+          </div>
+          {/* Progress Bar */}
+          <div className="w-full mt-2 mb-6">
+            <div className="relative w-full h-2 bg-[#232232] rounded-full overflow-hidden">
+              <div className="absolute left-0 top-0 h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(100, Math.round((trackerScore / 1000) * 100))}%`, background: ringColor }} />
             </div>
           </div>
-          {/* Stats Card */}
-          <div className="bg-[#181828] rounded-xl p-4 shadow-lg border-l-4 border-[#00FFFF]">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-bold uppercase text-[#00FFFF]">Stats (Last 7 Days)</h3>
-              <button className="text-gray-400 hover:text-white"><FiClock className="w-5 h-5" /></button>
-            </div>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between"><span>Post Views</span><span className="text-[#FFA500]">120</span></div>
-              <div className="flex justify-between"><span>Likes</span><span className="text-[#FFA500]">300 XP</span></div>
-              <div className="flex justify-between"><span>Comments</span><span className="text-[#FFA500]">122 XP</span></div>
-              <div className="flex justify-between"><span>Replies</span><span className="text-[#FFA500]">62 XP</span></div>
-            </div>
-          </div>
-          {/* Graph Card */}
-          <div className="bg-[#181828] rounded-xl p-4 shadow-lg border-l-4 border-[#FF00FF]">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-bold uppercase text-[#FF00FF]">Graph</h3>
-              <button className="px-2 py-1 bg-[#FF00FF] rounded text-xs">Weekly</button>
-            </div>
-            <div className="h-[120px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={graphData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis dataKey="name" stroke="#666" />
-                  <YAxis stroke="#666" />
-                  <RechartsTooltip />
-                  <Line type="monotone" dataKey="visits" stroke="#FF00FF" />
-                  <Line type="monotone" dataKey="follows" stroke="#00FFFF" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* Button Grid, Streak, Missions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          {/* Button Grid */}
-          <div className="bg-[#181828] rounded-xl p-4 shadow-lg flex flex-wrap justify-center items-center gap-3 border-l-4 border-[#FF00FF]">
-            {[
-              { icon: <FiCalendar />, label: 'Event History' },
-              { icon: <FiTrendingUp />, label: 'Leaderboards' },
-              { icon: <FiAward />, label: 'Badges' },
-              { icon: <FiStar />, label: 'Achievements' },
-              { icon: <FiClock />, label: 'Calendar' },
-              { icon: <FiGift />, label: 'Redeem Points' },
-            ].map((item, index) => (
-              <button
-                key={index}
-                className="w-20 h-20 bg-[#1A1A1A] rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-[#2A2A2A] transition-all duration-300 hover:shadow-[0_0_15px_rgba(255,0,255,0.3)]"
-              >
-                <span className="text-2xl text-[#FF00FF]">{item.icon}</span>
-                <span className="text-xs text-center">{item.label}</span>
-              </button>
-            ))}
-          </div>
-          {/* Streak Tracker */}
-          <div className="bg-[#181828] rounded-xl p-4 shadow-lg flex flex-col items-center border-l-4 border-[#FFA500]">
-            <div className="flex items-center justify-between w-full mb-2">
-              <h3 className="font-bold uppercase text-[#FFA500]">Streak Tracker</h3>
-              <span className="text-[#00FFFF] text-xs">XP Boost: Active!</span>
-            </div>
-            <div className="flex gap-2">
-              {[...Array(7)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center"
-                  title={i < streakDays ? 'Active' : 'Inactive'}
-                >
-                  {i < streakDays ? (
-                    <FaFire className="text-[#FFA500] w-4 h-4" />
-                  ) : (
-                    <span className="text-gray-600">•</span>
-                  )}
-                </div>
-              ))}
-            </div>
-            <span className="text-xs text-gray-400 mt-2">Maintain 7-day streak for bonus XP</span>
-          </div>
-          {/* Daily/Weekly Missions */}
-          <div className="bg-[#181828] rounded-xl p-4 shadow-lg border-l-4 border-[#00FFFF]">
-            <h3 className="font-bold uppercase text-[#00FFFF] mb-2">Daily/Weekly Missions</h3>
-            <div className="space-y-2">
-              {missions.map((mission) => (
-                <div key={mission.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={mission.completed}
-                    readOnly
-                    className="w-4 h-4 rounded border-2 border-[#FF00FF] accent-[#FF00FF]"
-                  />
-                  <span className={mission.completed ? 'line-through text-gray-500 text-xs' : 'text-xs'}>
-                    {mission.text}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-2 text-right text-[#00FFFF] text-xs">
-              3/5 missions done – +25 XP 🎁
-            </div>
-          </div>
-        </div>
-
-        {/* Activity Timeline */}
-        <div className="bg-[#181828] rounded-xl p-4 mb-4 shadow-lg border-l-4 border-[#FFA500]">
-          <h3 className="font-bold uppercase text-[#FFA500] mb-2">Activity Timeline</h3>
-          <div className="space-y-2 text-xs">
-            {[
-              'Posted a comment – +10 XP',
-              'Daily login – +5 XP',
-              'Quiz completed – +20 XP',
-            ].map((activity, index) => (
-              <div key={index} className="flex items-center gap-2 text-gray-300">
-                <span className="w-2 h-2 bg-[#00FFFF] rounded-full"></span>
-                {activity}
+          {/* Stats Row - now vertical, one per row */}
+          <div className="flex flex-col w-full gap-3 mt-2">
+            {stats.map((stat, idx) => (
+              <div key={stat.label} className="flex flex-row items-center justify-center bg-[#181828]/80 rounded-full px-6 py-3 shadow-md border border-[#232232] hover:scale-105 hover:shadow-[0_0_8px_2px_rgba(168,85,247,0.2)] transition-all duration-200 cursor-pointer mx-auto w-3/4">
+                <span className="text-lg mr-4" style={{ color: ringColor }}>{stat.icon}</span>
+                <span className="text-white font-bold text-base font-[Orbitron,Oxanium,sans-serif] mr-2">{stat.value}</span>
+                <span className="text-xs text-zinc-400 mt-0.5">{stat.label}</span>
               </div>
             ))}
           </div>
         </div>
-
-        {/* Leaderboard Preview */}
-        <div className="bg-[#181828] rounded-xl p-4 mb-4 shadow-lg border-l-4 border-[#00FFFF]">
-          <h3 className="font-bold uppercase text-[#00FFFF] mb-2">Leaderboard Preview</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-[#FFA500] text-left">
-                  <th>Avatar</th>
-                  <th>Name</th>
-                  <th>Level</th>
-                  <th>XP</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leaderboardData.slice(0, 5).map((user) => (
-                  <tr key={user.id} className="border-b border-[#222]">
-                    <td>
-                      <Image src={user.avatar} alt={user.name} width={28} height={28} className="rounded-full" />
-                    </td>
-                    <td>{user.name}</td>
-                    <td>{user.level}</td>
-                    <td>{user.xp}</td>
-                  </tr>
-                ))}
-                <tr>
-                  <td colSpan={4} className="text-center text-gray-400 pt-2">
-                    Your Rank: #124
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Rewards Panel */}
-        <div className="bg-[#181828] rounded-xl p-4 mb-4 shadow-lg border-l-4 border-[#FFA500]">
-          <h3 className="font-bold uppercase text-[#FFA500] mb-2">Rewards Panel</h3>
-          <div className="space-y-2 text-xs">
-            <div className="flex items-center gap-2 text-[#00FFFF]">
-              <span>🎯</span>
-              <span>Reach Level 6 to unlock: Rising Star Badge</span>
-            </div>
-            <div className="flex items-center gap-2 text-[#FF00FF]">
-              <span>🕒</span>
-              <span>Next perk unlocks in 300 XP</span>
-            </div>
-          </div>
-        </div>
-      </main>
+        {/* Right panel placeholder for future cards */}
+        <div className="flex-1" />
+      </div>
     </>
   );
 }
+
+/* Add to your global CSS (e.g. globals.css or in a <style jsx global>)
+@keyframes float-slow { 0% { transform: translateY(0); } 50% { transform: translateY(-16px); } 100% { transform: translateY(0); } }
+@keyframes float-slower { 0% { transform: translateY(0); } 50% { transform: translateY(-8px); } 100% { transform: translateY(0); } }
+.animate-float-slow { animation: float-slow 4s ease-in-out infinite; }
+.animate-float-slower { animation: float-slower 7s ease-in-out infinite; }
+*/
 
 
 
