@@ -12,6 +12,9 @@ import { useAuth } from "@/contexts/AuthContext"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import DOMPurify from 'dompurify';
+import ImageKit from "imagekit-javascript";
+import { IKContext, IKUpload } from 'imagekitio-react';
+
 
 interface Anime {
   id: string;
@@ -212,84 +215,52 @@ export default function CoverUpload() {
     reader.readAsDataURL(file)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!selectedFile) {
-      setError("Please select an image first")
-      return
-    }
+  
+const [imageUrl, setImageUrl] = useState('');
 
-    if (!title.trim()) {
-      setError("Please enter a title")
-      return
-    }
-
-    if (postTags.length > 5) {
-      setTagError("You can add up to 5 tags only.");
-      return;
-    }
-
-    if (postTags.some(tag => tag.length > 30)) {
-      setTagError("Each tag must be 30 characters or less.");
-      return;
-    }
-
-    try {
-      setLoading(true)
-      setError(null)
-      setTagError(null)
-
-      // Upload image
-      const fileExt = selectedFile.name.split('.').pop()
-      const fileName = `${Math.random()}.${fileExt}`
-
-      const { data: uploadedImage, error: uploadError } = await supabase.storage
-        .from("posts-image")
-        .upload(`posts/${fileName}`, selectedFile, {
-          upsert: false
-        })
-
-      if (uploadError) {
-        console.error("Upload error:", uploadError)
-        throw new Error("Failed to upload image")
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("posts-image")
-        .getPublicUrl(uploadedImage.path)
-
-      // Get the selected anime title if any
-      const selectedAnimeTitle = selectedAnime ? animeList.find(a => a.id === selectedAnime)?.title : null
-
-      // Create post with updated field names
-      const postData = {
-        user_id: user?.id,
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+try {
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) {
+    alert('You must be logged in to post.');
+    return;
+  }
+  const selectedAnimeTitle = selectedAnime ? animeList.find(a => a.id === selectedAnime)?.title : null
+  const postData = {
+        user_id: user.id,
         title,
         content,
         created_at: new Date().toISOString(),
-        image_url: publicUrl,
+        image_url: imageUrl,
         animetitle_post: selectedAnimeTitle,
         post_collections: selectedCollection || null,
         original_work: isOriginalWork,
         reference_link: referenceLink || null
       }
 
-      console.log("Attempting to create post with data:", postData)
-
-      const { data: newPost, error: postError } = await supabase
+  const { data: newPost, error: postError } = await supabase
         .from("posts")
         .insert(postData)
         .select()
-        .single()
+        .single();
 
-      if (postError) {
+  if (postError) {
         console.error("Post creation error:", postError)
         throw new Error(postError.message)
-      }
-
-      // Tag logic: insert/find tags, then link in post_tags
-      for (const tag of postTags) {
+      } else {
+    alert('Post created successfully!');
+    setTitle('');
+    setContent('');
+    setImageUrl('');
+    setPreviewImage('');
+  }
+   let finalTags = [...postTags];
+  if (tagInput.trim() !== "" && !postTags.includes(tagInput.trim().toLowerCase())) {
+    finalTags.push(tagInput.trim().toLowerCase());
+  }
+  console.log("Final tags:", finalTags)
+  for (const tag of finalTags) {
         // 1. Check if tag exists
         let tagId: string | null = null;
         const { data: tagRow, error: tagFetchError } = await supabase
@@ -332,7 +303,9 @@ export default function CoverUpload() {
     } finally {
       setLoading(false)
     }
-  }
+
+};
+
 
   // Tag input handlers
   const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -400,25 +373,44 @@ export default function CoverUpload() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="image">Cover Image</Label>
-            <Input
-              id="image"
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="bg-[#2e2e2e] border-0"
-            />
-            {previewImage && (
-              <div className="mt-2">
-                <img
-                  src={previewImage}
-                  alt="Preview"
-                  className="max-h-48 rounded"
-                />
-              </div>
-            )}
-          </div>
+        <IKContext
+  publicKey={process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY!}
+  urlEndpoint={process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT!}
+  authenticator={async () => {
+    const res = await fetch("/api/imagekit-auth");
+    return await res.json();
+  }}
+>
+  <div className="space-y-2">
+    <Label htmlFor="image">Cover Image</Label>
+
+    <IKUpload
+  fileName="cover-image.jpg"
+  folder="/posts" // ✅ Uploads image to the 'posts' folder
+  onSuccess={(res: { url: string }) => {
+    console.log("Upload success:", res);
+    setPreviewImage(res.url);
+    setImageUrl(res.url);
+  }}
+  onError={(err: Error) => {
+    console.error("Upload error:", err);
+  }}
+  className="bg-[#2e2e2e] border-0"
+/>
+
+
+    {previewImage && (
+      <div className="mt-2">
+        <img
+          src={previewImage}
+          alt="Preview"
+          className="max-h-48 rounded"
+        />
+      </div>
+    )}
+  </div>
+</IKContext>
+
 
           <div className="space-y-2">
             <Label>Content</Label>

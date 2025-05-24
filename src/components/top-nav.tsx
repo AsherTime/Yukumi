@@ -37,7 +37,7 @@ const [selectedCategory, setSelectedCategory] = useState<'anime' | 'community' |
 const [navLinks, setNavLinks] = useState([
   { href: "/homepage", label: "Home" },
   { href: "/anime", label: "Anime" },
-  { href: "/community", label: "Community" }, // placeholder
+  { href: "/community/a8a96442-c394-41dd-9632-8a968e53a7fe", label: "Community" }, // placeholder
   { href: "/tracker", label: "Tracker" },
 ]);
 
