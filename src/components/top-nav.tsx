@@ -9,6 +9,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { LogOut, Settings } from "lucide-react"
 
 
 
@@ -40,6 +48,7 @@ const [navLinks, setNavLinks] = useState([
   { href: "/community/a8a96442-c394-41dd-9632-8a968e53a7fe", label: "Community" }, // placeholder
   { href: "/tracker", label: "Tracker" },
 ]);
+const [userProfile, setUserProfile] = useState<any>(null);
 
 
   useEffect(() => {
@@ -70,6 +79,27 @@ const [navLinks, setNavLinks] = useState([
 
   fetchFirstCommunity();
 }, []);
+
+useEffect(() => {
+  const fetchUserProfile = async () => {
+    if (!user?.id) return;
+    try {
+      const { data: profile, error } = await supabase
+        .from('Profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (!error && profile) {
+        setUserProfile(profile);
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
+  fetchUserProfile();
+}, [user?.id]);
 
   const performSearch = async (query: string) => {
 
@@ -261,10 +291,52 @@ function debounce<T extends (...args: any[]) => void>(
                 <Link href="/notifications" className="text-white hover:text-gray-300 transition-colors">
                   <Bell className="w-5 h-5" />
                 </Link>
-                <Link href="/profile" className="text-white hover:text-gray-300 transition-colors">
-                  <User className="w-5 h-5" />
-                </Link>
-                <LogoutButton />
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="focus:outline-none">
+                    <div className="relative h-8 w-8 rounded-full overflow-hidden cursor-pointer hover:ring-2 hover:ring-pink-500 transition-all">
+                      {userProfile?.avatar_url ? (
+                        <img
+                          src={userProfile.avatar_url}
+                          alt="Profile"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full bg-zinc-700 flex items-center justify-center">
+                          <User className="h-4 w-4 text-white" />
+                        </div>
+                      )}
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 bg-[#181828] border border-zinc-800">
+                    <DropdownMenuItem className="text-white hover:bg-zinc-800 cursor-pointer">
+                      <Link href="/profile" className="flex items-center w-full">
+                        <User className="mr-2 h-4 w-4" />
+                        Profile
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-white hover:bg-zinc-800 cursor-pointer">
+                      <Link href="/settings" className="flex items-center w-full">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="text-red-500 hover:bg-zinc-800 cursor-pointer"
+                      onClick={() => {
+                        const logoutButton = document.querySelector('[data-logout-button]');
+                        if (logoutButton) {
+                          (logoutButton as HTMLButtonElement).click();
+                        }
+                      }}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <div className="hidden">
+                  <LogoutButton />
+                </div>
               </>
             ) : (
               // Logged-out view  
