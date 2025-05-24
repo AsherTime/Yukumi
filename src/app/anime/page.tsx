@@ -26,7 +26,7 @@ interface Anime {
   genres?: string[]
 } 
 
-const ANIME_BANNER_URL = "https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Leonardo_Phoenix_10_Highresolution_cinematic_animestyle_hero_b_3.jpg?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5X2EwNWE5MzA2LTNiZGItNDliNC1hZGQ2LTFjMjEzNjhiYzcwMSJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9MZW9uYXJkb19QaG9lbml4XzEwX0hpZ2hyZXNvbHV0aW9uX2NpbmVtYXRpY19hbmltZXN0eWxlX2hlcm9fYl8zLmpwZyIsImlhdCI6MTc0NzY2MjAwMywiZXhwIjoxNzc5MTk4MDAzfQ.hLX59XtwEW2FHByKn_5YqBlTB23Tjse5urv4q761b-k";
+const ANIME_BANNER_URL = "https://ik.imagekit.io/g19tkydww/Background_Images/Leonardo_Phoenix_10_Highresolution_cinematic_animestyle_hero_b_3.jpg?updatedAt=1748013350841";
 
 const scoreOptions = Array.from({ length: 10 }, (_, i) => i + 1);
 const statusOptions = [
