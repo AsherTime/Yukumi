@@ -48,7 +48,7 @@ export function FeaturePanel() {
     icon: "/icons/upload.svg",
     label: "Upload Post",
     color: "#9333ea",
-    href: "/create-post"
+    href: "/upload"
   };
 
   // The rest in a grid
