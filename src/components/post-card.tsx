@@ -30,7 +30,7 @@ interface Post {
   views: number;
 }
 
-export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, menuOpenId, user, setShowConfirmId, showConfirmId, reportConfirmId, setReportConfirmId, handleDelete, handleLikeClick, handleCommentClick, handleReport, saved, handleSave }: {
+export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, menuOpenId, user, setShowConfirmId, showConfirmId, reportConfirmId, setReportConfirmId, handleDelete, handleLikeClick, handleCommentClick, handleReport, saved, handleSave, isFollowing, onFollowToggle }: {
   post: Post,
   idx: number,
   total: number,
@@ -48,6 +48,8 @@ export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, 
   handleReport: (postId: string) => void,
   saved: string[],
   handleSave: (postId: string) => void,
+  isFollowing: boolean,
+  onFollowToggle: (followedId: string) => Promise<void>
 }) {
   const viewRef = useViewCountOnVisible(post.id);
   const isSaved = saved.includes(post.id);
@@ -67,100 +69,102 @@ export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, 
         }
       >
         {/* Top Row: Avatar, Username, Timestamp, Follow, More */}
-        <div className = "relative">
-        <div className="flex items-center justify-between px-6 pt-5 pb-2">
-          <div className="flex items-center gap-3">
-            <Link href={`/profile/${post.user_id}`} className="flex items-center gap-3 group" prefetch={false}>
-              {post.Profiles?.avatar_url ? (
-                <img
-                  src={post.Profiles.avatar_url}
-                  alt={post.Profiles.display_name || "User"}
-                  className="w-10 h-10 rounded-full object-cover border border-zinc-700 group-hover:ring-2 group-hover:ring-blue-500 transition"
-                />
-              ) : (
-                <UserCircle className="w-10 h-10 text-zinc-500 group-hover:text-blue-400 transition" />
-              )}
-              <div>
-                <div className="text-white font-semibold text-base leading-tight group-hover:underline group-hover:text-blue-400 transition">{post.Profiles?.display_name || "Anonymous"}</div>
-                <div className="text-xs text-zinc-400">{formatDate(post.created_at)}</div>
-              </div>
-            </Link>
-          </div>
-          <div className="absolute top-3 right-3 flex items-center gap-2">
-            <FollowButton
-              followedId={post.user_id}
-              className="rounded-full px-4 py-1 bg-blue-900 text-blue-400 font-semibold shadow hover:bg-blue-800 transition text-xs"
-            />
-            <button
-              onClick={() => handleSave(post.id)}
-              aria-label={isSaved ? 'Unsave' : 'Save'}
-              className="text-blue-400 hover:text-blue-300"
-            >
-              {isSaved ? <FaBookmark size={20} /> : <FiBookmark size={20} />}
-            </button>
-            <div className="relative inline-block text-left">
-              <button
-                className="bg-black/30 p-2 rounded-full text-white hover:text-gray-300"
-                onClick={() =>
-                  setMenuOpenId((prev) => (prev === post.id ? null : post.id))
-                }
-              >
-                <FiMoreHorizontal size={20} />
-              </button>
-              {menuOpenId === post.id && (
-                <div className="absolute right-0 mt-2 w-28 bg-white rounded shadow z-10">
-                  {user?.id === post.user_id ? (
-                    <button
-                      className="block w-full px-4 py-2 text-left text-red-600 hover:bg-gray-100"
-                      onClick={() => {
-                        setShowConfirmId(post.id); // this will trigger the popup
-                        setMenuOpenId(null);
-                      }}
-                    >
-                      Delete
-                    </button>
-                  ) : (
-                    <button
-                      className="block w-full px-4 py-2 text-left text-yellow-600 hover:bg-gray-100"
-                      onClick={() => {
-                        setReportConfirmId(post.id);
-                        setMenuOpenId(null);
-                      }}
-                    >
-                      Report
-                    </button>
-                  )}
+        <div className="relative">
+          <div className="flex items-center justify-between px-6 pt-5 pb-2">
+            <div className="flex items-center gap-3">
+              <Link href={`/profile/${post.user_id}`} className="flex items-center gap-3 group" prefetch={false}>
+                {post.Profiles?.avatar_url ? (
+                  <img
+                    src={post.Profiles.avatar_url}
+                    alt={post.Profiles.display_name || "User"}
+                    className="w-10 h-10 rounded-full object-cover border border-zinc-700 group-hover:ring-2 group-hover:ring-blue-500 transition"
+                  />
+                ) : (
+                  <UserCircle className="w-10 h-10 text-zinc-500 group-hover:text-blue-400 transition" />
+                )}
+                <div>
+                  <div className="text-white font-semibold text-base leading-tight group-hover:underline group-hover:text-blue-400 transition">{post.Profiles?.display_name || "Anonymous"}</div>
+                  <div className="text-xs text-zinc-400">{formatDate(post.created_at)}</div>
                 </div>
-              )}
-              {showConfirmId === post.id && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-20">
-                  <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-                    <p className="mb-4 text-black text-lg font-semibold">
-                      Are you sure you want to delete this post? This action cannot be undone.
-                    </p>
-                    <div className="flex justify-center gap-4">
+              </Link>
+            </div>
+            <div className="absolute top-3 right-3 flex items-center gap-2">
+              <FollowButton
+                followedId={post.user_id}
+                isFollowing={isFollowing}
+                onToggle={onFollowToggle}
+                className="rounded-full px-4 py-1 bg-blue-900 text-blue-400 font-semibold shadow hover:bg-blue-800 transition text-xs"
+              />
+              <button
+                onClick={() => handleSave(post.id)}
+                aria-label={isSaved ? 'Unsave' : 'Save'}
+                className="text-blue-400 hover:text-blue-300"
+              >
+                {isSaved ? <FaBookmark size={20} /> : <FiBookmark size={20} />}
+              </button>
+              <div className="relative inline-block text-left">
+                <button
+                  className="bg-black/30 p-2 rounded-full text-white hover:text-gray-300"
+                  onClick={() =>
+                    setMenuOpenId((prev) => (prev === post.id ? null : post.id))
+                  }
+                >
+                  <FiMoreHorizontal size={20} />
+                </button>
+                {menuOpenId === post.id && (
+                  <div className="absolute right-0 mt-2 w-28 bg-white rounded shadow z-10">
+                    {user?.id === post.user_id ? (
                       <button
-                        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                        className="block w-full px-4 py-2 text-left text-red-600 hover:bg-gray-100"
                         onClick={() => {
-                          handleDelete(post.id);
-                          setShowConfirmId(null);
+                          setShowConfirmId(post.id); // this will trigger the popup
+                          setMenuOpenId(null);
                         }}
                       >
-                        Yes
+                        Delete
                       </button>
+                    ) : (
                       <button
-                        className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
-                        onClick={() => setShowConfirmId(null)}
+                        className="block w-full px-4 py-2 text-left text-yellow-600 hover:bg-gray-100"
+                        onClick={() => {
+                          setReportConfirmId(post.id);
+                          setMenuOpenId(null);
+                        }}
                       >
-                        Cancel
+                        Report
                       </button>
+                    )}
+                  </div>
+                )}
+                {showConfirmId === post.id && (
+                  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-20">
+                    <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+                      <p className="mb-4 text-black text-lg font-semibold">
+                        Are you sure you want to delete this post? This action cannot be undone.
+                      </p>
+                      <div className="flex justify-center gap-4">
+                        <button
+                          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                          onClick={() => {
+                            handleDelete(post.id);
+                            setShowConfirmId(null);
+                          }}
+                        >
+                          Yes
+                        </button>
+                        <button
+                          className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+                          onClick={() => setShowConfirmId(null)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
         </div>
         {/* Title */}
         <h3 className="text-2xl font-bold text-white px-6 pb-2">{post.title}</h3>
