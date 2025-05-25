@@ -206,7 +206,20 @@ function debounce<T extends (...args: any[]) => void>(
   }
 }, [user?.id])
 
+const handleNotificationClick = async (notification: Notification) => {
+  // Mark it as read
+  await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('id', notification.id);
 
+  // Redirect
+  if (notification.type === 'follow') {
+    router.push(`/profile/${notification.from_user_id}`);
+  } else if (notification.type === 'comment_reply' || notification.type === 'like_milestone') {
+    router.push(`/post/${notification.post_id}`);
+  }
+};
 
 
   const [open, setOpen] = useState(false)
@@ -350,16 +363,21 @@ function debounce<T extends (...args: any[]) => void>(
       {open && (
         <Card className="absolute right-0 mt-2 w-80 max-h-96 bg-black overflow-y-auto z-50 shadow-lg">
           <CardContent className="p-2 space-y-2">
-            {notifications.length === 0 ? (
-              <p className="text-sm text-gray-500">No notifications</p>
-            ) : (
-              notifications.map(n => (
-                <div key={n.id} className="text-sm border-b last:border-none pb-2">
-                  <p>{n.message}</p>
-                  <span className="text-xs text-gray-400">{new Date(n.created_at).toLocaleString()}</span>
-                </div>
-              ))
-            )}
+            {notifications.map(n => (
+  <div
+    key={n.id}
+    onClick={() => handleNotificationClick(n)}
+    className={`cursor-pointer text-sm border-b last:border-none pb-2 hover:bg-zinc-800 px-2 py-1 rounded ${
+      n.is_read ? 'opacity-60' : 'opacity-100'
+    }`}
+  >
+    <p>{n.message}</p>
+    <span className="text-xs text-gray-400">
+      {new Date(n.created_at).toLocaleString()}
+    </span>
+  </div>
+))}
+
           </CardContent>
         </Card>
       )}
