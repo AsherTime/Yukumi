@@ -8,13 +8,10 @@ const Footer = () => (
         <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
         <span>|</span>
         <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy</Link>
-        <span>|</span>
-        <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
       </div>
       <div className="flex gap-4 text-zinc-400">
-        <a href="https://twitter.com/" target="_blank" rel="noopener noreferrer" className="hover:text-pink-400 transition-colors"><Twitter /></a>
-        <a href="https://github.com/" target="_blank" rel="noopener noreferrer" className="hover:text-pink-400 transition-colors"><Github /></a>
-        <a href="mailto:info@yukumi.com" className="hover:text-pink-400 transition-colors"><Mail /></a>
+        <a href="https://github.com/AsherTime/Yukumi" target="_blank" rel="noopener noreferrer" className="hover:text-pink-400 transition-colors"><Github /></a>
+        <a href="mailto:yukumiofficialanime@gmail.com" className="hover:text-pink-400 transition-colors"><Mail /></a>
       </div>
     </div>
   </footer>

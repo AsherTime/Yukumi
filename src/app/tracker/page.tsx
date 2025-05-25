@@ -199,6 +199,7 @@ export default function TrackerPage() {
         {/* Right panel placeholder for future cards */}
         <div className="flex-1" />
       </div>
+      <Footer />
     </>
   );
 }
