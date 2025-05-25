@@ -17,6 +17,10 @@ import { FollowButton } from "@/components/ui/FollowButton";
 import { PostgrestError } from "@supabase/supabase-js";
 import { ContentFeed } from "@/components/content-feed";
 import Footer from "@/components/footer"
+import PostCardContainer from "@/components/post-card-container";
+import fetchPost from "@/utils/fetch-post";
+import handleLike from "@/utils/handleLike";
+import useSavedPosts from "@/utils/use-saved-posts";
 
 // Types
 interface Community {
@@ -27,7 +31,7 @@ interface Community {
   banner_url: string;
   avatar_url: string;
   description: string;
-  rules:string;
+  rules: string;
   trending_tags: string[];
   trending_topics: string[];
 }
@@ -63,227 +67,7 @@ interface Post {
 
 const bgImageUrl = "https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Flux_Dev_a_stunning_illustration_of_Create_a_highquality_origi_2.jpg?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5X2EwNWE5MzA2LTNiZGItNDliNC1hZGQ2LTFjMjEzNjhiYzcwMSJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9GbHV4X0Rldl9hX3N0dW5uaW5nX2lsbHVzdHJhdGlvbl9vZl9DcmVhdGVfYV9oaWdocXVhbGl0eV9vcmlnaV8yLmpwZyIsImlhdCI6MTc0NzUxMjU1NiwiZXhwIjoxNzc5MDQ4NTU2fQ.Yr4W2KUDf1CWy5aI4dcTEWkJVTR0okuddtHugyA_niM";
 
-// Custom hook for view counting on visible post
-function useViewCountOnVisible(postId: string) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const hasCountedRef = useRef(false);
-  useEffect(() => {
-    if (!ref.current) return;
-    const observer = new window.IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry.isIntersecting && !hasCountedRef.current) {
-          timerRef.current = setTimeout(() => {
-            supabase.rpc("increment_post_view", { post_id: postId })
-              .then(({ error }) => {
-                if (error) {
-                  console.error("Failed to increment view (feed):", error);
-                } else {
-                  console.log("View counted (feed) for", postId);
-                  hasCountedRef.current = true;
-                }
-              });
-          }, 8000);
-        } else {
-          if (timerRef.current) {
-            clearTimeout(timerRef.current);
-            timerRef.current = null;
-          }
-        }
-      },
-      { threshold: 0.5 }
-    );
-    observer.observe(ref.current);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      observer.disconnect();
-    };
-  }, [postId]);
-  return ref;
-}
 
-function PostCard({ post, idx, total, formatDate, setMenuOpenId, menuOpenId, user, setShowConfirmId, showConfirmId, setReportConfirmId, handleDelete, handleLikeClick, handleCommentClick }: {
-  post: Post,
-  idx: number,
-  total: number,
-  formatDate: (dateString: string) => string,
-  setMenuOpenId: React.Dispatch<React.SetStateAction<string | null>>,
-  menuOpenId: string | null,
-  user: any,
-  setShowConfirmId: React.Dispatch<React.SetStateAction<string | null>>,
-  showConfirmId: string | null,
-  setReportConfirmId: React.Dispatch<React.SetStateAction<string | null>>,
-  handleDelete: (postId: string) => void,
-  handleLikeClick: (e: React.MouseEvent, postId: string, liked: boolean) => void,
-  handleCommentClick: (postId: string) => void,
-}) {
-  const viewRef = useViewCountOnVisible(post.id);
-  return (
-    <motion.section
-      ref={viewRef}
-      key={post.id}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3, delay: idx * 0.04 }}
-      className={
-        idx !== total - 1
-          ? "border-b border-zinc-800"
-          : ""
-      }
-    >
-      {/* Top Row: Avatar, Username, Timestamp, Follow, More */}
-      <div className="flex items-center justify-between px-6 pt-5 pb-2">
-        <div className="flex items-center gap-3">
-          <Link href={`/profile/${post.user_id}`} className="flex items-center gap-3 group" prefetch={false}>
-            {post.Profiles?.avatar_url ? (
-              <img
-                src={post.Profiles.avatar_url}
-                alt={post.Profiles.display_name || "User"}
-                className="w-10 h-10 rounded-full object-cover border border-zinc-700 group-hover:ring-2 group-hover:ring-blue-500 transition"
-              />
-            ) : (
-              <UserCircle className="w-10 h-10 text-zinc-500 group-hover:text-blue-400 transition" />
-            )}
-            <div>
-              <div className="text-white font-semibold text-base leading-tight group-hover:underline group-hover:text-blue-400 transition">{post.Profiles?.display_name || "Anonymous"}</div>
-              <div className="text-xs text-zinc-400">{formatDate(post.created_at)}</div>
-            </div>
-          </Link>
-        </div>
-        <div className="flex items-center gap-2">
-          <FollowButton 
-            followedId={post.user_id} 
-            className="rounded-full px-4 py-1 bg-blue-900 text-blue-400 font-semibold shadow hover:bg-blue-800 transition text-xs" 
-          />
-          <div className="relative inline-block text-left">
-            <button
-              className="bg-black/30 p-2 rounded-full text-white hover:text-gray-300"
-              onClick={() =>
-                setMenuOpenId((prev) => (prev === post.id ? null : post.id))
-              }
-            >
-              <FiMoreHorizontal size={20} />
-            </button>
-            {menuOpenId === post.id && (
-              <div className="absolute right-0 mt-2 w-28 bg-white rounded shadow z-10">
-                {user?.id === post.user_id ? (
-                  <button
-                    className="block w-full px-4 py-2 text-left text-red-600 hover:bg-gray-100"
-                    onClick={() => {
-                      setShowConfirmId(post.id); // this will trigger the popup
-                      setMenuOpenId(null);
-                    }}
-                  >
-                    Delete
-                  </button>
-                ) : (
-                  <button
-                    className="block w-full px-4 py-2 text-left text-yellow-600 hover:bg-gray-100"
-                    onClick={() => {
-                      setReportConfirmId(post.id);
-                      setMenuOpenId(null);
-                    }}
-                  >
-                    Report
-                  </button>
-                )}
-              </div>
-            )}
-            {showConfirmId === post.id && (
-              <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-20">
-                <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-                  <p className="mb-4 text-black text-lg font-semibold">
-                    Are you sure you want to delete this post? This action cannot be undone.
-                  </p>
-                  <div className="flex justify-center gap-4">
-                    <button
-                      className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                      onClick={() => {
-                        handleDelete(post.id);
-                        setShowConfirmId(null);
-                      }}
-                    >
-                      Yes
-                    </button>
-                    <button
-                      className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
-                      onClick={() => setShowConfirmId(null)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      {/* Title */}
-      <h3 className="text-2xl font-bold text-white px-6 pb-2">{post.title}</h3>
-      {/* Image */}
-      {post.image_url && (
-  <div className="relative mb-4 px-6 overflow-hidden rounded-xl">
-    <a href={post.image_url} target="_blank" rel="noopener noreferrer">
-      <img
-        src={post.image_url}
-        alt={post.title}
-        className="max-w-full max-h-[32rem] mx-auto rounded object-contain"
-        loading="lazy"
-      />
-    </a>
-  </div>
-)}
-      {/* Content */}
-      <p className="text-gray-300 px-6 pb-2" dangerouslySetInnerHTML={{ __html: post.content }}></p>
-      {/* Tags */}
-      <div className="flex flex-wrap gap-2 px-6 pb-2 mt-1">
-        {post.post_collections && (
-          <span className="px-2 py-1 rounded-full text-xs font-semibold text-blue-400 bg-blue-500/10">
-            {post.post_collections}
-          </span>
-        )}
-        {post.animetitle_post && (
-          <span className="px-2 py-1 rounded-full text-xs font-semibold text-purple-400 bg-purple-500/10">
-            {post.animetitle_post}
-          </span>
-        )}
-      </div>
-      {/* User Tags */}
-      {post.tags && post.tags.length > 0 && (
-        <div className="flex flex-wrap gap-2 px-6 pb-2">
-          {post.tags.map((tag: string) => (
-            <span key={tag} className="px-2 py-1 rounded-full text-xs font-semibold text-gray-300 bg-[#232232]">
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )} 
-      {/* Bottom Row: Like, Comment, View */}
-      <div className="flex items-center justify-end gap-6 px-6 py-3">
-        <button
-          onClick={(e) => handleLikeClick(e, post.id, post.liked_by_user)}
-          className={`flex items-center gap-1 text-zinc-400 hover:text-pink-500 transition-colors group ${post.liked_by_user ? 'font-bold text-pink-500' : ''}`}
-        >
-          <Heart className="w-5 h-5 mr-1 group-hover:scale-110 transition-transform" fill={post.liked_by_user ? '#ec4899' : 'none'} />
-          <span>{post.likes_count || 0}</span>
-        </button>
-        <button
-          onClick={() => handleCommentClick(post.id)}
-          className="flex items-center gap-1 text-zinc-400 hover:text-purple-400 transition-colors"
-        >
-          <MessageCircle className="w-5 h-5 mr-1" />
-          {post.comments_count}
-        </button>
-        <span className="flex items-center gap-1 text-zinc-500">
-          <Eye className="w-5 h-5 mr-1" />
-          {post.views}
-        </span>
-      </div>
-    </motion.section>
-  );
-}
 
 
 export default function CommunityIdPage() {
@@ -295,19 +79,21 @@ export default function CommunityIdPage() {
   const [joined, setJoined] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const params = useParams();
-  const [postsData, setPostsData] = useState<Post[]>([]);
-    const { user } = useAuth();
-    const router = useRouter();
-    const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const POSTS_PER_PAGE = 10;
+  const { user } = useAuth();
+  const router = useRouter();
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const POSTS_PER_PAGE = 10;
+  const { postsData, setPostsData, fetchPosts } = fetchPost();
+  const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
+  const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
 
   useEffect(() => {
     const fetchCommunityAndAnime = async () => {
       setLoading(true);
       setError(null);
-      
+
       const communityId = params.id; // this is the community's bigint id
       if (!communityId) {
         setError("No community ID provided");
@@ -357,7 +143,7 @@ export default function CommunityIdPage() {
   useEffect(() => {
     const checkIfJoined = async () => {
       if (!user || !community) return;
-      
+
       const { data, error } = await supabase
         .from('members')
         .select('id')
@@ -414,247 +200,28 @@ export default function CommunityIdPage() {
     }
   };
 
- const fetchPostsWithMeta = async (reset = false) => {
-    try {
-      let from = (reset ? 0 : (page - 1) * POSTS_PER_PAGE);
-      let to = from + POSTS_PER_PAGE - 1;
-      const { data: posts, error: postsError, count } = await supabase
-        .from("posts")
-        .select(`
-          id, title, content, created_at, user_id, image_url, 
-          Profiles(display_name, avatar_url), 
-          animetitle_post, post_collections, original_work, reference_link,
-          post_tags (
-            tags (name)
-          ), views
-        `, { count: "exact" })
-        .order("created_at", { ascending: false })
-        .range(from, to);
-        
-      if (postsError) {
-        if (postsError.message === "Requested range not satisfiable") {
-          // No more posts to fetch, end pagination
-          setHasMore(false);
-          setLoadingMore(false);
-          return;
-        }
-        console.error("Error fetching posts:", postsError, postsError?.message, postsError?.details);
-        return;
-      }
-      if (!posts) return;
-      const postsWithMeta = await Promise.all(
-        posts.map(async (post) => {
-          // Map tags from join
-          const tags = post.post_tags?.map((pt: any) => pt.tags?.name).filter(Boolean) || [];
-          const [{ count: likesCount }, { count: commentsCount }, { data: likeRecord }] = await Promise.all([
-            supabase.from("likes").select("*", { count: "exact", head: true }).eq("post_id", post.id),
-            supabase.from("comments").select("*", { count: "exact", head: true }).eq("post_id", post.id),
-            supabase.from("likes").select("*").eq("post_id", post.id).eq("user_id", user?.id).maybeSingle(),
-          ]);
-          return {
-            ...post,
-            tags,
-            likes_count: likesCount || 0,
-            comments_count: commentsCount || 0,
-            liked_by_user: !!likeRecord,
-            Profiles: post.Profiles && Array.isArray(post.Profiles) ? post.Profiles[0] : post.Profiles,
-          };
-        })
-      );
-      if (reset) {
-    setPostsData(postsWithMeta);
-  } else {
-    // Deduplicate when appending
-    setPostsData(prev => {
-      const combined = [...prev, ...postsWithMeta];
-      const uniqueMap = new Map();
-      combined.forEach(p => uniqueMap.set(p.id, p));
-      return Array.from(uniqueMap.values());
-    });
-  }
-      setHasMore(postsWithMeta.length === POSTS_PER_PAGE);
-      setLoadingMore(false);
-    } catch (err) {
-      console.error("Error in fetchPostsWithMeta:", err);
-    }
+
+
+
+
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
   };
 
-  useEffect(() => {
-    if (!user) return;
-    setPage(1);
-    fetchPostsWithMeta(true);
-  }, [user]);
-
-  useEffect(() => {
-    if (page === 1) return;
-    fetchPostsWithMeta();
-    // eslint-disable-next-line
-  }, [page]);
-
-    const toggleLike = async (postId: string, liked: boolean) => {
-      if (!user) {
-        console.log("No user found, cannot like");
-        return;
-      }
-  
-      try {
-        console.log("Attempting to toggle like:", { postId, liked, userId: user.id });
-  
-        if (liked) {
-          // Unlike the post
-          const { error: unlikeError } = await supabase
-            .from("likes")
-            .delete()
-            .eq("post_id", postId)
-            .eq("user_id", user.id);
-  
-          if (unlikeError) {
-            console.error("Error unliking post:", unlikeError);
-            return;
-          }
-          console.log("Successfully unliked post");
-        } else {
-          // Like the post
-          const { error: likeError } = await supabase
-            .from("likes")
-            .insert({
-              post_id: postId,
-              user_id: user.id
-            });
-  
-          if (likeError) {
-            console.error("Error liking post:", likeError);
-            return;
-          }
-          console.log("Successfully liked post");
-        }
-  
-        // Update the UI immediately
-        setPostsData(prevPosts => 
-          prevPosts.map(post => 
-            post.id === postId 
-              ? {
-                  ...post,
-                  liked_by_user: !liked,
-                  likes_count: liked ? post.likes_count - 1 : post.likes_count + 1
-                }
-              : post
-          )
-        );
-  
-        // Then refresh the data in the background
-        fetchPostsWithMeta(true); // Ensure this call uses reset = true
-
-      } catch (error) {
-        console.error("Error in toggleLike:", error);
-      }
-    };
-
-  const handleCommentClick = (postId: string) => {
-    router.push(`/post/${postId}`);
-  };
-
-  // Add a click handler with event prevention
-  const handleLikeClick = async (e: React.MouseEvent, postId: string, liked: boolean) => {
-    e.preventDefault();
-    e.stopPropagation();
-    await toggleLike(postId, liked);
-  };
-
-   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-const [selectedTags, setSelectedTags] = useState<string[]>([]);
-
-const toggleTag = (tag: string) => {
-  setSelectedTags((prev) =>
-    prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-  );
-};
-
-    const deletePostIfOwner = async (
-        postId: string,
-        currentUserId: string
-      ): Promise<{ success: boolean; error?: PostgrestError | string }> => {
-        // Step 1: Fetch the post to check ownership
-        const { data: post, error: fetchError } = await supabase
-          .from('posts')
-          .select('user_id')
-          .eq('id', postId)
-          .single();
-      
-        if (fetchError) {
-          return { success: false, error: fetchError };
-        }
-      
-        if (!post || post.user_id !== currentUserId) {
-          return { success: false, error: 'Unauthorized: You are not the owner of this post.' };
-        }
-      
-        // Step 2: Delete the post
-        const { error: deleteError } = await supabase
-          .from('posts')
-          .delete()
-          .eq('id', postId);
-      
-        if (deleteError) {
-          return { success: false, error: deleteError };
-        }
-      
-        return { success: true };
-      };
-
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const [showConfirmId, setShowConfirmId] = useState<string | null>(null);
-
-  const handleDelete = async (postId: string) => {
-  const result = await deletePostIfOwner(postId, user?.id || "");
-  
-  if (result.success) {
-    alert('Post deleted.');
-  } else {
-    alert(`Failed to delete post: ${result.error}`);
-  }
-
-  setShowConfirmId(null);
-  setMenuOpenId(null);
-};
-
-  const [reportConfirmId, setReportConfirmId] = useState<string | null>(null);
-
-  const handleReport = async (postId: string) => {
-  try {
-    const { error } = await supabase
-      .from("posts")
-      .update({ isReported: true })
-      .eq("id", postId);
-
-    if (error) {
-      console.error("Report failed:", error);
-      alert("Failed to report the post.");
-    } else {
-      alert("Post reported successfully.");
-    }
-  } catch (err) {
-    console.error("Unexpected error reporting post:", err);
-    alert("Something went wrong.");
-  }
-};
-
-const filteredPosts = postsData
-  .filter((post) => post.animetitle_post === anime?.title)
-  .filter((post) => 
-    selectedTags.length === 0 || 
-    selectedTags.every(tag => post.tags?.includes(tag))
-  );
 
 
+  const filteredPosts = postsData
+    .filter((post) => post.animetitle_post === anime?.title)
+    .filter((post) =>
+      selectedTags.length === 0 ||
+      selectedTags.every(tag => post.tags?.includes(tag))
+    );
+
+  const uniquePosts = Array.from(new Map(filteredPosts.map(p => [p.id, p])).values());
 
   if (loading) {
     return <div className="min-h-screen bg-black text-white flex items-center justify-center">Loading...</div>;
@@ -695,8 +262,8 @@ const filteredPosts = postsData
         {/* Banner */}
         <div className="w-full flex justify-center relative">
           <div className="hidden md:block fixed top-16 left-0 w-64 h-[calc(100vh-4rem)] bg-[#18181b] border-r border-zinc-800 px-4 py-6 z-30">
-  <JoinedCommunitiesSidebar userId={user?.id ?? null} />
-</div>
+            <JoinedCommunitiesSidebar userId={user?.id ?? null} />
+          </div>
 
           <div className="w-[80%] h-48 md:h-64 relative rounded-2xl shadow-2xl ml-[14.5rem]">
             <Image
@@ -711,12 +278,12 @@ const filteredPosts = postsData
           {/* Overlapping Avatar and Header - now outside the banner container */}
           <div className="absolute left-1/2 -translate-x-1/2 -bottom-12 flex items-end justify-between z-20 w-[80%] ml-[7.5rem]">
             <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white overflow-hidden bg-zinc-800 shadow-lg">
-              <Image 
-                src={community.avatar_url || anime.image_url || "/avatar-placeholder.png"} 
-                alt="Community Avatar" 
-                width={128} 
-                height={128} 
-                className="object-cover w-full h-full" 
+              <Image
+                src={community.avatar_url || anime.image_url || "/avatar-placeholder.png"}
+                alt="Community Avatar"
+                width={128}
+                height={128}
+                className="object-cover w-full h-full"
               />
             </div>
             <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6 pb-4 md:pb-0 flex-1">
@@ -725,11 +292,10 @@ const filteredPosts = postsData
                 <span>Members: <span className="font-semibold text-white">{community.members}</span></span>
               </div>
               <Button
-                className={`px-6 py-2 rounded-full text-lg font-semibold transition-colors ml-0 md:ml-4 ${
-                  joined 
-                    ? "bg-zinc-700 text-zinc-300 cursor-default" 
-                    : "bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700"
-                }`}
+                className={`px-6 py-2 rounded-full text-lg font-semibold transition-colors ml-0 md:ml-4 ${joined
+                  ? "bg-zinc-700 text-zinc-300 cursor-default"
+                  : "bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700"
+                  }`}
                 disabled={joined}
                 onClick={handleJoinCommunity}
               >
@@ -747,94 +313,86 @@ const filteredPosts = postsData
         </div>
         {/* Header Spacer for Overlap */}
         <div className="h-20 md:h-24" />
-<div className="flex">
-{/* Left Sidebar */}
-       
+        <div className="flex">
+          {/* Left Sidebar */}
 
-       {/* Main Content Layout */}
-<div className="flex-1">
-  <div className="max-w-7xl mx-auto mt-4 px-4 pb-8">
-    <div className="flex flex-col md:flex-row gap-8 md:ml-32">
 
-      {/* ➜ Main Posts Feed column */}
-      <div className="flex-1 flex flex-col bg-[#18181b] space-y-4">     {/* ← NEW wrapper */}
-        <AnimatePresence mode="wait">
-          {filteredPosts.length === 0 ? (
-            <motion.div
-              key="no-posts"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="text-center text-zinc-400 py-12"
-            >
-              No posts found in this category.
-            </motion.div>
-          ) : (
-            filteredPosts.map((post, idx) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                idx={idx}
-                total={posts.length}
-                formatDate={formatDate}
-                setMenuOpenId={setMenuOpenId}
-                menuOpenId={menuOpenId}
-                user={user}
-                setShowConfirmId={setShowConfirmId}
-                showConfirmId={showConfirmId}
-                setReportConfirmId={setReportConfirmId}
-                handleDelete={handleDelete}
-                handleLikeClick={handleLikeClick}
-                handleCommentClick={handleCommentClick}
-              />
-            ))
-          )}
-        </AnimatePresence>
-      </div>
+          {/* Main Content Layout */}
+          <div className="flex-1">
+            <div className="max-w-7xl mx-auto mt-4 px-4 pb-8">
+              <div className="flex flex-col md:flex-row gap-8 md:ml-32">
 
-      {/* Right Sidebar */}
-      <div className="w-full md:w-80 flex-shrink-0 space-y-8 ml-auto">
-        {/* Trending Tags */}
-        <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4">Trending Topics</h3>
-              <div className="flex flex-wrap gap-2">
-                {community.trending_tags?.map((tag, index) => (
-                  <button
-                    key={index}
-                    onClick={() => toggleTag(tag)}
-                    className={`px-3 py-1 rounded-full font-medium text-sm ${
-                      selectedTags.includes(tag)
-                        ? "bg-purple-700 text-white"
-                        : "bg-zinc-700 text-zinc-300"
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                ))}
+                {/* ➜ Main Posts Feed column */}
+                <div className="flex-1 flex flex-col bg-[#18181b] space-y-4">     {/* ← NEW wrapper */}
+                  <AnimatePresence mode="wait">
+                    {uniquePosts.length === 0 ? (
+                      <motion.div
+                        key="no-posts"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="text-center text-zinc-400 py-12"
+                      >
+                        No posts found in this category.
+                      </motion.div>
+                    ) : (
+                      uniquePosts.map((post, idx) => (
+                        <PostCardContainer
+                          key={post.id || idx}  // Use post.id if available, fallback to index
+                          post={post}
+                          idx={idx}
+                          total={uniquePosts.length}
+                          onLikeToggle={handleLikeClick}
+                          saved={saved}
+                          onToggleSave={() => toggleSave(post.id)}
+                        />
+                      ))
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Right Sidebar */}
+                <div className="w-full md:w-80 flex-shrink-0 space-y-8 ml-auto">
+                  {/* Trending Tags */}
+                  <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
+                    <h3 className="text-lg font-semibold mb-4">Trending Topics</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {community.trending_tags?.map((tag, index) => (
+                        <button
+                          key={index}
+                          onClick={() => toggleTag(tag)}
+                          className={`px-3 py-1 rounded-full font-medium text-sm ${selectedTags.includes(tag)
+                            ? "bg-purple-700 text-white"
+                            : "bg-zinc-700 text-zinc-300"
+                            }`}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Community Description */}
+                  {community.description && (
+                    <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
+                      <h3 className="text-lg font-semibold mb-4">About</h3>
+                      <p className="text-zinc-300">{community.description}</p>
+                    </div>
+                  )}
+                  {community.rules && (
+                    <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
+                      <h3 className="text-lg font-semibold mb-4">Rules</h3>
+                      <p className="text-zinc-300">{community.rules}</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-            {/* Community Description */}
-            {community.description && (
-              <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
-                <h3 className="text-lg font-semibold mb-4">About</h3>
-                <p className="text-zinc-300">{community.description}</p>
-              </div>
-            )}
-            {community.rules && (
-              <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
-                <h3 className="text-lg font-semibold mb-4">Rules</h3>
-                <p className="text-zinc-300">{community.rules}</p>
-              </div>
-            )}
           </div>
         </div>
       </div>
+      <div className="relative z-50">
+        <Footer />
+      </div>
     </div>
-    </div>
-  </div>
-  <div className="relative z-50">
-    <Footer  />
-    </div>
-  </div>
   );
 }

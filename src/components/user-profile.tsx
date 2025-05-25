@@ -15,6 +15,13 @@ import { ContentFeed } from "./content-feed";
 import { FiMoreHorizontal, FiHeart, FiMessageCircle } from "react-icons/fi";
 import { FaHeart } from "react-icons/fa";
 import { set } from "react-hook-form";
+import useSWR from 'swr';
+import PostCardContainer from "@/components/post-card-container";
+import fetchPost from "@/utils/fetch-post";
+import handleLike from "@/utils/handleLike";
+import useSavedPosts from "@/utils/use-saved-posts";
+import { AnimatePresence, motion } from "framer-motion";
+
 
 const DEFAULT_BANNER = "https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Flux_Dev_a_stunning_illustration_of_Create_an_animethemed_webs_0.jpg?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5X2EwNWE5MzA2LTNiZGItNDliNC1hZGQ2LTFjMjEzNjhiYzcwMSJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9GbHV4X0Rldl9hX3N0dW5uaW5nX2lsbHVzdHJhdGlvbl9vZl9DcmVhdGVfYW5fYW5pbWV0aGVtZWRfd2Vic18wLmpwZyIsImlhdCI6MTc0NzU2NDg0NiwiZXhwIjoxNzc5MTAwODQ2fQ.ow7wQ-1Dunza5HIya7Ky4wjGdYULgrged7V6J-Smag0";
 
@@ -67,6 +74,30 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
 
   const router = useRouter();
   let profileId = userId || user?.id;
+  const { postsData, setPostsData, fetchPosts } = fetchPost();
+  const { saved, savedLoading, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
+  const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
+  const { data: savedPosts, error } = useSWR(
+  () => (saved.length ? ['savedPosts', saved] : null),
+  async () => {
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        Profiles (
+          avatar_url,
+          display_name
+        )
+      `)
+      .in('id', saved);
+
+    if (error) throw error; // Optional: handle error as you want
+
+    return data;
+  }
+);
+
+
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -99,20 +130,20 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
     fetchUserProfile();
   }, [userId, user?.id]);
 
-   useEffect(() => {
-      const fetchFollowedIds = async () => {
-        if (!user?.id) return;
-        const { data, error } = await supabase
-          .from("follows")
-          .select("followed_id")
-          .eq("follower_id", user.id);
-        if (!error && data) {
-          setFollowedIds(data.map((row: any) => row.followed_id));
-        }
-      };
-      if (user) fetchFollowedIds();
-    }, [user]);
- 
+  useEffect(() => {
+    const fetchFollowedIds = async () => {
+      if (!user?.id) return;
+      const { data, error } = await supabase
+        .from("follows")
+        .select("followed_id")
+        .eq("follower_id", user.id);
+      if (!error && data) {
+        setFollowedIds(data.map((row: any) => row.followed_id));
+      }
+    };
+    if (user) fetchFollowedIds();
+  }, [user]);
+
   useEffect(() => {
     // Fetch follower/following counts
     const fetchFollowCounts = async (profileId: string) => {
@@ -339,11 +370,11 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
     if (!session?.user) return;
     const { error } = await supabase
       .from('Profiles')
-      .update({ 
-        display_name: displayName, 
-        banner: newBannerUrl, 
+      .update({
+        display_name: displayName,
+        banner: newBannerUrl,
         about: about,
-        updated_at: new Date().toISOString() 
+        updated_at: new Date().toISOString()
       })
       .eq('id', session.user.id);
     if (!error) {
@@ -397,19 +428,19 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
                 {followedIds.includes(userId) ? 'Following' : 'Follow'}
               </button>
             )}
-             {!userId && (
-  <button
-    className="ml-4 bg-zinc-800 text-white px-4 py-2 rounded"
-    onClick={() => setShowEditModal(true)}
-  >
-    Edit details
-  </button>
-)}
+            {!userId && (
+              <button
+                className="ml-4 bg-zinc-800 text-white px-4 py-2 rounded"
+                onClick={() => setShowEditModal(true)}
+              >
+                Edit details
+              </button>
+            )}
 
           </div>
           {username && (
-      <p className="text-gray-400 text-sm mt-1">@{username}</p>
-    )}
+            <p className="text-gray-400 text-sm mt-1">@{username}</p>
+          )}
           <div className="flex gap-8 mt-2">
             <div className="flex flex-col items-center">
               <span className="text-lg font-bold">{following}</span>
@@ -425,7 +456,7 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
 
       {/* Tabs */}
       <div className="flex gap-2 mt-8 pl-48">
-        {['Posts', 'Saved', 'About'].map(tab => (
+        {['Posts', ...(!userId ? ['Saved'] : []), 'About'].map(tab => (
           <button
             key={tab}
             className={`px-6 py-2 font-medium rounded-t-lg ${tab === activeTab ? 'bg-pink-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}
@@ -444,6 +475,28 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
         <div className="flex-1">
           {activeTab === 'Posts' && (
             <ProfilePosts userId={userId} />
+          )}
+          {activeTab === 'Saved' && !userId && (
+            <div>
+              <h2 className="text-xl font-bold mb-4">Saved Posts</h2>
+              {savedLoading ? (
+                <p>Loading saved posts...</p>
+              ) : saved.length === 0 ? (
+                <p className="text-gray-400">No saved posts yet.</p>
+              ) : (
+                savedPosts?.map((post, idx) => (
+                  <PostCardContainer
+                    key={post.id || idx}
+                    post={post}
+                    idx={idx}
+                    total={savedPosts.length}
+                    onLikeToggle={handleLikeClick}
+                    saved={saved}
+                    onToggleSave={() => toggleSave(post.id)}
+                  />
+                ))
+              )}
+            </div>
           )}
           {activeTab === 'About' && (
             <div className="relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md p-6">
@@ -501,6 +554,22 @@ function ProfilePosts({ userId }: { userId?: string }) {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [followedIds, setFollowedIds] = useState<string[]>([]);
+  const { postsData, setPostsData, fetchPosts } = fetchPost();
+  const { saved, savedLoading, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
+  const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
+  const { data: savedPosts, error } = useSWR(
+    () => (saved.length ? ['savedPosts', saved] : null),
+    async () => {
+      const { data, error } = await supabase
+        .from('posts')
+        .select('*')
+        .in('id', saved);
+
+      if (error) throw error; // Optional: handle error as you want
+
+      return data;
+    }
+  );
 
   useEffect(() => {
     const fetchUserPosts = async () => {
@@ -542,107 +611,31 @@ function ProfilePosts({ userId }: { userId?: string }) {
   }
   return (
     <div className="w-full max-w-2xl relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[90vh] overflow-y-auto">
-      {posts.map((post) => (
-        <div
-          key={post.id}
-          className="relative bg-[#1f1f1f] rounded-none"
-        >
-          {/* Top Row: Avatar, Username, Date, More */}
-          <div className="flex items-center justify-between px-6 pt-6 pb-2">
-            <div className="flex items-center gap-3 group">
-              {post.Profiles?.avatar_url ? (
-                <img
-                  src={post.Profiles.avatar_url}
-                  alt={post.Profiles.display_name || "User"}
-                  className="w-10 h-10 rounded-full object-cover border border-zinc-700 group-hover:ring-2 group-hover:ring-blue-500 transition"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-zinc-700" />
-              )}
-              <div>
-                <div className="text-white font-semibold text-base leading-tight group-hover:underline group-hover:text-blue-400 transition">{post.Profiles?.display_name || "Anonymous"}</div>
-                <div className="text-xs text-zinc-400">{new Date(post.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</div>
-              </div>
-            </div>
-            {/* Only show Follow button if post is not by current user */}
-            {post.Profiles?.id && post.Profiles.id !== user?.id && (
-              <button
-                className={`px-4 py-1 rounded font-semibold ${followedIds.includes(post.Profiles.id) ? 'bg-zinc-700 text-zinc-300 cursor-default' : 'bg-pink-500 hover:bg-pink-600 text-white'}`}
-                disabled={followedIds.includes(post.Profiles.id)}
-                onClick={async () => {
-                  if (!user) return;
-                  const { error } = await supabase.from('follows').insert({ follower_id: user.id, followed_id: post.Profiles.id });
-                  if (!error) {
-                    setFollowedIds([...followedIds, post.Profiles.id]);
-                    toast.success('Now following!');
-                  }
-                }}
-              >
-                {followedIds.includes(post.Profiles.id) ? 'Following' : 'Follow'}
-              </button>
-            )}
-          </div>
-          {/* Title */}
-          <h3 className="text-2xl font-bold text-white px-6 pb-2">{post.title}</h3>
-          {/* Image */}
-          {post.image_url && (
-            <div className="relative h-64 mb-4 px-6 overflow-hidden rounded-xl">
-              <img
-                src={post.image_url}
-                alt={post.title}
-                className="h-full w-full object-cover mx-auto rounded-xl"
-                loading="lazy"
-              />
-            </div>
-          )}
-          {/* Content */}
-          <p className="text-gray-300 px-6 pb-2" dangerouslySetInnerHTML={{ __html: post.content }}></p>
-          {/* Tags */}
-          <div className="flex flex-wrap gap-2 px-6 pb-2 mt-1">
-            {post.post_collections && (
-              <span className="px-2 py-1 rounded-full text-xs font-semibold text-blue-400 bg-blue-500/10">
-                {post.post_collections}
-              </span>
-            )}
-            {post.animetitle_post && (
-              <span className="px-2 py-1 rounded-full text-xs font-semibold text-purple-400 bg-purple-500/10">
-                {post.animetitle_post}
-              </span>
-            )}
-          </div>
-          {/* User Tags (if any) */}
-          {post.tags && post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 px-6 pb-2">
-              {post.tags.map((tag: string) => (
-                <span key={tag} className="px-2 py-1 rounded-full text-xs font-semibold text-gray-300 bg-[#232232]">
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          )}
-          {/* Bottom Row: Like, Comment, View */}
-          <div className="flex items-center gap-6 px-6 pb-4 text-zinc-400">
-            <button
-              // ... like logic ...
-              className={`flex items-center gap-1 text-zinc-400 hover:text-pink-500 transition-colors group ${post.liked_by_user ? 'font-bold text-pink-500' : ''}`}
-            >
-              {post.liked_by_user ? (
-                <FaHeart className="w-5 h-5 mr-1 group-hover:scale-110 transition-transform text-pink-500" />
-              ) : (
-                <FiHeart className="w-5 h-5 mr-1 group-hover:scale-110 transition-transform" />
-              )}
-              <span>{post.likes_count || 0}</span>
-            </button>
-            <button
-              // ... comment logic ...
-              className="flex items-center gap-1 text-zinc-400 hover:text-purple-400 transition-colors"
-            >
-              <FiMessageCircle className="w-5 h-5 mr-1" />
-              {post.comments_count}
-            </button>
-          </div>
-        </div>
-      ))}
+      <AnimatePresence mode="wait">
+        {posts.length === 0 ? (
+          <motion.div
+            key="no-posts"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="text-center text-zinc-400 py-12"
+          >
+            This user has no posts.
+          </motion.div>
+        ) : (
+          posts.map((post, idx) => (
+            <PostCardContainer
+              key={post.id || idx}  // Use post.id if available, fallback to index
+              post={post}
+              idx={idx}
+              total={posts.length}
+              onLikeToggle={handleLikeClick}
+              saved={saved}
+              onToggleSave={() => toggleSave(post.id)}
+            />
+          ))
+        )}
+      </AnimatePresence>
     </div>
   );
 }
