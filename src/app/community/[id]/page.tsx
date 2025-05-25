@@ -223,15 +223,17 @@ function PostCard({ post, idx, total, formatDate, setMenuOpenId, menuOpenId, use
       <h3 className="text-2xl font-bold text-white px-6 pb-2">{post.title}</h3>
       {/* Image */}
       {post.image_url && (
-        <div className="relative h-64 mb-4 px-6 overflow-hidden rounded-xl">
-          <img
-            src={post.image_url}
-            alt={post.title}
-            className="h-full w-full object-cover mx-auto"
-            loading="lazy"
-          />
-        </div>
-      )}
+  <div className="relative mb-4 px-6 overflow-hidden rounded-xl">
+    <a href={post.image_url} target="_blank" rel="noopener noreferrer">
+      <img
+        src={post.image_url}
+        alt={post.title}
+        className="max-w-full max-h-[32rem] mx-auto rounded object-contain"
+        loading="lazy"
+      />
+    </a>
+  </div>
+)}
       {/* Content */}
       <p className="text-gray-300 px-6 pb-2" dangerouslySetInnerHTML={{ __html: post.content }}></p>
       {/* Tags */}

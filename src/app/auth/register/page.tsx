@@ -104,7 +104,7 @@ export default function RegisterPage() {
       });
 
       if (error) throw error;
-
+      console.log("Registration successful:", data);
       if (data.user) {
         toast.success("Registration successful! Please check your email to confirm your account.");
         setFormData({ email: "", password: "", confirmPassword: "" });

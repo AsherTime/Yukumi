@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { LogOut, Settings } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
 
 
 
@@ -29,6 +30,18 @@ type SearchResults = {
   community: Community[];
   users: User[];
 } | null; // allow null when no results or cleared
+
+type Notification = {
+  id: string
+  user_id: string
+  type: 'follow' | 'comment_reply' | 'like_milestone'
+  from_user_id: string
+  post_id?: string
+  message: string
+  is_read: boolean
+  created_at: string
+}
+
 
 export function TopNav({ children }: { children?: React.ReactNode }) {
   const { user } = useAuth();
@@ -103,10 +116,17 @@ useEffect(() => {
 
   const performSearch = async (query: string) => {
 
-  const { data, error } = await supabase
-  .from('Anime')
-  .select('id, title')
-  .textSearch('title', query, { type: 'websearch' });
+
+  let profilesQuery = supabase
+  .from('Profiles')
+  .select('id, username')
+  .ilike('username', `%${query}%`);
+
+if (user?.id) {
+  // exclude the logged-in user
+  profilesQuery = profilesQuery.neq('id', user.id);
+}
+
 
   const [animeRes, communityRes, userRes] = await Promise.all([
     supabase.from('Anime')
@@ -117,9 +137,7 @@ useEffect(() => {
       .select('id, title')
       .ilike('title', `%${query}%`),
 
-    supabase.from('Profiles')
-      .select('id, username')
-      .ilike('username', `%${query}%`)
+     profilesQuery,
   ]);
 
   return {
@@ -160,6 +178,38 @@ function debounce<T extends (...args: any[]) => void>(
     debouncedSearch(value);
   };   
 
+  const [notifications, setNotifications] = useState<Notification[]>([])
+
+  useEffect(() => {
+  let isMounted = true
+
+  if (!user?.id) return
+
+  const fetchNotifications = async () => {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+
+    if (!error && data && isMounted) {
+      setNotifications(data as Notification[])
+    } else if (error) {
+      console.error('Error fetching notifications:', error.message)
+    }
+  }
+
+  fetchNotifications()
+
+  return () => {
+    isMounted = false
+  }
+}, [user?.id])
+
+
+
+
+  const [open, setOpen] = useState(false)
 
 
   return (
@@ -288,9 +338,32 @@ function debounce<T extends (...args: any[]) => void>(
                 <Link href="/upload" className="text-white hover:text-gray-300 transition-colors">
                   <Upload className="w-5 h-5" />
                 </Link>
-                <Link href="/notifications" className="text-white hover:text-gray-300 transition-colors">
-                  <Bell className="w-5 h-5" />
-                </Link>
+                <div className="relative">
+      <button onClick={() => setOpen(!open)} className="relative">
+        <Bell />
+        {notifications.some(n => !n.is_read) && (
+          <span className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center">
+            {notifications.filter(n => !n.is_read).length}
+          </span>
+        )}
+      </button>
+      {open && (
+        <Card className="absolute right-0 mt-2 w-80 max-h-96 bg-black overflow-y-auto z-50 shadow-lg">
+          <CardContent className="p-2 space-y-2">
+            {notifications.length === 0 ? (
+              <p className="text-sm text-gray-500">No notifications</p>
+            ) : (
+              notifications.map(n => (
+                <div key={n.id} className="text-sm border-b last:border-none pb-2">
+                  <p>{n.message}</p>
+                  <span className="text-xs text-gray-400">{new Date(n.created_at).toLocaleString()}</span>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger className="focus:outline-none">
                     <div className="relative h-8 w-8 rounded-full overflow-hidden cursor-pointer hover:ring-2 hover:ring-pink-500 transition-all">

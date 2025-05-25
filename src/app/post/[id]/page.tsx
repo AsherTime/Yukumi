@@ -1,13 +1,17 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { FiShare2, FiFlag, FiHeart, FiMessageCircle } from "react-icons/fi"; // Importing icons
+import { FiShare2, FiFlag, FiHeart, FiMessageCircle, FiEdit2, FiTrash2 } from "react-icons/fi"; // Importing icons
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import Image from "next/image";
+import { FiCornerUpLeft } from 'react-icons/fi';
+
+
 
 interface Comment {
     id: string
@@ -21,6 +25,27 @@ interface Comment {
       avatar_url: string
     }
 }
+
+type NestedComment = Comment & {
+  replies: NestedComment[];
+};
+
+type CommentItemProps = {
+  comment: NestedComment;          // contains id, content, replies[]
+  postId: string | number;         // id of the post the thread belongs to
+  onAddComment: (
+    postId: string | number,
+    parentId: string | number | null,
+    text: string
+  ) => void;                       // your existing handleAddComment
+  onEditComment: (commentId: string, updatedContent: string) => void; // optional edit handler
+  onDeleteComment: (commentId: string) => void; // optional delete handler
+};
+
+type Reply = {
+  id: string;
+  text: string;
+};
 
 interface Post {
     id: string
@@ -39,6 +64,27 @@ interface Post {
     }
 }
 
+function buildCommentTree(comments: Comment[]): NestedComment[] {
+  const commentMap: { [key: string]: NestedComment } = {};
+  const roots: NestedComment[] = [];
+
+  comments.forEach((comment) => {
+    commentMap[comment.id] = { ...comment, replies: [] };
+  });
+
+  comments.forEach((comment) => {
+    if (comment.parent_id && commentMap[comment.parent_id]) {
+      commentMap[comment.parent_id].replies.push(commentMap[comment.id]);
+    } else {
+      roots.push(commentMap[comment.id]);
+    }
+  });
+
+  return roots;
+}
+
+
+
 const PostPage = () => {
   const { id } = useParams(); // Get the post ID from URL
   const [post, setPost] = useState<Post | null>(null);
@@ -47,6 +93,11 @@ const PostPage = () => {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
+const [nestedComments, setNestedComments] = useState<NestedComment[]>(() => buildCommentTree(comments));
+
+  useEffect(() => {
+  setNestedComments(buildCommentTree(comments));
+}, [comments]);
 
   useEffect(() => {
     if (!id) return;
@@ -133,62 +184,82 @@ const PostPage = () => {
     return () => clearTimeout(timer);
   }, [id]);
 
-  const handleAddComment = async () => {
-    if (!user) {
-      toast.error('Please log in to comment');
-      return;
-    }
+  const handleAddComment = async (
+  postId: string | number,
+  parentId: string | number | null,
+  text: string
+) => {
+  if (!user) {
+    toast.error('Please log in to comment');
+    return;
+  }
 
-    if (!newComment.trim()) {
-      toast.error('Comment cannot be empty');
-      return;
-    }
+  if (!text.trim()) {
+    toast.error('Comment cannot be empty');
+    return;
+  }
 
-    try {
-      const { data: newCommentData, error } = await supabase
-        .from('comments')
-        .insert({
-          post_id: id,
-          user_id: user.id,
-          content: newComment.trim(),
-          parent_id: replyTo
-        })
-        .select(`
-          *,
-          Profiles!comments_user_id_fkey (
-            username,
-            avatar_url
-          )
-        `)
-        .single();
+  try {
+      console.log("Trying to insert comment...");
+    const { data: newCommentData, error } = await supabase
+      .from('comments')
+      .insert({
+        post_id: postId,
+        user_id: user.id,
+        content: text.trim(),
+        parent_id: parentId
+      })
+      .select(
+        `
+        *,
+        Profiles!comments_user_id_fkey (
+          username,
+          avatar_url
+        )
+      `
+      )
+      .single();
 
-      if (error) throw error;
+    console.log('Insert response error:', error);
+  console.log('Insert response data:', newCommentData);
 
-      // Update comments list
-      setComments(prev => [...prev, newCommentData]);
-      
-      // Update post comment count
-      if (post) {
-        setPost({
-          ...post,
-          comments_count: (post.comments_count || 0) + 1
-        });
-
-        // Update the comments count in the database
-        await supabase
-          .from('posts')
-          .update({ comments_count: (post.comments_count || 0) + 1 })
-          .eq('id', id);
-      }
-
-      setNewComment('');
-      setReplyTo(null);
-      toast.success('Comment added successfully');
-    } catch (error) {
-      console.error('Error adding comment:', JSON.stringify(error, null, 2));
-      toast.error('Failed to add comment');
-    }
+    if (error) throw error;
+      console.log('New comment added:', newCommentData);
+    // Update comments list
+    if (newCommentData) {
+  const transformedComment = {
+    ...newCommentData,
+    user: newCommentData.Profiles || newCommentData.profiles || null, // depending on key name
   };
+  delete transformedComment.Profiles; // optional cleanup
+  delete transformedComment.profiles;
+
+  setComments(prev => [...prev, transformedComment]);
+}
+
+
+    // Update post comment count
+    if (post) {
+      setPost({
+        ...post,
+        comments_count: (post.comments_count || 0) + 1
+      });
+
+      await supabase
+        .from('posts')
+        .update({ comments_count: (post.comments_count || 0) + 1 })
+        .eq('id', postId);
+    }
+
+    setNewComment('');
+    setReplyTo(null);
+    toast.success('Comment added successfully');
+  } catch (error) {
+    console.error('Error adding comment:', JSON.stringify(error, null, 2));
+    toast.error('Failed to add comment');
+  }
+};
+
 
   const handleDeleteComment = async (commentId: string) => {
     if (!user) {
@@ -258,7 +329,17 @@ const PostPage = () => {
       if (error) throw error;
 
       // Update comments list
-      setComments(prev => prev.map(c => c.id === commentId ? updatedComment : c));
+      if (updatedComment) {
+  const transformedComment = {
+    ...updatedComment,
+    user: updatedComment.Profiles || updatedComment.profiles || null,
+  };
+  delete transformedComment.Profiles;
+  delete transformedComment.profiles;
+
+  setComments(prev => prev.map(c => c.id === commentId ? transformedComment : c));
+}
+
       toast.success('Comment updated successfully');
     } catch (error) {
       console.error('Error updating comment:', error);
@@ -324,6 +405,9 @@ const PostPage = () => {
     }
   };
 
+
+
+
   if (isLoading) {
     return <div className="max-w-3xl mx-auto p-6">Loading...</div>;
   }
@@ -332,8 +416,149 @@ const PostPage = () => {
     return <div className="max-w-3xl mx-auto p-6">Post not found</div>;
   }
 
+
+const CommentItem = ({
+  comment,
+  postId,
+  onAddComment,
+  onEditComment,
+  onDeleteComment,
+}: CommentItemProps) => {
+  const [isReplying, setIsReplying] = useState(false);
+  const [replyText, setReplyText] = useState("");
+
+  const FIFTEEN_MINUTES = 15 * 60 * 1000; // in milliseconds
+
+const canEdit = (() => {
+  if (!comment.created_at) return false; // no timestamp, disallow editing
+  const createdAt = new Date(comment.created_at).getTime();
+  const now = Date.now();
+  return now - createdAt <= FIFTEEN_MINUTES;
+})();
+
+  const handleSubmitReply = () => {
+    onAddComment(postId, comment.id, replyText);
+    setReplyText("");
+    setIsReplying(false);
+  };
+
+  const handleEditClick = (): void => {
+  const updatedContent = prompt("Edit your comment:", comment.content);
+  if (updatedContent) {
+    onEditComment(comment.id, updatedContent);
+  }
+};
+
+  const handleDeleteClick = (): void => {
+  if (confirm("Are you sure you want to delete this comment?")) {
+    onDeleteComment(comment.id);
+  }
+};
+
   return (
-    <div className="max-w-3xl mx-auto p-6">
+    <div className="mb-6">
+      <div className="flex items-center space-x-2">
+        {comment.user?.avatar_url && (
+          <Image
+            src={comment.user.avatar_url}
+            alt="Avatar"
+            width={32}
+            height={32}
+            className="rounded-full"
+          />
+        )}
+        <p className="font-semibold">{comment.user?.username || "Anonymous"}</p>
+      </div>
+
+      <p className="mt-1">{comment.content}</p>
+      <div className="flex space-x-4 mt-1">
+  <button
+    onClick={() => setIsReplying(true)}
+    className="text-blue-500 hover:text-blue-400 text-sm flex items-center"
+    aria-label="Reply"
+  >
+    <FiCornerUpLeft size={20} />
+  </button>
+
+  {comment.user_id === user?.id && canEdit && (
+      <button
+        onClick={handleEditClick}
+        className="text-green-500 hover:text-green-400 text-sm flex items-center"
+        aria-label="Edit"
+      >
+        <FiEdit2 size={18} />
+      </button>
+    )}
+
+    {comment.user_id === user?.id && (
+      <button
+        onClick={handleDeleteClick}
+        className="text-red-500 hover:text-red-400 text-sm flex items-center"
+        aria-label="Delete"
+      >
+        <FiTrash2 size={18} />
+      </button>
+    )}
+</div>
+
+      {isReplying && (
+        <div className="mt-2">
+          <textarea
+            className="w-full p-2 border rounded bg-[#2e2e2e] text-white border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            rows={3}
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            placeholder="Write your reply..."
+          />
+          <div className="flex gap-2 mt-1">
+            <button
+              type="button"
+              onClick={handleSubmitReply}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Submit
+            </button>
+            <button
+              onClick={() => setIsReplying(false)}
+              className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-800"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {comment.replies?.length > 0 && (
+        <div className="ml-4 mt-4 border-l-2 border-gray-300 pl-4">
+          {comment.replies.map((reply) => (
+            <CommentItem
+              key={reply.id}
+              comment={reply}
+              postId={postId}
+              onAddComment={onAddComment}
+              onEditComment={onEditComment}
+              onDeleteComment={onDeleteComment}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+const bg_url = "https://ik.imagekit.io/g19tkydww/Background_Images/night-view-3615087_1280.jpg?updatedAt=1748103791775";
+  return (
+    <div className="relative min-h-screen">
+      <Image
+        src={bg_url}
+        alt="Anime Banner"
+        fill
+        className="object-cover"
+        priority
+      />
+    <div className="absolute inset-0 bg-black opacity-70 z-10"></div>
+     <div className="relative z-10 max-w-7xl mx-auto p-6 text-white">      
       <Card key={post.id} className="bg-[#2e2e2e] border-0 p-4 relative">
         {/* Report Button */}
         <button className="absolute top-4 right-4 bg-black/30 p-2 rounded-full text-white hover:text-red-500">
@@ -355,11 +580,12 @@ const PostPage = () => {
 
         {/* Post Image */}
         <div className="mt-4">
-          <img
-            src={post.image_url || "/placeholder.jpg"}
-            alt="Post"
-            className="w-full h-80 object-cover rounded-lg"
-          />
+           <img
+        src={post.image_url}
+        alt={post.title}
+        className="max-w-full max-h-[32rem] mx-auto rounded object-contain"
+        loading="lazy"
+      />
         </div>
 
         {/* Post Actions */}
@@ -398,64 +624,35 @@ const PostPage = () => {
             placeholder="Write a comment..."
           />
           <button 
-            onClick={handleAddComment}
-            className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-          >
-            {replyTo ? "Reply" : "Add Comment"}
-          </button>
+  onClick={() => handleAddComment(post.id, null, newComment)}
+  className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+>
+  Add Comment
+</button>
         </div>
 
         {/* Comments List */}
-        <div className="mt-6 space-y-4">
-          {comments.length > 0 ? (
-            comments.map((comment) => (
-              <div key={comment.id} className="p-4 border border-gray-700 rounded-lg bg-[#2e2e2e]">
-                <div className="flex items-center gap-2 mb-2">
-                  <img
-                    src={comment.user?.avatar_url || "/default-avatar.png"}
-                    alt="User"
-                    className="w-8 h-8 rounded-full"
-                  />
-                  <span className="font-semibold">{comment.user?.username || "Unknown User"}</span>
-                  <span className="text-gray-400 text-sm">
-                    {new Date(comment.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-                <p className="text-gray-200">{comment.content}</p>
-                <div className="flex gap-2 mt-2">
-                  <button
-                    onClick={() => setReplyTo(comment.id)}
-                    className="text-blue-500 hover:text-blue-400"
-                  >
-                    Reply
-                  </button>
-                  {user?.id === comment.user_id && (
-                    <>
-                      <button
-                        onClick={() => {
-                          const updatedContent = prompt("Edit your comment:", comment.content);
-                          if (updatedContent) handleEditComment(comment.id, updatedContent);
-                        }}
-                        className="text-yellow-500 hover:text-yellow-400"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteComment(comment.id)}
-                        className="text-red-500 hover:text-red-400"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-gray-400">Be the first one to comment!</p>
-          )}
-        </div>
+        <div className="mt-6 space-y-4 bg-black p-4 rounded-lg">
+  {nestedComments.length > 0 ? (
+    nestedComments.map((comment) => (
+      <CommentItem
+  key={comment.id}
+  comment={comment}
+  postId={id as string}
+  onAddComment={handleAddComment}
+  onEditComment={handleEditComment}
+  onDeleteComment={handleDeleteComment}
+  />
+
+
+    ))
+  ) : (
+    <p className="text-gray-400">Be the first one to comment!</p>
+  )}
+</div>
+
       </div>
+    </div>
     </div>
   );
 };

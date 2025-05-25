@@ -14,6 +14,7 @@ import { UserPosts } from "./user-posts";
 import { ContentFeed } from "./content-feed";
 import { FiMoreHorizontal, FiHeart, FiMessageCircle } from "react-icons/fi";
 import { FaHeart } from "react-icons/fa";
+import { set } from "react-hook-form";
 
 const DEFAULT_BANNER = "https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Flux_Dev_a_stunning_illustration_of_Create_an_animethemed_webs_0.jpg?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5X2EwNWE5MzA2LTNiZGItNDliNC1hZGQ2LTFjMjEzNjhiYzcwMSJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9GbHV4X0Rldl9hX3N0dW5uaW5nX2lsbHVzdHJhdGlvbl9vZl9DcmVhdGVfYW5fYW5pbWV0aGVtZWRfd2Vic18wLmpwZyIsImlhdCI6MTc0NzU2NDg0NiwiZXhwIjoxNzc5MTAwODQ2fQ.ow7wQ-1Dunza5HIya7Ky4wjGdYULgrged7V6J-Smag0";
 
@@ -62,6 +63,7 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
   const [showEditModal, setShowEditModal] = useState(false);
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState('Posts');
+  const [username, setUsername] = useState<string | null>(null);
 
   const router = useRouter();
   let profileId = userId || user?.id;
@@ -81,6 +83,7 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
           setAvatarUrl("/placeholder.svg");
         } else if (profile) {
           setDisplayName(profile.display_name || "Anonymous");
+          setUsername(profile.username || null);
           setAvatarUrl(profile.avatar_url || "/placeholder.svg");
           setProfileImage(profile.avatar_url || null);
           setBannerUrl(profile.banner || DEFAULT_BANNER);
@@ -394,8 +397,19 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
                 {followedIds.includes(userId) ? 'Following' : 'Follow'}
               </button>
             )}
-            <button className="ml-4 bg-zinc-800 text-white px-4 py-2 rounded" onClick={() => setShowEditModal(true)}>Edit details</button>
+             {!userId && (
+  <button
+    className="ml-4 bg-zinc-800 text-white px-4 py-2 rounded"
+    onClick={() => setShowEditModal(true)}
+  >
+    Edit details
+  </button>
+)}
+
           </div>
+          {username && (
+      <p className="text-gray-400 text-sm mt-1">@{username}</p>
+    )}
           <div className="flex gap-8 mt-2">
             <div className="flex flex-col items-center">
               <span className="text-lg font-bold">{following}</span>
