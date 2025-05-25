@@ -13,8 +13,10 @@ import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { FollowButton } from "@/components/ui/FollowButton";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserCircle, Heart, MessageCircle, Eye, MoreVertical } from "lucide-react";
+import { UserCircle, Heart, MessageCircle, Eye, MoreVertical, FootprintsIcon } from "lucide-react";
 import { PostgrestError } from "@supabase/supabase-js";
+import Footer from "@/components/footer"
+
 
 interface Post {
   id: string;
@@ -678,6 +680,7 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+      <Footer />
     </>
   );
 }

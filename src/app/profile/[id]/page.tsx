@@ -4,6 +4,7 @@ import { TopNav } from "@/components/top-nav";
 import { UserProfile } from "@/components/user-profile";
 import { UserPosts } from "@/components/user-posts";
 import { useParams } from "next/navigation";
+import Footer from "@/components/footer"
 
 export default function ProfileIdPage() {
   const params = useParams();
@@ -14,6 +15,7 @@ export default function ProfileIdPage() {
       <main className="container mx-auto px-4 py-8">
         <UserProfile userId={userId} readOnly={true} />
       </main>
+      <Footer />
     </div>
   );
 } 

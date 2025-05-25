@@ -16,6 +16,7 @@ import Link from "next/link";
 import { FollowButton } from "@/components/ui/FollowButton";
 import { PostgrestError } from "@supabase/supabase-js";
 import { ContentFeed } from "@/components/content-feed";
+import Footer from "@/components/footer"
 
 // Types
 interface Community {
@@ -831,6 +832,9 @@ const filteredPosts = postsData
     </div>
     </div>
   </div>
+  <div className="relative z-50">
+    <Footer  />
+    </div>
   </div>
   );
 }
