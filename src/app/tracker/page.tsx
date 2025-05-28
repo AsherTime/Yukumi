@@ -14,6 +14,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import { FiCalendar, FiAward, FiGift, FiClock, FiStar, FiTrendingUp, FiThumbsUp, FiMessageCircle } from 'react-icons/fi';
 import { FaFire } from 'react-icons/fa';
 import { motion } from 'framer-motion';
+import { CheckCircle, Award, Shield, Clock, Flame, Target } from "lucide-react";
 
 // Dummy data for the graph
 const graphData = [
@@ -152,9 +153,7 @@ export default function TrackerPage() {
       <TopNav />
       <div className="flex flex-row w-full min-h-[90vh] bg-[#0d0d0d] pt-8 px-4 gap-8">
         {/* Left Main Tracker Panel */}
-        <div className="w-full max-w-sm flex flex-col items-center rounded-3xl bg-gradient-to-br from-[#181828]/80 via-[#232232]/90 to-[#181828]/80 backdrop-blur-md border-2 border-[#a21caf] p-8 shadow-2xl relative mt-16 mb-8" style={{boxShadow: '0 0 32px 0 #a21caf99, 0 4px 32px 0 #0008'}}>
-          {/* Soft radial glow behind score */}
-          <div className="absolute top-8 left-1/2 -translate-x-1/2 w-72 h-72 bg-gradient-radial from-purple-500/30 via-fuchsia-500/10 to-transparent rounded-full blur-2xl opacity-80 z-0" />
+        <div className="w-full max-w-sm flex flex-col items-center rounded-3xl bg-[#181828]/80 backdrop-blur-md border border-white/20 p-8 shadow-lg relative mt-16 mb-8 transition-all duration-300 hover:border-white/40 hover:shadow-white/10">
           {/* Smooth single-color ring with hover effect, no square background behind number */}
           <div className={`relative flex items-center justify-center w-60 h-60 mb-6 group`}> 
             <svg
@@ -196,11 +195,71 @@ export default function TrackerPage() {
             ))}
           </div>
         </div>
-        {/* Right panel placeholder for future cards */}
-        <div className="flex-1" />
+        {/* Right Feature Panel */}
+        <div className="flex-1 flex flex-col min-h-[calc(100vh-6rem)] max-h-[calc(100vh-6rem)] mt-16 mb-8 overflow-y-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
+            {/* Feature Cards */}
+            <FeatureCard
+              icon={<CheckCircle className="text-blue-400" size={32} />}
+              title="Task Completion"
+              value="5 Tasks Completed"
+              accent="blue"
+            />
+            <FeatureCard
+              icon={<Award className="text-purple-400" size={32} />}
+              title="Badges Earned"
+              value="3 Badges"
+              accent="purple"
+            />
+            <FeatureCard
+              icon={<Shield className="text-indigo-400" size={32} />}
+              title="Community Rank"
+              value="Elite Contributor"
+              accent="indigo"
+            />
+            <FeatureCard
+              icon={<Clock className="text-cyan-400" size={32} />}
+              title="Recent Activity"
+              value="2h ago"
+              accent="cyan"
+            />
+            <FeatureCard
+              icon={<Flame className="text-pink-400" size={32} />}
+              title="Daily Streak"
+              value="7 Days"
+              accent="pink"
+            />
+            <FeatureCard
+              icon={<Target className="text-green-400" size={32} />}
+              title="Goals Progress"
+              value="80% Complete"
+              accent="green"
+            />
+          </div>
+        </div>
       </div>
       <Footer />
     </>
+  );
+}
+
+function FeatureCard({ icon, title, value, accent }: { icon: React.ReactNode, title: string, value: string, accent: string }) {
+  const accentColor = {
+    blue: 'hover:border-blue-500 hover:shadow-blue-500/30',
+    purple: 'hover:border-purple-500 hover:shadow-purple-500/30',
+    indigo: 'hover:border-indigo-500 hover:shadow-indigo-500/30',
+    cyan: 'hover:border-cyan-400 hover:shadow-cyan-400/30',
+    pink: 'hover:border-pink-500 hover:shadow-pink-500/30',
+    green: 'hover:border-green-500 hover:shadow-green-500/30',
+  }[accent] || 'hover:border-purple-500 hover:shadow-purple-500/30';
+  return (
+    <div
+      className={`bg-[#181828]/80 border border-slate-700 shadow-md shadow-black/20 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 transition-transform duration-300 hover:scale-105 ${accentColor}`}
+    >
+      <div className="mb-2">{icon}</div>
+      <div className="font-semibold text-lg text-white mb-1 text-center">{title}</div>
+      <div className="text-sm text-slate-300 text-center">{value}</div>
+    </div>
   );
 }
 
