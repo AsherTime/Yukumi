@@ -186,7 +186,6 @@ const PostPage = () => {
     return () => clearTimeout(timer);
   }, [id]);
 
-<<<<<<< HEAD
   const handleAddComment = async () => {
     if (!newComment.trim() || !user) return;
 
@@ -234,84 +233,6 @@ const PostPage = () => {
       toast.error('Failed to add comment. Please try again.');
     }
   };
-=======
-  const handleAddComment = async (
-    postId: string | number,
-    parentId: string | number | null,
-    text: string
-  ) => {
-    if (!user) {
-      toast.error('Please log in to comment');
-      return;
-    }
-
-    if (!text.trim()) {
-      toast.error('Comment cannot be empty');
-      return;
-    }
-
-    try {
-      console.log("Trying to insert comment...");
-      const { data: newCommentData, error } = await supabase
-        .from('comments')
-        .insert({
-          post_id: postId,
-          user_id: user.id,
-          content: text.trim(),
-          parent_id: parentId
-        })
-        .select(
-          `
-        *,
-        Profiles!comments_user_id_fkey (
-          username,
-          avatar_url
-        )
-      `
-        )
-        .single();
-
-      console.log('Insert response error:', error);
-      console.log('Insert response data:', newCommentData);
-
-      if (error) throw error;
-      console.log('New comment added:', newCommentData);
-      // Update comments list
-      if (newCommentData) {
-        const transformedComment = {
-          ...newCommentData,
-          user: newCommentData.Profiles || newCommentData.profiles || null, // depending on key name
-        };
-        delete transformedComment.Profiles; // optional cleanup
-        delete transformedComment.profiles;
-
-        setComments(prev => [...prev, transformedComment]);
-      }
-
-
-      // Update post comment count
-      if (post) {
-        setPost({
-          ...post,
-          comments_count: (post.comments_count || 0) + 1
-        });
-
-        await supabase
-          .from('posts')
-          .update({ comments_count: (post.comments_count || 0) + 1 })
-          .eq('id', postId);
-      }
-
-      setNewComment('');
-      setReplyTo(null);
-      toast.success('Comment added successfully');
-    } catch (error) {
-      console.error('Error adding comment:', JSON.stringify(error, null, 2));
-      toast.error('Failed to add comment');
-    }
-  };
-
->>>>>>> 86ae176eec63aaa858aa5ed5430adce027069e4f
 
   const handleDeleteComment = async (commentId: string) => {
     if (!user) {
@@ -676,7 +597,7 @@ const PostPage = () => {
               placeholder="Write a comment..."
             />
             <button
-              onClick={() => handleAddComment(post.id, null, newComment)}
+              onClick={handleAddComment}
               className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
             >
               Add Comment
@@ -704,83 +625,6 @@ const PostPage = () => {
           </div>
 
         </div>
-<<<<<<< HEAD
-
-        {/* Post Image */}
-        <div className="mt-4">
-           <img
-        src={post.image_url}
-        alt={post.title}
-        className="max-w-full max-h-[32rem] mx-auto rounded object-contain"
-        loading="lazy"
-      />
-        </div>
-
-        {/* Post Actions */}
-        <div className="flex items-center gap-6 mt-4 text-gray-400">
-          <button
-            className={`flex items-center gap-1 ${post.liked_by_user ? "text-red-500" : "text-gray-400"}`}
-            onClick={toggleLike}
-          >
-            <FiHeart className="cursor-pointer hover:text-red-500" />
-            <span>{post.likes_count || 0}</span>
-          </button>
-
-          <button className="flex items-center gap-1">
-            <FiMessageCircle className="cursor-pointer hover:text-blue-400" />
-            <span>{post.comments_count || 0}</span>
-          </button>
-
-          <button className="flex items-center gap-1 cursor-pointer hover:text-blue-400">
-            <FiShare2 />
-          </button>
-
-          <p className="text-sm">{post.views || 0} Views</p>
-        </div>
-      </Card>
-
-      {/* Comments Section */}
-      <div className="mt-8">
-        <h2 className="text-2xl font-semibold mb-4">Comments</h2>
-
-        {/* Add Comment Box */}
-        <div className="mt-4">
-          <textarea
-            className="w-full p-2 border rounded bg-[#2e2e2e] text-white border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Write a comment..."
-          />
-          <button 
-  onClick={() => handleAddComment()}
-  className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
->
-  Add Comment
-</button>
-        </div>
-
-        {/* Comments List */}
-        <div className="mt-6 space-y-4 bg-black p-4 rounded-lg">
-  {nestedComments.length > 0 ? (
-    nestedComments.map((comment) => (
-      <CommentItem
-  key={comment.id}
-  comment={comment}
-  postId={id as string}
-  onAddComment={handleAddComment}
-  onEditComment={handleEditComment}
-  onDeleteComment={handleDeleteComment}
-  />
-
-
-    ))
-  ) : (
-    <p className="text-gray-400">Be the first one to comment!</p>
-  )}
-</div>
-
-=======
->>>>>>> 86ae176eec63aaa858aa5ed5430adce027069e4f
       </div>
     </div>
   );
