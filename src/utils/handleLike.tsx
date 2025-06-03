@@ -1,4 +1,6 @@
 import { supabase } from "@/lib/supabase";
+import { awardPoints } from '@/utils/awardPoints';
+import { POINTS } from '@/utils/pointConfig';
 
 interface Post {
     id: string;
@@ -64,6 +66,14 @@ export default function handleLike(
                     return;
                 }
                 console.log("Successfully liked post");
+                // Award XP for liking a post
+                await awardPoints({
+                    userId: user.id,
+                    activityType: 'like_post',
+                    points: POINTS.like_post,
+                    itemId: postId,
+                    itemType: 'post'
+                });
             }
 
             // Update the UI immediately
