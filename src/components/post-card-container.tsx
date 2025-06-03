@@ -3,7 +3,7 @@
 import PostCard from '@/components/post-card';
 import useSavedPosts from '@/utils/use-saved-posts';
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from 'next/navigation';
@@ -36,6 +36,8 @@ type PostCardContainerProps = {
     idx: number;
     total: number;
     onLikeToggle: (e: React.MouseEvent, postId: string, liked: boolean) => Promise<void>;
+    following: Set<string>;
+    handleFollowToggle: (followedUserId: string) => Promise<void>;
     saved: string[];
     onToggleSave: (postId: string) => Promise<void>;
 };
@@ -45,6 +47,8 @@ export default function PostCardContainer({
     idx,
     total,
     onLikeToggle,
+    following,
+    handleFollowToggle,
     saved,
     onToggleSave
 }: PostCardContainerProps) {
@@ -52,7 +56,6 @@ export default function PostCardContainer({
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
     const [showConfirmId, setShowConfirmId] = useState<string | null>(null);
     const [reportConfirmId, setReportConfirmId] = useState<string | null>(null);;
-    const [following, setFollowing] = useState<Set<string>>(new Set());
     const router = useRouter();
 
 
@@ -69,6 +72,10 @@ export default function PostCardContainer({
     const handleLikeClick = (e: React.MouseEvent) => {
         onLikeToggle(e, post.id, post.liked_by_user);
     };
+    
+   async function handleFollowClick(followedUserId: string): Promise<void> {
+    await handleFollowToggle(followedUserId); 
+}
 
 
     // Redirecting to comment section for each post
@@ -122,49 +129,6 @@ export default function PostCardContainer({
         setMenuOpenId(null);
     };
 
-    useEffect(() => {
-        const fetchFollowing = async () => {
-            if (!user?.id) return;
-
-            const { data, error } = await supabase
-                .from("follows")
-                .select("followed_id")
-                .eq("follower_id", user.id);
-
-            if (!error && data) {
-                const followedIds = data.map(f => f.followed_id);
-                setFollowing(new Set(followedIds));
-            }
-        };
-
-        fetchFollowing();
-    }, [user?.id]);
-
-
-    const handleFollowToggle = async (followedUserId: string) => {
-        const isFollowingUser = following.has(followedUserId);
-
-        // Optimistic UI update
-        setFollowing(prev => {
-            const newSet = new Set(prev);
-            isFollowingUser ? newSet.delete(followedUserId) : newSet.add(followedUserId);
-            return newSet;
-        });
-
-        // Update in Supabase
-        if (isFollowingUser) {
-            await supabase
-                .from("follows")
-                .delete()
-                .eq("follower_id", user?.id)
-                .eq("followed_id", followedUserId);
-        } else {
-            await supabase
-                .from("follows")
-                .insert({ follower_id: user?.id, followed_id: followedUserId });
-        }
-    };
-
 
     const handleReport = async (postId: string) => {
         try {
@@ -185,8 +149,6 @@ export default function PostCardContainer({
         }
     };
 
-    console.log("array.from(following)", Array.from(following))
-    console.log("following.has(post.user_id)", following.has(post.user_id))
     return (
         <PostCard
             post={post}
@@ -207,7 +169,7 @@ export default function PostCardContainer({
             saved={saved}
             handleSave={onToggleSave}
             isFollowing={following.has(post.user_id)}
-            onFollowToggle={() => handleFollowToggle(post.user_id)}
+            handleFollowClick={handleFollowClick}
         />
     );
 }

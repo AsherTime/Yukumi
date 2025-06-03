@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 type FollowButtonProps = {
   followedId: string;
   isFollowing: boolean;
-  onToggle: (followedId: string) => void;
+  onToggle: (followedId: string) => Promise<void>; 
   className?: string;
 };
 
