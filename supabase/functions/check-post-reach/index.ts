@@ -99,6 +99,44 @@ serve(async (req: Request) => {
   }
 });
 
-const handleAddComment = async (postId, parentId, text) => {
-  // incoming version
-}
+const handleAddComment = async () => {
+  if (!newComment.trim() || !user) return;
+
+  try {
+    // Insert the comment
+    const { data: commentData, error: insertError } = await supabase
+      .from('comments')
+      .insert([
+        {
+          post_id: id,
+          user_id: user.id,
+          content: newComment.trim(),
+        },
+      ])
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+
+    if (commentData) {
+      setComments((prev) => [commentData, ...prev]);
+      setNewComment('');
+
+      // Award points for commenting
+      try {
+        await awardPoints({
+          userId: user.id,
+          activityType: 'comment_made',
+          points: 15,
+          itemId: id,
+          itemType: 'post',
+        });
+      } catch (pointsError) {
+        console.error('Failed to award points for comment:', pointsError);
+      }
+    }
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    toast.error('Failed to add comment. Please try again.');
+  }
+};
