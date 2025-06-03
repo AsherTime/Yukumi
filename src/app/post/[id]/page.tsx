@@ -14,16 +14,16 @@ import { FiCornerUpLeft } from 'react-icons/fi';
 
 
 interface Comment {
-    id: string
-    created_at: string
-    post_id: string
-    user_id: string
-    content: string
-    parent_id: string | null
-    user?: {
-      username: string
-      avatar_url: string
-    }
+  id: string
+  created_at: string
+  post_id: string
+  user_id: string
+  content: string
+  parent_id: string | null
+  user?: {
+    username: string
+    avatar_url: string
+  }
 }
 
 type NestedComment = Comment & {
@@ -48,20 +48,20 @@ type Reply = {
 };
 
 interface Post {
-    id: string
-    created_at: string
-    user_id: string
-    title: string
-    image_url: string
-    content: string
-    likes_count: number
-    comments_count: number
-    views: number
-    liked_by_user: boolean
-    user?: {
-      username: string
-      avatar_url: string
-    }
+  id: string
+  created_at: string
+  user_id: string
+  title: string
+  image_url: string
+  content: string
+  likes_count: number
+  comments_count: number
+  views: number
+  liked_by_user: boolean
+  user?: {
+    username: string
+    avatar_url: string
+  }
 }
 
 function buildCommentTree(comments: Comment[]): NestedComment[] {
@@ -93,11 +93,11 @@ const PostPage = () => {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
-const [nestedComments, setNestedComments] = useState<NestedComment[]>(() => buildCommentTree(comments));
+  const [nestedComments, setNestedComments] = useState<NestedComment[]>(() => buildCommentTree(comments));
 
   useEffect(() => {
-  setNestedComments(buildCommentTree(comments));
-}, [comments]);
+    setNestedComments(buildCommentTree(comments));
+  }, [comments]);
 
   useEffect(() => {
     if (!id) return;
@@ -128,7 +128,7 @@ const [nestedComments, setNestedComments] = useState<NestedComment[]>(() => buil
             .eq('post_id', id)
             .eq('user_id', user.id)
             .maybeSingle();
-          
+
           likedByUser = !!likeData;
         }
 
@@ -185,80 +185,80 @@ const [nestedComments, setNestedComments] = useState<NestedComment[]>(() => buil
   }, [id]);
 
   const handleAddComment = async (
-  postId: string | number,
-  parentId: string | number | null,
-  text: string
-) => {
-  if (!user) {
-    toast.error('Please log in to comment');
-    return;
-  }
+    postId: string | number,
+    parentId: string | number | null,
+    text: string
+  ) => {
+    if (!user) {
+      toast.error('Please log in to comment');
+      return;
+    }
 
-  if (!text.trim()) {
-    toast.error('Comment cannot be empty');
-    return;
-  }
+    if (!text.trim()) {
+      toast.error('Comment cannot be empty');
+      return;
+    }
 
-  try {
+    try {
       console.log("Trying to insert comment...");
-    const { data: newCommentData, error } = await supabase
-      .from('comments')
-      .insert({
-        post_id: postId,
-        user_id: user.id,
-        content: text.trim(),
-        parent_id: parentId
-      })
-      .select(
-        `
+      const { data: newCommentData, error } = await supabase
+        .from('comments')
+        .insert({
+          post_id: postId,
+          user_id: user.id,
+          content: text.trim(),
+          parent_id: parentId
+        })
+        .select(
+          `
         *,
         Profiles!comments_user_id_fkey (
           username,
           avatar_url
         )
       `
-      )
-      .single();
+        )
+        .single();
 
-    console.log('Insert response error:', error);
-  console.log('Insert response data:', newCommentData);
+      console.log('Insert response error:', error);
+      console.log('Insert response data:', newCommentData);
 
-    if (error) throw error;
+      if (error) throw error;
       console.log('New comment added:', newCommentData);
-    // Update comments list
-    if (newCommentData) {
-  const transformedComment = {
-    ...newCommentData,
-    user: newCommentData.Profiles || newCommentData.profiles || null, // depending on key name
-  };
-  delete transformedComment.Profiles; // optional cleanup
-  delete transformedComment.profiles;
+      // Update comments list
+      if (newCommentData) {
+        const transformedComment = {
+          ...newCommentData,
+          user: newCommentData.Profiles || newCommentData.profiles || null, // depending on key name
+        };
+        delete transformedComment.Profiles; // optional cleanup
+        delete transformedComment.profiles;
 
-  setComments(prev => [...prev, transformedComment]);
-}
+        setComments(prev => [...prev, transformedComment]);
+      }
 
 
-    // Update post comment count
-    if (post) {
-      setPost({
-        ...post,
-        comments_count: (post.comments_count || 0) + 1
-      });
+      // Update post comment count
+      if (post) {
+        setPost({
+          ...post,
+          comments_count: (post.comments_count || 0) + 1
+        });
 
-      await supabase
-        .from('posts')
-        .update({ comments_count: (post.comments_count || 0) + 1 })
-        .eq('id', postId);
+        await supabase
+          .from('posts')
+          .update({ comments_count: (post.comments_count || 0) + 1 })
+          .eq('id', postId);
+      }
+
+      setNewComment('');
+      setReplyTo(null);
+      toast.success('Comment added successfully');
+    } catch (error) {
+      console.error('Error adding comment:', JSON.stringify(error, null, 2));
+      toast.error('Failed to add comment');
     }
-
-    setNewComment('');
-    setReplyTo(null);
-    toast.success('Comment added successfully');
-  } catch (error) {
-    console.error('Error adding comment:', JSON.stringify(error, null, 2));
-    toast.error('Failed to add comment');
-  }
-};
+  };
 
 
   const handleDeleteComment = async (commentId: string) => {
@@ -278,7 +278,7 @@ const [nestedComments, setNestedComments] = useState<NestedComment[]>(() => buil
 
       // Update comments list
       setComments(prev => prev.filter(c => c.id !== commentId));
-      
+
       // Update post comment count
       if (post) {
         setPost({
@@ -330,15 +330,15 @@ const [nestedComments, setNestedComments] = useState<NestedComment[]>(() => buil
 
       // Update comments list
       if (updatedComment) {
-  const transformedComment = {
-    ...updatedComment,
-    user: updatedComment.Profiles || updatedComment.profiles || null,
-  };
-  delete transformedComment.Profiles;
-  delete transformedComment.profiles;
+        const transformedComment = {
+          ...updatedComment,
+          user: updatedComment.Profiles || updatedComment.profiles || null,
+        };
+        delete transformedComment.Profiles;
+        delete transformedComment.profiles;
 
-  setComments(prev => prev.map(c => c.id === commentId ? transformedComment : c));
-}
+        setComments(prev => prev.map(c => c.id === commentId ? transformedComment : c));
+      }
 
       toast.success('Comment updated successfully');
     } catch (error) {
@@ -417,137 +417,137 @@ const [nestedComments, setNestedComments] = useState<NestedComment[]>(() => buil
   }
 
 
-const CommentItem = ({
-  comment,
-  postId,
-  onAddComment,
-  onEditComment,
-  onDeleteComment,
-}: CommentItemProps) => {
-  const [isReplying, setIsReplying] = useState(false);
-  const [replyText, setReplyText] = useState("");
+  const CommentItem = ({
+    comment,
+    postId,
+    onAddComment,
+    onEditComment,
+    onDeleteComment,
+  }: CommentItemProps) => {
+    const [isReplying, setIsReplying] = useState(false);
+    const [replyText, setReplyText] = useState("");
 
-  const FIFTEEN_MINUTES = 15 * 60 * 1000; // in milliseconds
+    const FIFTEEN_MINUTES = 15 * 60 * 1000; // in milliseconds
 
-const canEdit = (() => {
-  if (!comment.created_at) return false; // no timestamp, disallow editing
-  const createdAt = new Date(comment.created_at).getTime();
-  const now = Date.now();
-  return now - createdAt <= FIFTEEN_MINUTES;
-})();
+    const canEdit = (() => {
+      if (!comment.created_at) return false; // no timestamp, disallow editing
+      const createdAt = new Date(comment.created_at).getTime();
+      const now = Date.now();
+      return now - createdAt <= FIFTEEN_MINUTES;
+    })();
 
-  const handleSubmitReply = () => {
-    onAddComment(postId, comment.id, replyText);
-    setReplyText("");
-    setIsReplying(false);
+    const handleSubmitReply = () => {
+      onAddComment(postId, comment.id, replyText);
+      setReplyText("");
+      setIsReplying(false);
+    };
+
+    const handleEditClick = (): void => {
+      const updatedContent = prompt("Edit your comment:", comment.content);
+      if (updatedContent) {
+        onEditComment(comment.id, updatedContent);
+      }
+    };
+
+    const handleDeleteClick = (): void => {
+      if (confirm("Are you sure you want to delete this comment?")) {
+        onDeleteComment(comment.id);
+      }
+    };
+
+    return (
+      <div className="mb-6">
+        <div className="flex items-center space-x-2">
+          {comment.user?.avatar_url && (
+            <Image
+              src={comment.user.avatar_url}
+              alt="Avatar"
+              width={32}
+              height={32}
+              className="rounded-full"
+            />
+          )}
+          <p className="font-semibold">{comment.user?.username || "Anonymous"}</p>
+        </div>
+
+        <p className="mt-1">{comment.content}</p>
+        <div className="flex space-x-4 mt-1">
+          <button
+            onClick={() => setIsReplying(true)}
+            className="text-blue-500 hover:text-blue-400 text-sm flex items-center"
+            aria-label="Reply"
+          >
+            <FiCornerUpLeft size={20} />
+          </button>
+
+          {comment.user_id === user?.id && canEdit && (
+            <button
+              onClick={handleEditClick}
+              className="text-green-500 hover:text-green-400 text-sm flex items-center"
+              aria-label="Edit"
+            >
+              <FiEdit2 size={18} />
+            </button>
+          )}
+
+          {comment.user_id === user?.id && (
+            <button
+              onClick={handleDeleteClick}
+              className="text-red-500 hover:text-red-400 text-sm flex items-center"
+              aria-label="Delete"
+            >
+              <FiTrash2 size={18} />
+            </button>
+          )}
+        </div>
+
+        {isReplying && (
+          <div className="mt-2">
+            <textarea
+              className="w-full p-2 border rounded bg-[#2e2e2e] text-white border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              rows={3}
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Write your reply..."
+            />
+            <div className="flex gap-2 mt-1">
+              <button
+                type="button"
+                onClick={handleSubmitReply}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Submit
+              </button>
+              <button
+                onClick={() => setIsReplying(false)}
+                className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-800"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {comment.replies?.length > 0 && (
+          <div className="ml-4 mt-4 border-l-2 border-gray-300 pl-4">
+            {comment.replies.map((reply) => (
+              <CommentItem
+                key={reply.id}
+                comment={reply}
+                postId={postId}
+                onAddComment={onAddComment}
+                onEditComment={onEditComment}
+                onDeleteComment={onDeleteComment}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
-  const handleEditClick = (): void => {
-  const updatedContent = prompt("Edit your comment:", comment.content);
-  if (updatedContent) {
-    onEditComment(comment.id, updatedContent);
-  }
-};
 
-  const handleDeleteClick = (): void => {
-  if (confirm("Are you sure you want to delete this comment?")) {
-    onDeleteComment(comment.id);
-  }
-};
-
-  return (
-    <div className="mb-6">
-      <div className="flex items-center space-x-2">
-        {comment.user?.avatar_url && (
-          <Image
-            src={comment.user.avatar_url}
-            alt="Avatar"
-            width={32}
-            height={32}
-            className="rounded-full"
-          />
-        )}
-        <p className="font-semibold">{comment.user?.username || "Anonymous"}</p>
-      </div>
-
-      <p className="mt-1">{comment.content}</p>
-      <div className="flex space-x-4 mt-1">
-  <button
-    onClick={() => setIsReplying(true)}
-    className="text-blue-500 hover:text-blue-400 text-sm flex items-center"
-    aria-label="Reply"
-  >
-    <FiCornerUpLeft size={20} />
-  </button>
-
-  {comment.user_id === user?.id && canEdit && (
-      <button
-        onClick={handleEditClick}
-        className="text-green-500 hover:text-green-400 text-sm flex items-center"
-        aria-label="Edit"
-      >
-        <FiEdit2 size={18} />
-      </button>
-    )}
-
-    {comment.user_id === user?.id && (
-      <button
-        onClick={handleDeleteClick}
-        className="text-red-500 hover:text-red-400 text-sm flex items-center"
-        aria-label="Delete"
-      >
-        <FiTrash2 size={18} />
-      </button>
-    )}
-</div>
-
-      {isReplying && (
-        <div className="mt-2">
-          <textarea
-            className="w-full p-2 border rounded bg-[#2e2e2e] text-white border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            rows={3}
-            value={replyText}
-            onChange={(e) => setReplyText(e.target.value)}
-            placeholder="Write your reply..."
-          />
-          <div className="flex gap-2 mt-1">
-            <button
-              type="button"
-              onClick={handleSubmitReply}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Submit
-            </button>
-            <button
-              onClick={() => setIsReplying(false)}
-              className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-800"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {comment.replies?.length > 0 && (
-        <div className="ml-4 mt-4 border-l-2 border-gray-300 pl-4">
-          {comment.replies.map((reply) => (
-            <CommentItem
-              key={reply.id}
-              comment={reply}
-              postId={postId}
-              onAddComment={onAddComment}
-              onEditComment={onEditComment}
-              onDeleteComment={onDeleteComment}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-
-const bg_url = "https://ik.imagekit.io/g19tkydww/Background_Images/night-view-3615087_1280.jpg?updatedAt=1748103791775";
+  const bg_url = "https://ik.imagekit.io/g19tkydww/Background_Images/night-view-3615087_1280.jpg?updatedAt=1748103791775";
   return (
     <div className="relative min-h-screen">
       <Image
@@ -557,102 +557,102 @@ const bg_url = "https://ik.imagekit.io/g19tkydww/Background_Images/night-view-36
         className="object-cover"
         priority
       />
-    <div className="absolute inset-0 bg-black opacity-70 z-10"></div>
-     <div className="relative z-10 max-w-7xl mx-auto p-6 text-white">      
-      <Card key={post.id} className="bg-[#2e2e2e] border-0 p-4 relative">
-        {/* Report Button */}
-        <button className="absolute top-4 right-4 bg-black/30 p-2 rounded-full text-white hover:text-red-500">
-          <FiFlag size={20} />
-        </button>
+      <div className="absolute inset-0 bg-black opacity-70 z-10"></div>
+      <div className="relative z-10 max-w-7xl mx-auto p-6 text-white">
+        <Card key={post.id} className="bg-[#2e2e2e] border-0 p-4 relative">
+          {/* Report Button */}
+          <button className="absolute top-4 right-4 bg-black/30 p-2 rounded-full text-white hover:text-red-500">
+            <FiFlag size={20} />
+          </button>
 
-        {/* User Info */}
-        <div className="flex items-center gap-4">
-          <img
-            src={post.user?.avatar_url || "/default-avatar.png"}
-            alt="User"
-            className="w-10 h-10 rounded-full cursor-pointer"
-          />
-          <div>
-            <p className="text-white font-semibold">{post.user?.username || "Unknown User"}</p>
-            <p className="text-gray-400 text-sm">{new Date(post.created_at).toLocaleDateString()}</p>
+          {/* User Info */}
+          <div className="flex items-center gap-4">
+            <img
+              src={post.user?.avatar_url || "/default-avatar.png"}
+              alt="User"
+              className="w-10 h-10 rounded-full cursor-pointer"
+            />
+            <div>
+              <p className="text-white font-semibold">{post.user?.username || "Unknown User"}</p>
+              <p className="text-gray-400 text-sm">{new Date(post.created_at).toLocaleDateString()}</p>
+            </div>
           </div>
+
+          {/* Post Image */}
+          <div className="mt-4">
+            <img
+              src={post.image_url}
+              alt={post.title}
+              className="max-w-full max-h-[32rem] mx-auto rounded object-contain"
+              loading="lazy"
+            />
+          </div>
+
+          {/* Post Actions */}
+          <div className="flex items-center gap-6 mt-4 text-gray-400">
+            <button
+              className={`flex items-center gap-1 ${post.liked_by_user ? "text-red-500" : "text-gray-400"}`}
+              onClick={toggleLike}
+            >
+              <FiHeart className="cursor-pointer hover:text-red-500" />
+              <span>{post.likes_count || 0}</span>
+            </button>
+
+            <button className="flex items-center gap-1">
+              <FiMessageCircle className="cursor-pointer hover:text-blue-400" />
+              <span>{post.comments_count || 0}</span>
+            </button>
+
+            <button className="flex items-center gap-1 cursor-pointer hover:text-blue-400">
+              <FiShare2 />
+            </button>
+
+            <p className="text-sm">{post.views || 0} Views</p>
+          </div>
+        </Card>
+
+        {/* Comments Section */}
+        <div className="mt-8">
+          <h2 className="text-2xl font-semibold mb-4">Comments</h2>
+
+          {/* Add Comment Box */}
+          <div className="mt-4">
+            <textarea
+              className="w-full p-2 border rounded bg-[#2e2e2e] text-white border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Write a comment..."
+            />
+            <button
+              onClick={() => handleAddComment(post.id, null, newComment)}
+              className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            >
+              Add Comment
+            </button>
+          </div>
+
+          {/* Comments List */}
+          <div className="mt-6 space-y-4 bg-black p-4 rounded-lg">
+            {nestedComments.length > 0 ? (
+              nestedComments.map((comment) => (
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  postId={id as string}
+                  onAddComment={handleAddComment}
+                  onEditComment={handleEditComment}
+                  onDeleteComment={handleDeleteComment}
+                />
+
+
+              ))
+            ) : (
+              <p className="text-gray-400">Be the first one to comment!</p>
+            )}
+          </div>
+
         </div>
-
-        {/* Post Image */}
-        <div className="mt-4">
-           <img
-        src={post.image_url}
-        alt={post.title}
-        className="max-w-full max-h-[32rem] mx-auto rounded object-contain"
-        loading="lazy"
-      />
-        </div>
-
-        {/* Post Actions */}
-        <div className="flex items-center gap-6 mt-4 text-gray-400">
-          <button
-            className={`flex items-center gap-1 ${post.liked_by_user ? "text-red-500" : "text-gray-400"}`}
-            onClick={toggleLike}
-          >
-            <FiHeart className="cursor-pointer hover:text-red-500" />
-            <span>{post.likes_count || 0}</span>
-          </button>
-
-          <button className="flex items-center gap-1">
-            <FiMessageCircle className="cursor-pointer hover:text-blue-400" />
-            <span>{post.comments_count || 0}</span>
-          </button>
-
-          <button className="flex items-center gap-1 cursor-pointer hover:text-blue-400">
-            <FiShare2 />
-          </button>
-
-          <p className="text-sm">{post.views || 0} Views</p>
-        </div>
-      </Card>
-
-      {/* Comments Section */}
-      <div className="mt-8">
-        <h2 className="text-2xl font-semibold mb-4">Comments</h2>
-
-        {/* Add Comment Box */}
-        <div className="mt-4">
-          <textarea
-            className="w-full p-2 border rounded bg-[#2e2e2e] text-white border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Write a comment..."
-          />
-          <button 
-  onClick={() => handleAddComment(post.id, null, newComment)}
-  className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
->
-  Add Comment
-</button>
-        </div>
-
-        {/* Comments List */}
-        <div className="mt-6 space-y-4 bg-black p-4 rounded-lg">
-  {nestedComments.length > 0 ? (
-    nestedComments.map((comment) => (
-      <CommentItem
-  key={comment.id}
-  comment={comment}
-  postId={id as string}
-  onAddComment={handleAddComment}
-  onEditComment={handleEditComment}
-  onDeleteComment={handleDeleteComment}
-  />
-
-
-    ))
-  ) : (
-    <p className="text-gray-400">Be the first one to comment!</p>
-  )}
-</div>
-
       </div>
-    </div>
     </div>
   );
 };

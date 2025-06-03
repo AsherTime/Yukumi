@@ -21,6 +21,7 @@ import PostCardContainer from "@/components/post-card-container";
 import fetchPost from "@/utils/fetch-post";
 import handleLike from "@/utils/handleLike";
 import useSavedPosts from "@/utils/use-saved-posts";
+import handleFollow from "@/utils/handleFollow";
 
 // Types
 interface Community {
@@ -88,6 +89,7 @@ export default function CommunityIdPage() {
   const { postsData, setPostsData, fetchPosts } = fetchPost();
   const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
   const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
+  const { following, handleFollowToggle } = handleFollow(user);
 
   useEffect(() => {
     const fetchCommunityAndAnime = async () => {
@@ -343,6 +345,8 @@ export default function CommunityIdPage() {
                           idx={idx}
                           total={uniquePosts.length}
                           onLikeToggle={handleLikeClick}
+                          following={following}
+                          handleFollowToggle={handleFollowToggle}
                           saved={saved}
                           onToggleSave={() => toggleSave(post.id)}
                         />
