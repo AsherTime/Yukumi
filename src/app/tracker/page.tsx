@@ -1,215 +1,563 @@
-"use client";
+"use client"
+
+import React, { useState, useEffect } from "react"
+import { CheckCircle, Trophy, BarChart3, MessageSquare, BookOpen, Flame, Star, Hexagon } from "lucide-react"
 import { TopNav } from "@/components/top-nav"
-import Footer from "@/components/footer"
-import Image from "next/image"
-import Link from "next/link"
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation";
-import * as Tooltip from "@radix-ui/react-tooltip"
-import { getAuth, onAuthStateChanged, User, setPersistence, browserLocalPersistence } from "firebase/auth";
-import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
-import { FiCalendar, FiAward, FiGift, FiClock, FiStar, FiTrendingUp, FiThumbsUp, FiMessageCircle } from 'react-icons/fi';
-import { FaFire } from 'react-icons/fa';
-import { motion } from 'framer-motion';
 
-// Dummy data for the graph
-const graphData = [
-  { name: 'Mon', visits: 40, follows: 24 },
-  { name: 'Tue', visits: 30, follows: 13 },
-  { name: 'Wed', visits: 20, follows: 98 },
-  { name: 'Thu', visits: 27, follows: 39 },
-  { name: 'Fri', visits: 18, follows: 48 },
-  { name: 'Sat', visits: 23, follows: 38 },
-  { name: 'Sun', visits: 34, follows: 43 },
-];
-
-// Dummy data for leaderboard
-const leaderboardData = [
-  { id: 1, name: 'Alex', level: 8, xp: 25000, avatar: '/avatars/1.png' },
-  { id: 2, name: 'Sarah', level: 7, xp: 22000, avatar: '/avatars/2.png' },
-  { id: 3, name: 'Mike', level: 7, xp: 21000, avatar: '/avatars/3.png' },
-  { id: 4, name: 'Emma', level: 6, xp: 19000, avatar: '/avatars/4.png' },
-  { id: 5, name: 'John', level: 6, xp: 18000, avatar: '/avatars/5.png' },
-];
-
-// Dummy data for badges
-const badgesData = [
-  { id: 1, title: 'First Post', description: 'Created your first post', status: 'unlocked', level: 1 },
-  { id: 2, title: 'Quiz Master', description: 'Completed 10 quizzes', status: 'locked', level: 3 },
-  { id: 3, title: 'Social Butterfly', description: 'Made 50 comments', status: 'locked', level: 4 },
-];
-
-export default function TrackerPage() {
-  const [currentLevel] = useState(5);
-  const [currentXP] = useState(13451);
-  const [xpToNextLevel] = useState(15000);
-  const [streakDays] = useState(5);
-  const [missions] = useState([
-    { id: 1, text: 'Post 2 times today', completed: true },
-    { id: 2, text: 'Join 1 event', completed: true },
-    { id: 3, text: 'Comment on 3 posts', completed: true },
-    { id: 4, text: 'Complete daily quiz', completed: false },
-    { id: 5, text: 'Visit 5 profiles', completed: false },
-  ]);
-
-  // Dummy activity calendar data (intensity: 0-4)
-  const activityCalendar = Array.from({ length: 35 }, (_, i) => ({
-    date: `2024-05-${(i + 1).toString().padStart(2, "0")}`,
-    xp: Math.floor(Math.random() * 10),
-    intensity: Math.floor(Math.random() * 5),
-  }));
-
-  // Dummy leaderboard with avatars
-  const leaderboardData = [
-    { id: 1, name: 'Alex Johnson', level: 9, xp: 25000, avatar: '/avatars/1.png' },
-    { id: 2, name: 'Irene Lee', level: 9, xp: 22000, avatar: '/avatars/2.png' },
-    { id: 3, name: 'Paul Hogan', level: 9, xp: 21000, avatar: '/avatars/3.png' },
-    { id: 4, name: 'Taylor Smith', level: 8, xp: 20000, avatar: '/avatars/4.png' },
-    { id: 5, name: 'Taylor Brown', level: 8, xp: 19000, avatar: '/avatars/5.png' },
-    { id: 6, name: 'Your Rank 124', level: 5, xp: 13451, avatar: '/avatars/6.png' },
-  ];
-
-  // Dummy badges with icons
-  const badgesData = [
-    { id: 1, title: 'First Post', description: 'Created your first post', status: 'unlocked', level: 1, icon: '/badges/first-post.png' },
-    { id: 2, title: 'Quiz Master', description: 'Completed 10 quizzes', status: 'locked', level: 3, icon: '/badges/quiz-master.png' },
-  ];
-
-  // Remove graph, leaderboard, and streak tracker. Add tracker score section.
-  const trackerScore = 742;
-  let scoreColor = "bg-gray-700";
-  let glow = "shadow-gray-500/50";
-  let badge = null;
-  if (trackerScore > 800) {
-    scoreColor = "bg-purple-700";
-    glow = "shadow-purple-500/70";
-    badge = <span className="ml-3 px-3 py-1 rounded-full bg-purple-500 text-white text-xs font-bold animate-pulse">Legendary</span>;
-  } else if (trackerScore > 600) {
-    scoreColor = "bg-blue-700";
-    glow = "shadow-blue-500/70";
-  } else if (trackerScore > 400) {
-    scoreColor = "bg-green-600";
-    glow = "shadow-green-400/60";
-  } else if (trackerScore > 200) {
-    scoreColor = "bg-yellow-400";
-    glow = "shadow-yellow-300/60";
-  }
-
-  // Example interaction stats (replace with real data as needed)
-  const interactions = [
-    { label: 'Posts', value: 62 },
-    { label: 'Communities', value: 8 },
-    { label: 'Events', value: 5 },
-    { label: 'Quizzes', value: 12 },
-  ];
-
-  // Score gradient logic
-  let scoreGradient = 'from-gray-400 via-gray-500 to-gray-700';
-  if (trackerScore > 800) scoreGradient = 'from-blue-500 via-blue-400 to-indigo-500';
-  else if (trackerScore > 600) scoreGradient = 'from-green-400 via-green-500 to-emerald-500';
-  else if (trackerScore > 400) scoreGradient = 'from-yellow-300 via-yellow-400 to-yellow-500';
-  else if (trackerScore > 200) scoreGradient = 'from-gray-400 via-gray-500 to-gray-700';
-  else scoreGradient = 'from-red-500 via-pink-500 to-red-700';
-
-  // Score color logic for ring and progress bar (updated colors)
-  let ringColor = '#64748b'; // Slate Blue
-  if (trackerScore > 900) ringColor = '#8b5cf6'; // Electric Purple
-  else if (trackerScore > 700) ringColor = '#6366f1'; // Vivid Indigo
-  else if (trackerScore > 500) ringColor = '#0ea5e9'; // Bright Aqua Blue
-  else if (trackerScore > 300) ringColor = '#22d3ee'; // Neon Cyan
-
-  const { user } = useAuth();
-  const [postCount, setPostCount] = useState(0);
-  const [likeCount, setLikeCount] = useState(0);
-  const [commentCount, setCommentCount] = useState(0);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    // Fetch posts count
-    supabase.from('posts').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
-      .then(({ count }) => setPostCount(count || 0));
-    // Fetch likes count
-    supabase.from('likes').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
-      .then(({ count }) => setLikeCount(count || 0));
-    // Fetch comments count
-    supabase.from('comments').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
-      .then(({ count }) => setCommentCount(count || 0));
-  }, [user?.id]);
-
-  // Stats row data (dynamic)
-  const stats = [
-    { icon: <FiStar />, label: 'Posts', value: postCount },
-    { icon: <FiThumbsUp />, label: 'Likes', value: likeCount },
-    { icon: <FiMessageCircle />, label: 'Comments', value: commentCount },
-    { icon: <FiCalendar />, label: 'Events', value: 0 },
-  ];
-
+// Minimal Card component for self-containment
+function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <>
-      <TopNav />
-      <div className="flex flex-row w-full min-h-[90vh] bg-[#0d0d0d] pt-8 px-4 gap-8">
-        {/* Left Main Tracker Panel */}
-        <div className="w-full max-w-sm flex flex-col items-center rounded-3xl bg-gradient-to-br from-[#181828]/80 via-[#232232]/90 to-[#181828]/80 backdrop-blur-md border-2 border-[#a21caf] p-8 shadow-2xl relative mt-16 mb-8" style={{boxShadow: '0 0 32px 0 #a21caf99, 0 4px 32px 0 #0008'}}>
-          {/* Soft radial glow behind score */}
-          <div className="absolute top-8 left-1/2 -translate-x-1/2 w-72 h-72 bg-gradient-radial from-purple-500/30 via-fuchsia-500/10 to-transparent rounded-full blur-2xl opacity-80 z-0" />
-          {/* Smooth single-color ring with hover effect, no square background behind number */}
-          <div className={`relative flex items-center justify-center w-60 h-60 mb-6 group`}> 
-            <svg
-              className="relative z-10 transition-transform duration-300"
-              width="240" height="240" viewBox="0 0 240 240"
-              style={{
-                filter: `drop-shadow(0 0 0px ${ringColor})`,
-                transition: 'filter 0.3s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.filter = `drop-shadow(0 0 24px ${ringColor})`}
-              onMouseLeave={e => e.currentTarget.style.filter = `drop-shadow(0 0 0px ${ringColor})`}
-            >
-              <circle cx="120" cy="120" r="100" strokeWidth="20" fill="none" stroke="#232232" />
-              <circle
-                cx="120" cy="120" r="100" strokeWidth="10" fill="none"
-                stroke={ringColor}
-                strokeDasharray={2 * Math.PI * 100}
-                strokeDashoffset={2 * Math.PI * 100 * (1 - trackerScore / 1000)}
-                strokeLinecap="round"
-                style={{ filter: `drop-shadow(0 0 12px ${ringColor}cc)` }}
-              />
-            </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-[4rem] font-extrabold text-white font-[Orbitron,Oxanium,sans-serif] drop-shadow-[0_2px_16px_rgba(168,85,247,0.7)] select-none">{trackerScore}{badge}</span>
-          </div>
-          {/* Progress Bar */}
-          <div className="w-full mt-2 mb-6">
-            <div className="relative w-full h-2 bg-[#232232] rounded-full overflow-hidden">
-              <div className="absolute left-0 top-0 h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(100, Math.round((trackerScore / 1000) * 100))}%`, background: ringColor }} />
-            </div>
-          </div>
-          {/* Stats Row - now vertical, one per row */}
-          <div className="flex flex-col w-full gap-3 mt-2">
-            {stats.map((stat, idx) => (
-              <div key={stat.label} className="flex flex-row items-center justify-center bg-[#181828]/80 rounded-full px-6 py-3 shadow-md border border-[#232232] hover:scale-105 hover:shadow-[0_0_8px_2px_rgba(168,85,247,0.2)] transition-all duration-200 cursor-pointer mx-auto w-3/4">
-                <span className="text-lg mr-4" style={{ color: ringColor }}>{stat.icon}</span>
-                <span className="text-white font-bold text-base font-[Orbitron,Oxanium,sans-serif] mr-2">{stat.value}</span>
-                <span className="text-xs text-zinc-400 mt-0.5">{stat.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        {/* Right panel placeholder for future cards */}
-        <div className="flex-1" />
-      </div>
-      <Footer />
-    </>
-  );
+    <div className={`rounded-lg border border-gray-700 bg-gray-900/60 p-4 shadow-lg backdrop-blur-md ${className || ''}`}>
+      {children}
+    </div>
+  )
 }
 
-/* Add to your global CSS (e.g. globals.css or in a <style jsx global>)
-@keyframes float-slow { 0% { transform: translateY(0); } 50% { transform: translateY(-16px); } 100% { transform: translateY(0); } }
-@keyframes float-slower { 0% { transform: translateY(0); } 50% { transform: translateY(-8px); } 100% { transform: translateY(0); } }
-.animate-float-slow { animation: float-slow 4s ease-in-out infinite; }
-.animate-float-slower { animation: float-slower 7s ease-in-out infinite; }
-*/
+// Custom Tailwind colors for a cozy dark anime vibe
+const customColors = {
+  'cozy-bg-dark': '#1A1A2E',
+  'cozy-text-light': '#E0E0E0',
+  'cozy-card-bg': 'rgba(30, 30, 45, 0.7)',
+  'cozy-star-glow-light': '#9DD6FF',
+  'cozy-star-glow-dark': '#6FA8DC',
+  'cozy-progress-fill': '#8FB8DE',
+  'cozy-button-bg': '#5A6A80',
+  'cozy-button-hover': '#6F8095',
+  'cozy-card-bg-transparent': 'rgba(30, 30, 45, 0.55)',
+}
 
+const trackerData = {
+  score: 742,
+  level: 12,
+  levelName: "Rising Hunter",
+  levelProgress: 68,
+  encouragement: "You're doing great!",
+  features: [
+    {
+      id: 1,
+      title: "Daily Tasks",
+      icon: CheckCircle,
+      value: "5/5",
+      status: "Completed",
+      color: "from-emerald-500 to-teal-600",
+    },
+    {
+      id: 2,
+      title: "Badge Display",
+      icon: Trophy,
+      value: "12",
+      status: "Earned",
+      color: "from-amber-500 to-orange-600",
+    },
+    {
+      id: 3,
+      title: "Weekly Stats",
+      icon: BarChart3,
+      value: "94%",
+      status: "Progress",
+      color: "from-blue-500 to-indigo-600",
+    },
+    {
+      id: 4,
+      title: "Community Posts",
+      icon: MessageSquare,
+      value: "23",
+      status: "New",
+      color: "from-purple-500 to-violet-600",
+    },
+    {
+      id: 5,
+      title: "Manga Tracker",
+      icon: BookOpen,
+      value: "8/12",
+      status: "Reading",
+      color: "from-pink-500 to-rose-600",
+    },
+    {
+      id: 6,
+      title: "Daily Login",
+      icon: Flame,
+      value: "15",
+      status: "Day Streak",
+      color: "from-red-500 to-orange-600",
+    },
+  ],
+}
 
+function getScoreGradient(score: number) {
+  if (score <= 200) return "from-gray-400 to-gray-600"
+  if (score <= 400) return "from-yellow-400 to-amber-500"
+  if (score <= 600) return "from-green-400 to-emerald-500"
+  if (score <= 800) return "from-blue-400 to-indigo-500"
+  return "from-purple-400 to-violet-500"
+}
 
+function getScoreGlow(score: number) {
+  if (score <= 200) return "shadow-gray-500/20"
+  if (score <= 400) return "shadow-yellow-500/30"
+  if (score <= 600) return "shadow-green-500/30"
+  if (score <= 800) return "shadow-blue-500/30"
+  return "shadow-purple-500/40"
+}
+
+// Falling star animation component
+function FallingStar({ left, onEnd }: { left: number; onEnd: () => void }) {
+  // Randomize diagonal direction (left-to-right or right-to-left)
+  const isLeftToRight = Math.random() > 0.5;
+  // Randomize the angle (between 20deg and 35deg)
+  const angle = isLeftToRight ? 28 : -28;
+  useEffect(() => {
+    const timer = setTimeout(onEnd, 7000) // 7s for slow, cozy fall
+    return () => clearTimeout(timer)
+  }, [onEnd])
+  return (
+    <span
+      className="pointer-events-none fixed z-20"
+      style={{
+        left: `${left}%`,
+        top: 0,
+        animation: `falling-star-diagonal-${isLeftToRight ? 'ltr' : 'rtl'} 7s linear 0s 1`,
+        opacity: 0.7,
+      }}
+    >
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <defs>
+          <linearGradient id="fallingStarGrad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#9DD6FF" stopOpacity="0.8" />
+            <stop offset="1" stopColor="#6FA8DC" stopOpacity="0.2" />
+          </linearGradient>
+        </defs>
+        <path d="M16 0 L18 12 L32 16 L18 20 L16 32 L14 20 L0 16 L14 12 Z" fill="url(#fallingStarGrad)" />
+      </svg>
+      <style jsx global>{`
+        @keyframes falling-star-diagonal-ltr {
+          0% {
+            transform: translateY(-40px) translateX(0) scale(0.7) rotate(-10deg);
+            opacity: 0;
+          }
+          10% {
+            opacity: 0.7;
+          }
+          80% {
+            opacity: 0.7;
+          }
+          100% {
+            transform: translateY(100vh) translateX(120vw) scale(1) rotate(10deg);
+            opacity: 0;
+          }
+        }
+        @keyframes falling-star-diagonal-rtl {
+          0% {
+            transform: translateY(-40px) translateX(0) scale(0.7) rotate(-10deg);
+            opacity: 0;
+          }
+          10% {
+            opacity: 0.7;
+          }
+          80% {
+            opacity: 0.7;
+          }
+          100% {
+            transform: translateY(100vh) translateX(-120vw) scale(1) rotate(10deg);
+            opacity: 0;
+          }
+        }
+      `}</style>
+    </span>
+  )
+}
+
+// Add a component for the forming star at the top
+function FormingStar({ left, onEnd }: { left: number; onEnd: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onEnd, 1200) // 1.2s for fade in/out
+    return () => clearTimeout(timer)
+  }, [onEnd])
+  return (
+    <span
+      className="pointer-events-none fixed z-30"
+      style={{
+        left: `${left}%`,
+        top: 0,
+        animation: `forming-star 1.2s ease-in-out 0s 1`,
+        opacity: 0.8,
+      }}
+    >
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <defs>
+          <radialGradient id="formingStarGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#fff" stopOpacity="1" />
+            <stop offset="100%" stopColor="#9DD6FF" stopOpacity="0.2" />
+          </radialGradient>
+        </defs>
+        <circle cx="9" cy="9" r="7" fill="url(#formingStarGlow)" />
+      </svg>
+      <style jsx global>{`
+        @keyframes forming-star {
+          0% { opacity: 0; transform: scale(0.7); }
+          30% { opacity: 0.8; transform: scale(1.1); }
+          60% { opacity: 1; transform: scale(1); }
+          100% { opacity: 0; transform: scale(0.7); }
+        }
+      `}</style>
+    </span>
+  )
+}
+
+function BackgroundElements() {
+  const [fallingStars, setFallingStars] = useState<{ id: number; left: number }[]>([])
+  const [floatingStars, setFloatingStars] = useState<any[]>([])
+  const [floatingHexagons, setFloatingHexagons] = useState<any[]>([])
+  const [formingStars, setFormingStars] = useState<{ id: number; left: number }[]>([])
+
+  // Generate floating stars and hexagons only once on mount
+  useEffect(() => {
+    setFloatingStars(
+      Array.from({ length: 14 }, () => ({
+        left: Math.random() * 100,
+        top: Math.random() * 100,
+        delay: Math.random() * 3,
+        duration: 2.5 + Math.random() * 2.5,
+        size: Math.random() * 14 + 8,
+      }))
+    )
+    setFloatingHexagons(
+      Array.from({ length: 8 }, () => ({
+        left: Math.random() * 100,
+        top: Math.random() * 100,
+        delay: Math.random() * 4,
+        duration: 3 + Math.random() * 2.5,
+        size: Math.random() * 20 + 12,
+      }))
+    )
+  }, [])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const left = 10 + Math.random() * 80
+      const formingId = Math.random()
+      setFormingStars((stars) => [...stars, { id: formingId, left }])
+      setTimeout(() => {
+        setFallingStars((stars) => {
+          if (stars.length < 2) {
+            return [...stars, { id: formingId, left }]
+          } else {
+            return stars
+          }
+        })
+      }, 1100)
+    }, 7000)
+    return () => clearInterval(interval)
+  }, [fallingStars.length])
+
+  // Remove forming star after animation
+  useEffect(() => {
+    if (formingStars.length === 0) return
+    const timer = setTimeout(() => {
+      setFormingStars((stars) => stars.slice(1))
+    }, 1200)
+    return () => clearTimeout(timer)
+  }, [formingStars])
+
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none z-10">
+      {/* Floating stars */}
+      {floatingStars.map((star, i) => (
+        <Star
+          key={`star-${i}`}
+          className="absolute text-indigo-200/30"
+          style={{
+            left: `${star.left}%`,
+            top: `${star.top}%`,
+            filter: 'drop-shadow(0 0 8px #9DD6FF88)',
+            animation: `float-fade-glow ${star.duration}s ease-in-out ${star.delay}s infinite`,
+          }}
+          size={star.size}
+        />
+      ))}
+      {/* Hex patterns */}
+      {floatingHexagons.map((hex, i) => (
+        <Hexagon
+          key={`hex-${i}`}
+          className="absolute text-cyan-200/20"
+          style={{
+            left: `${hex.left}%`,
+            top: `${hex.top}%`,
+            filter: 'drop-shadow(0 0 8px #6FA8DC66)',
+            animation: `float-fade-glow ${hex.duration}s ease-in-out ${hex.delay}s infinite`,
+          }}
+          size={hex.size}
+        />
+      ))}
+      {/* Forming stars at the top */}
+      {formingStars.map((star) => (
+        <FormingStar key={star.id} left={star.left} onEnd={() => {}} />
+      ))}
+      {/* Looping falling stars */}
+      {fallingStars.map((star) => (
+        <FallingStar
+          key={star.id}
+          left={star.left}
+          onEnd={() => setFallingStars((stars) => stars.filter((s) => s.id !== star.id))}
+        />
+      ))}
+      <style jsx global>{`
+        @keyframes falling-star {
+          0% {
+            transform: translateY(-40px) scale(0.7) rotate(-10deg);
+            opacity: 0;
+          }
+          10% {
+            opacity: 0.7;
+          }
+          80% {
+            opacity: 0.7;
+          }
+          100% {
+            transform: translateY(100vh) scale(1) rotate(10deg);
+            opacity: 0;
+          }
+        }
+        @keyframes float-fade-glow {
+          0% {
+            opacity: 0;
+            filter: drop-shadow(0 0 0px #9DD6FF00);
+          }
+          20% {
+            opacity: 0.7;
+            filter: drop-shadow(0 0 8px #9DD6FF88);
+          }
+          50% {
+            opacity: 1;
+            filter: drop-shadow(0 0 16px #9DD6FF);
+          }
+          80% {
+            opacity: 0.7;
+            filter: drop-shadow(0 0 8px #9DD6FF88);
+          }
+          100% {
+            opacity: 0;
+            filter: drop-shadow(0 0 0px #9DD6FF00);
+          }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+function LevelBar({ level, levelName, progress }: { level: number; levelName: string; progress: number }) {
+  return (
+    <div className="w-full max-w-md mx-auto mt-4">
+      <div className="flex justify-between items-center text-sm mb-1">
+        <span className="text-gray-300 font-medium">Level {level}</span>
+        <span className="text-indigo-400 font-semibold">{levelName}</span>
+      </div>
+      <div className="relative h-3 bg-gray-800 rounded-full overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-full" />
+        <div
+          className="absolute left-0 top-0 h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-1000 ease-out shadow-lg shadow-indigo-500/30"
+          style={{ width: `${progress}%` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent rounded-full animate-pulse" />
+      </div>
+      <div className="text-right text-xs text-gray-400 mt-1">{progress}% to next level</div>
+    </div>
+  )
+}
+
+function FeatureCard({ feature }: { feature: (typeof trackerData.features)[0] }) {
+  const Icon = feature.icon
+  return (
+    <Card className="group hover:bg-gray-800/70 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-indigo-500/20 overflow-hidden">
+      <div className="flex items-center space-x-3 mb-4">
+        <div className={`p-2 rounded-lg bg-gradient-to-r ${feature.color} bg-opacity-20`}>
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+        <h3 className="text-white font-semibold text-sm">{feature.title}</h3>
+      </div>
+      <div className="text-2xl font-bold text-white font-mono mb-1">{feature.value}</div>
+      <div className="text-xs text-gray-400 uppercase tracking-wide">{feature.status}</div>
+    </Card>
+  )
+}
+
+function TrackerScore({ score }: { score: number }) {
+  const gradient = getScoreGradient(score)
+
+  return (
+    <div className="relative group">
+      {/* Main circle with transparent background, subtle border, and glow */}
+      <div
+        className={`relative w-64 h-64 rounded-full flex flex-col items-center justify-center backdrop-blur-sm transition-transform duration-300 group-hover:scale-105`}
+        style={{
+          backgroundColor: 'rgba(30, 30, 45, 0.16)',
+          border: `1px solid ${customColors['cozy-star-glow-light']}`,
+          boxShadow: `0 0 15px ${customColors['cozy-star-glow-light']}, inset 0 0 8px ${customColors['cozy-star-glow-dark']}`,
+        }}
+      >
+        {/* Inner glow effect - very subtle, slow smooth pulse, fades to 15% opacity */}
+        <div
+          className={`absolute inset-2 rounded-full bg-gradient-to-r ${gradient}`}
+          style={{
+            animation: 'orb-pulse 3.5s ease-in-out infinite',
+            opacity: 0.15,
+          }}
+        />
+        {/* Score display */}
+        <div className="relative z-10 text-center">
+          <div className="text-5xl font-bold text-white mb-2 font-mono tracking-wider">{score.toLocaleString()}</div>
+          <div className="text-sm text-gray-300 uppercase tracking-widest">Tracker Score</div>
+        </div>
+        {/* Pulse keyframes */}
+        <style jsx>{`
+          @keyframes orb-pulse {
+            0% { opacity: 0.15; }
+            40% { opacity: 0.35; }
+            60% { opacity: 0.35; }
+            100% { opacity: 0.15; }
+          }
+        `}</style>
+      </div>
+    </div>
+  )
+}
+
+export default function TrackerPage() {
+  const [trackerScore] = useState(742)
+  const [reflection, setReflection] = useState("")
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isLoadingReflection, setIsLoadingReflection] = useState(false)
+
+  const fetchCozyReflection = async () => {
+    setIsLoadingReflection(true)
+    setReflection("")
+    setIsModalOpen(true)
+    try {
+      let chatHistory = []
+      const prompt = `Generate a short, comforting, and reflective thought or a gentle affirmation, similar in style to calming anime narration or a peaceful journal entry. It should evoke a sense of quiet contemplation and personal journey. Do not include any character names or specific anime titles. Keep it concise, around 1-3 sentences.`
+      chatHistory.push({ role: "user", parts: [{ text: prompt }] })
+      const payload = { contents: chatHistory }
+      const apiKey = ""
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      const result = await response.json()
+      if (result.candidates && result.candidates.length > 0 &&
+        result.candidates[0].content && result.candidates[0].content.parts &&
+        result.candidates[0].content.parts.length > 0) {
+        const text = result.candidates[0].content.parts[0].text
+        setReflection(text)
+      } else {
+        setReflection("Failed to generate a reflection. Please try again.")
+      }
+    } catch (error) {
+      setReflection("Error generating reflection. Please check your connection.")
+    } finally {
+      setIsLoadingReflection(false)
+    }
+  }
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setReflection("")
+  }
+
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden"
+      style={{
+        fontFamily: "'Inter', sans-serif",
+        backgroundColor: customColors['cozy-bg-dark'],
+      }}
+    >
+      {/* Top Navigation Bar */}
+      <TopNav />
+      {/* Background Image */}
+      <img
+        src="https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Leonardo_Anime_XL_Generate_a_wide_horizontal_image_for_a_websi_1.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hMDVhOTMwNi0zYmRiLTQ5YjQtYWRkNi0xYzIxMzY4YmM3MDEiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9MZW9uYXJkb19BbmltZV9YTF9HZW5lcmF0ZV9hX3dpZGVfaG9yaXpvbnRhbF9pbWFnZV9mb3JfYV93ZWJzaV8xLmpwZyIsImlhdCI6MTc0ODk1Mjc3MSwiZXhwIjoxNzgwNDg4NzcxfQ.IO6-n-02I5PJ846RBHG3l3X0VRmOR_Ri2SPsAHP33lc"
+        alt="Cozy Anime Background"
+        className="object-cover w-full h-full fixed inset-0 z-0 blur-[2.5px] brightness-70 grayscale-[0.07]"
+        style={{ pointerEvents: 'none', filter: 'blur(2.5px) brightness(0.7) grayscale(0.07)' }}
+      />
+      {/* Overlay for extra darkness and readability */}
+      <div className="absolute inset-0 bg-black/70 z-0" />
+      {/* Floating and falling stars, hexagons */}
+      <BackgroundElements />
+      {/* Main content */}
+      <div className="relative z-10 flex flex-col items-center w-full max-w-4xl mx-auto pt-24">
+        {/* Tracker Score Orb */}
+        <div className="flex flex-col items-center mt-8 mb-6">
+          <TrackerScore score={trackerScore} />
+        </div>
+        {/* Level Bar */}
+        <LevelBar level={trackerData.level} levelName={trackerData.levelName} progress={trackerData.levelProgress} />
+        {/* View Details Button */}
+        <button
+          className="mt-6 mb-4 px-6 py-2 rounded-full bg-gray-800 text-gray-200 font-semibold shadow hover:bg-gray-700 transition"
+          style={{ fontSize: '1.1rem' }}
+        >
+          View Details
+        </button>
+        {/* Cozy Reflection Button */}
+        <button
+          onClick={fetchCozyReflection}
+          className="mb-10 px-8 py-3 rounded-full text-lg font-semibold transition-all duration-300 ease-in-out"
+          style={{
+            backgroundColor: customColors['cozy-button-bg'],
+            color: customColors['cozy-text-light'],
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+            textShadow: '0 0 5px rgba(0,0,0,0.3)',
+          }}
+          onMouseEnter={e => e.currentTarget.style.backgroundColor = customColors['cozy-button-hover']}
+          onMouseLeave={e => e.currentTarget.style.backgroundColor = customColors['cozy-button-bg']}
+          disabled={isLoadingReflection}
+        >
+          {isLoadingReflection ? 'Reflecting...' : 'Get a Cozy Reflection'}
+        </button>
+        {/* Feature Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full mb-12">
+          {trackerData.features.map((feature) => (
+            <FeatureCard key={feature.id} feature={feature} />
+          ))}
+        </div>
+      </div>
+      {/* Reflection Modal */}
+      {isModalOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50"
+          onClick={closeModal}
+        >
+          <div
+            className="bg-gray-800 rounded-xl p-8 max-w-sm w-full relative shadow-2xl"
+            style={{
+              backgroundColor: customColors['cozy-card-bg'],
+              backdropFilter: 'blur(10px)',
+              border: `1px solid ${customColors['cozy-star-glow-light']}`,
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-200 text-2xl"
+              onClick={closeModal}
+            >
+              &times;
+            </button>
+            <h2 className="text-2xl font-bold mb-4 text-center" style={{ color: customColors['cozy-text-light'] }}>
+              Your Cozy Reflection
+            </h2>
+            {isLoadingReflection ? (
+              <p className="text-center text-gray-400">Brewing a moment of peace...</p>
+            ) : (
+              <p className="text-lg text-center leading-relaxed" style={{ color: customColors['cozy-text-light'] }}>
+                {reflection || "No reflection generated. Please try again."}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+} 
