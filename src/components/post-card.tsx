@@ -7,6 +7,7 @@ import { FaBookmark } from 'react-icons/fa';
 import { FollowButton } from "@/components/ui/FollowButton";
 import useViewCountOnVisible from '@/hooks/use-view-count';
 import useSavedPosts from '@/utils/use-saved-posts';
+import handleFollow from '@/utils/handleFollow';
 
 interface Post {
   id: string;
@@ -30,7 +31,7 @@ interface Post {
   views: number;
 }
 
-export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, menuOpenId, user, setShowConfirmId, showConfirmId, reportConfirmId, setReportConfirmId, handleDelete, handleLikeClick, handleCommentClick, handleReport, saved, handleSave, isFollowing, onFollowToggle }: {
+export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, menuOpenId, user, setShowConfirmId, showConfirmId, reportConfirmId, setReportConfirmId, handleDelete, handleLikeClick, handleCommentClick, handleReport, saved, handleSave, isFollowing, handleFollowClick }: {
   post: Post,
   idx: number,
   total: number,
@@ -49,7 +50,7 @@ export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, 
   saved: string[],
   handleSave: (postId: string) => void,
   isFollowing: boolean,
-  onFollowToggle: (followedId: string) => Promise<void>
+  handleFollowClick: (followedUserId: string) => Promise<void>
 }) {
   const viewRef = useViewCountOnVisible(post.id);
   const isSaved = saved.includes(post.id);
@@ -92,7 +93,7 @@ export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, 
               <FollowButton
                 followedId={post.user_id}
                 isFollowing={isFollowing}
-                onToggle={onFollowToggle}
+                onToggle={() => handleFollowClick(post.user_id)}
                 className="rounded-full px-4 py-1 bg-blue-900 text-blue-400 font-semibold shadow hover:bg-blue-800 transition text-xs"
               />
               <button

@@ -21,6 +21,7 @@ import PostCard from "@/components/post-card";
 import PostCardContainer from "@/components/post-card-container";
 import fetchPost from "@/utils/fetch-post";
 import handleLike from "@/utils/handleLike";
+import handleFollow from "@/utils/handleFollow";
 
 
 
@@ -70,6 +71,7 @@ export default function HomePage() {
   const { postsData, setPostsData, fetchPosts } = fetchPost();
   const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
   const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts); 
+  const { following, handleFollowToggle } = handleFollow(user);
 
 
   // Ensuring content is only rendered after hydration
@@ -192,6 +194,8 @@ export default function HomePage() {
                       idx={idx}
                       total={uniquePosts.length}
                       onLikeToggle={handleLikeClick}
+                      following={following}
+                      handleFollowToggle={handleFollowToggle}
                       saved={saved}
                       onToggleSave={() => toggleSave(post.id)}
                     />

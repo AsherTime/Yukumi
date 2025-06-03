@@ -21,6 +21,7 @@ import fetchPost from "@/utils/fetch-post";
 import handleLike from "@/utils/handleLike";
 import useSavedPosts from "@/utils/use-saved-posts";
 import { AnimatePresence, motion } from "framer-motion";
+import handleFollow from "@/utils/handleFollow";
 
 
 const DEFAULT_BANNER = "https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Flux_Dev_a_stunning_illustration_of_Create_an_animethemed_webs_0.jpg?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5X2EwNWE5MzA2LTNiZGItNDliNC1hZGQ2LTFjMjEzNjhiYzcwMSJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9GbHV4X0Rldl9hX3N0dW5uaW5nX2lsbHVzdHJhdGlvbl9vZl9DcmVhdGVfYW5fYW5pbWV0aGVtZWRfd2Vic18wLmpwZyIsImlhdCI6MTc0NzU2NDg0NiwiZXhwIjoxNzc5MTAwODQ2fQ.ow7wQ-1Dunza5HIya7Ky4wjGdYULgrged7V6J-Smag0";
@@ -61,8 +62,8 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [followedIds, setFollowedIds] = useState<string[]>([]);
-  const [followers, setFollowers] = useState(0);
-  const [following, setFollowing] = useState(0);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
   const { user } = useAuth();
   const [bannerUrl, setBannerUrl] = useState<string>(DEFAULT_BANNER);
   const [editBanner, setEditBanner] = useState<string | null>(null);
@@ -77,26 +78,27 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
   const { postsData, setPostsData, fetchPosts } = fetchPost();
   const { saved, savedLoading, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
   const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
+  const { following, handleFollowToggle } = handleFollow(user);
+
   const { data: savedPosts, error } = useSWR(
-  () => (saved.length ? ['savedPosts', saved] : null),
-  async () => {
-    const { data, error } = await supabase
-      .from('posts')
-      .select(`
-        *,
-        Profiles (
-          avatar_url,
-          display_name
-        )
-      `)
-      .in('id', saved);
+    () => (saved.length ? ['savedPosts', saved] : null),
+    async () => {
+      const { data, error } = await supabase
+        .from('posts')
+        .select("*, Profiles:Profiles(avatar_url, display_name, id)")
+        .in('id', saved);
 
-    if (error) throw error; // Optional: handle error as you want
+      if (error) throw error;
+      return data;
+    }
+  );
 
-    return data;
-  }
-);
-
+  const uniqueSavedPosts = Array.isArray(savedPosts)
+    ? savedPosts.filter(
+      (post, index, self) =>
+        post.id && self.findIndex(p => p.id === post.id) === index
+    )
+    : [];
 
 
   useEffect(() => {
@@ -151,8 +153,8 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
         supabase.from("follows").select("*", { count: "exact", head: true }).eq("followed_id", profileId),
         supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", profileId),
       ]);
-      setFollowers(followersCount || 0);
-      setFollowing(followingCount || 0);
+      setFollowersCount(followersCount || 0);
+      setFollowingCount(followingCount || 0);
     };
     const profileId = userId || user?.id;
     if (profileId) fetchFollowCounts(profileId);
@@ -387,7 +389,7 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
       toast.error("Failed to update profile");
     }
   };
-
+  console.log(savedPosts ? savedPosts[0] : null);
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -443,11 +445,11 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
           )}
           <div className="flex gap-8 mt-2">
             <div className="flex flex-col items-center">
-              <span className="text-lg font-bold">{following}</span>
+              <span className="text-lg font-bold">{followingCount}</span>
               <span className="text-xs text-gray-400">Following</span>
             </div>
             <div className="flex flex-col items-center">
-              <span className="text-lg font-bold">{followers}</span>
+              <span className="text-lg font-bold">{followersCount}</span>
               <span className="text-xs text-gray-400">Followers</span>
             </div>
           </div>
@@ -477,26 +479,47 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
             <ProfilePosts userId={userId} />
           )}
           {activeTab === 'Saved' && !userId && (
-            <div>
-              <h2 className="text-xl font-bold mb-4">Saved Posts</h2>
+            <div className="w-full max-w-2xl relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[90vh] overflow-y-auto">
+            <AnimatePresence mode="wait">
               {savedLoading ? (
-                <p>Loading saved posts...</p>
-              ) : saved.length === 0 ? (
-                <p className="text-gray-400">No saved posts yet.</p>
+                <motion.div
+                  key="loading-saved"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="text-center text-zinc-400 py-12"
+                >
+                  Loading saved posts...
+                </motion.div>
+              ) : uniqueSavedPosts.length === 0 ? (
+                <motion.div
+                  key="no-saved"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="text-center text-zinc-400 py-12"
+                >
+                  No saved posts yet.
+                </motion.div>
               ) : (
-                savedPosts?.map((post, idx) => (
-                  <PostCardContainer
-                    key={post.id || idx}
-                    post={post}
-                    idx={idx}
-                    total={savedPosts.length}
-                    onLikeToggle={handleLikeClick}
-                    saved={saved}
-                    onToggleSave={() => toggleSave(post.id)}
-                  />
+                uniqueSavedPosts.map((post, idx) => (
+                  
+                    <PostCardContainer
+                      key={post.id || idx}
+                      post={post}
+                      idx={idx}
+                      total={uniqueSavedPosts.length}
+                      onLikeToggle={handleLikeClick}
+                      following={following}
+                      handleFollowToggle={handleFollowToggle}
+                      saved={saved}
+                      onToggleSave={() => toggleSave(post.id)}
+                    />
                 ))
               )}
+            </AnimatePresence>
             </div>
+
           )}
           {activeTab === 'About' && (
             <div className="relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md p-6">
@@ -557,19 +580,7 @@ function ProfilePosts({ userId }: { userId?: string }) {
   const { postsData, setPostsData, fetchPosts } = fetchPost();
   const { saved, savedLoading, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
   const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
-  const { data: savedPosts, error } = useSWR(
-    () => (saved.length ? ['savedPosts', saved] : null),
-    async () => {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('*')
-        .in('id', saved);
-
-      if (error) throw error; // Optional: handle error as you want
-
-      return data;
-    }
-  );
+  const { following, handleFollowToggle } = handleFollow(user);
 
   useEffect(() => {
     const fetchUserPosts = async () => {
@@ -605,7 +616,7 @@ function ProfilePosts({ userId }: { userId?: string }) {
     };
     if (user) fetchFollowedIds();
   }, [user]);
-
+  console.log(posts[0]);
   if (loading) {
     return <div className="w-full text-center text-white py-8">Loading...</div>;
   }
@@ -630,6 +641,8 @@ function ProfilePosts({ userId }: { userId?: string }) {
               idx={idx}
               total={posts.length}
               onLikeToggle={handleLikeClick}
+              following={following}
+              handleFollowToggle={handleFollowToggle}
               saved={saved}
               onToggleSave={() => toggleSave(post.id)}
             />
