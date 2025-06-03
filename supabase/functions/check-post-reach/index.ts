@@ -98,3 +98,7 @@ serve(async (req: Request) => {
     });
   }
 });
+
+const handleAddComment = async (postId, parentId, text) => {
+  // incoming version
+}
