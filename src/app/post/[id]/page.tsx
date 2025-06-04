@@ -10,6 +10,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import Image from "next/image";
 import { FiCornerUpLeft } from 'react-icons/fi';
+import { awardPoints } from '@/utils/awardPoints';
+import { POINTS } from '@/utils/pointConfig';
 
 
 
@@ -206,82 +208,53 @@ const PostPage = () => {
     return () => clearTimeout(timer);
   }, [id]);
 
-  const handleAddComment = async (
-    postId: string | number,
-    parentId: string | number | null,
-    text: string
-  ) => {
-    if (!user) {
-      toast.error('Please log in to comment');
-      return;
-    }
-
-    if (!text.trim()) {
-      toast.error('Comment cannot be empty');
-      return;
-    }
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !user) return;
 
     try {
-      console.log("Trying to insert comment...");
-      const { data: newCommentData, error } = await supabase
+      console.log('Trying to insert comment...');
+      const { data: commentData, error: insertError } = await supabase
         .from('comments')
-        .insert({
-          post_id: postId,
-          user_id: user.id,
-          content: text.trim(),
-          parent_id: parentId
-        })
-        .select(
-          `
-        *,
-        Profiles!comments_user_id_fkey (
-          username,
-          avatar_url
-        )
-      `
-        )
+        .insert([
+          {
+            post_id: id,
+            user_id: user.id,
+            content: newComment.trim(),
+          },
+        ])
+        .select()
         .single();
 
-      console.log('Insert response error:', error);
-      console.log('Insert response data:', newCommentData);
+      console.log('Insert response error:', insertError);
+      console.log('Insert response data:', commentData);
 
-      if (error) throw error;
-      console.log('New comment added:', newCommentData);
-      // Update comments list
-      if (newCommentData) {
-        const transformedComment = {
-          ...newCommentData,
-          user: newCommentData.Profiles || newCommentData.profiles || null, // depending on key name
-        };
-        delete transformedComment.Profiles; // optional cleanup
-        delete transformedComment.profiles;
+      if (insertError) throw insertError;
 
-        setComments(prev => [...prev, transformedComment]);
+      if (commentData) {
+        console.log('New comment added:', commentData);
+        setComments((prev) => [commentData, ...prev]);
+        setNewComment('');
+
+        // Try to award points, but don't let it break the comment flow
+        try {
+          await awardPoints({
+            userId: user.id,
+            activityType: 'comment_post',
+            points: POINTS.comment_post,
+            itemId: String(id),
+            itemType: 'post',
+          });
+          toast.success('Comment added and points awarded!');
+        } catch (pointsError) {
+          console.error('Failed to award points for comment:', pointsError);
+          toast.warning('Comment added, but points system is temporarily unavailable');
+        }
       }
-
-
-      // Update post comment count
-      if (post) {
-        setPost({
-          ...post,
-          comments_count: (post.comments_count || 0) + 1
-        });
-
-        await supabase
-          .from('posts')
-          .update({ comments_count: (post.comments_count || 0) + 1 })
-          .eq('id', postId);
-      }
-
-      setNewComment('');
-      setReplyTo(null);
-      toast.success('Comment added successfully');
     } catch (error) {
-      console.error('Error adding comment:', JSON.stringify(error, null, 2));
-      toast.error('Failed to add comment');
+      console.error('Error adding comment:', error);
+      toast.error('Failed to add comment. Please try again.');
     }
   };
-
 
   const handleDeleteComment = async (commentId: string) => {
     if (!user) {
@@ -794,7 +767,7 @@ const PostPage = () => {
               placeholder="Write a comment..."
             />
             <button
-              onClick={() => handleAddComment(post.id, null, newComment)}
+              onClick={handleAddComment}
               className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
             >
               Add Comment

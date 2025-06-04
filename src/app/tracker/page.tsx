@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from "react"
 import { CheckCircle, Trophy, BarChart3, MessageSquare, BookOpen, Flame, Star, Hexagon } from "lucide-react"
 import { TopNav } from "@/components/top-nav"
+import { createClient } from '@supabase/supabase-js'
+import { POINTS } from '@/utils/pointConfig'
+import { awardPoints } from '@/utils/awardPoints'
 
 // Minimal Card component for self-containment
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -131,36 +134,16 @@ function FallingStar({ left, onEnd }: { left: number; onEnd: () => void }) {
       </svg>
       <style jsx global>{`
         @keyframes falling-star-diagonal-ltr {
-          0% {
-            transform: translateY(-40px) translateX(0) scale(0.7) rotate(-10deg);
-            opacity: 0;
-          }
-          10% {
-            opacity: 0.7;
-          }
-          80% {
-            opacity: 0.7;
-          }
-          100% {
-            transform: translateY(100vh) translateX(120vw) scale(1) rotate(10deg);
-            opacity: 0;
-          }
+          0%   { transform: translateY(-40px) translateX(0vw) scale(0.7) rotate(-10deg); opacity: 0; }
+          10%  { opacity: 0.5; }
+          80%  { opacity: 0.5; }
+          100% { transform: translateY(100vh) translateX(40vw) scale(1) rotate(10deg); opacity: 0; }
         }
         @keyframes falling-star-diagonal-rtl {
-          0% {
-            transform: translateY(-40px) translateX(0) scale(0.7) rotate(-10deg);
-            opacity: 0;
-          }
-          10% {
-            opacity: 0.7;
-          }
-          80% {
-            opacity: 0.7;
-          }
-          100% {
-            transform: translateY(100vh) translateX(-120vw) scale(1) rotate(10deg);
-            opacity: 0;
-          }
+          0%   { transform: translateY(-40px) translateX(0vw) scale(0.7) rotate(10deg); opacity: 0; }
+          10%  { opacity: 0.5; }
+          80%  { opacity: 0.5; }
+          100% { transform: translateY(100vh) translateX(-40vw) scale(1) rotate(-10deg); opacity: 0; }
         }
       `}</style>
     </span>
@@ -234,21 +217,21 @@ function BackgroundElements() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const left = 10 + Math.random() * 80
-      const formingId = Math.random()
-      setFormingStars((stars) => [...stars, { id: formingId, left }])
+      const left = 10 + Math.random() * 80;
+      const formingId = Math.random();
+      setFormingStars((stars) => [...stars, { id: formingId, left }]);
       setTimeout(() => {
         setFallingStars((stars) => {
-          if (stars.length < 2) {
-            return [...stars, { id: formingId, left }]
+          if (stars.length < 4) {
+            return [...stars, { id: formingId, left }];
           } else {
-            return stars
+            return stars;
           }
-        })
-      }, 1100)
-    }, 7000)
-    return () => clearInterval(interval)
-  }, [fallingStars.length])
+        });
+      }, 1100);
+    }, 3500 + Math.random() * 1500); // 3.5s to 5s
+    return () => clearInterval(interval);
+  }, [fallingStars.length]);
 
   // Remove forming star after animation
   useEffect(() => {
@@ -302,21 +285,17 @@ function BackgroundElements() {
         />
       ))}
       <style jsx global>{`
-        @keyframes falling-star {
-          0% {
-            transform: translateY(-40px) scale(0.7) rotate(-10deg);
-            opacity: 0;
-          }
-          10% {
-            opacity: 0.7;
-          }
-          80% {
-            opacity: 0.7;
-          }
-          100% {
-            transform: translateY(100vh) scale(1) rotate(10deg);
-            opacity: 0;
-          }
+        @keyframes falling-star-diagonal-ltr {
+          0%   { transform: translateY(-40px) translateX(0vw) scale(0.7) rotate(-10deg); opacity: 0; }
+          10%  { opacity: 0.5; }
+          80%  { opacity: 0.5; }
+          100% { transform: translateY(100vh) translateX(40vw) scale(1) rotate(10deg); opacity: 0; }
+        }
+        @keyframes falling-star-diagonal-rtl {
+          0%   { transform: translateY(-40px) translateX(0vw) scale(0.7) rotate(10deg); opacity: 0; }
+          10%  { opacity: 0.5; }
+          80%  { opacity: 0.5; }
+          100% { transform: translateY(100vh) translateX(-40vw) scale(1) rotate(-10deg); opacity: 0; }
         }
         @keyframes float-fade-glow {
           0% {
@@ -422,11 +401,70 @@ function TrackerScore({ score }: { score: number }) {
   )
 }
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
 export default function TrackerPage() {
-  const [trackerScore] = useState(742)
+  const [tracker, setTracker] = useState<{ xp: number; level: number } | null>(null)
+  const [loading, setLoading] = useState(true)
   const [reflection, setReflection] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoadingReflection, setIsLoadingReflection] = useState(false)
+  const [awardStatus, setAwardStatus] = useState<string | null>(null)
+
+  // Get the current user (adjust for your auth setup)
+  const [userId, setUserId] = useState<string | null>(null)
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (error) {
+        console.error('Error getting user:', error)
+      }
+      console.log('Auth user:', data?.user)
+      setUserId(data?.user?.id || null)
+    })
+  }, [])
+
+  useEffect(() => {
+    async function fetchTracker() {
+      if (!userId) {
+        setLoading(false)
+        return
+      }
+      const { data, error } = await supabase
+        .from('user_tracker')
+        .select('xp, level')
+        .eq('user_id', userId)
+        .single()
+      console.log('Fetched tracker:', { data, error, userId })
+      if (error) {
+        console.error('Supabase error:', error)
+      }
+      if (data) {
+        setTracker(data)
+      }
+      setLoading(false)
+    }
+    fetchTracker()
+  }, [userId, awardStatus])
+
+  // Test award points button handler
+  const handleTestAward = async () => {
+    setAwardStatus(null)
+    if (!userId) return
+    try {
+      await awardPoints({
+        userId,
+        activityType: 'test_award',
+        points: 10,
+      })
+      setAwardStatus('Points awarded! Reloading...')
+      setTimeout(() => setAwardStatus(null), 2000)
+    } catch (e) {
+      setAwardStatus('Error awarding points. See console.')
+    }
+  }
 
   const fetchCozyReflection = async () => {
     setIsLoadingReflection(true)
@@ -465,6 +503,35 @@ export default function TrackerPage() {
     setReflection("")
   }
 
+  if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-300">Loading your tracker...</div>
+
+  if (!loading && !tracker) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen text-red-300">
+        No tracker data found for your user.<br />
+        Please trigger an action to earn points, or check your Supabase table.<br />
+        (Check the browser console for debug info.)<br />
+        {userId && (
+          <>
+            <button
+              className="mt-6 px-6 py-3 rounded-full bg-indigo-700 text-white font-semibold hover:bg-indigo-800 transition"
+              onClick={handleTestAward}
+            >
+              Award Test Points
+            </button>
+            {awardStatus && <div className="mt-2 text-green-400">{awardStatus}</div>}
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // Use real data if available, otherwise fallback to demo
+  const score = tracker?.xp ?? trackerData.score
+  const level = tracker?.level ?? trackerData.level
+  const levelName = trackerData.levelName // You may want to fetch this from DB in the future
+  const levelProgress = tracker ? ((score % 200) / 200) * 100 : trackerData.levelProgress
+
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden"
@@ -479,8 +546,8 @@ export default function TrackerPage() {
       <img
         src="https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Leonardo_Anime_XL_Generate_a_wide_horizontal_image_for_a_websi_1.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hMDVhOTMwNi0zYmRiLTQ5YjQtYWRkNi0xYzIxMzY4YmM3MDEiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9MZW9uYXJkb19BbmltZV9YTF9HZW5lcmF0ZV9hX3dpZGVfaG9yaXpvbnRhbF9pbWFnZV9mb3JfYV93ZWJzaV8xLmpwZyIsImlhdCI6MTc0ODk1Mjc3MSwiZXhwIjoxNzgwNDg4NzcxfQ.IO6-n-02I5PJ846RBHG3l3X0VRmOR_Ri2SPsAHP33lc"
         alt="Cozy Anime Background"
-        className="object-cover w-full h-full fixed inset-0 z-0 blur-[2.5px] brightness-70 grayscale-[0.07]"
-        style={{ pointerEvents: 'none', filter: 'blur(2.5px) brightness(0.7) grayscale(0.07)' }}
+        className="object-cover w-full h-full fixed inset-0 z-0 blur-[2.25px] brightness-70 grayscale-[0.07]"
+        style={{ pointerEvents: 'none', filter: 'blur(2.25px) brightness(0.7) grayscale(0.07)' }}
       />
       {/* Overlay for extra darkness and readability */}
       <div className="absolute inset-0 bg-black/70 z-0" />
@@ -490,10 +557,10 @@ export default function TrackerPage() {
       <div className="relative z-10 flex flex-col items-center w-full max-w-4xl mx-auto pt-24">
         {/* Tracker Score Orb */}
         <div className="flex flex-col items-center mt-8 mb-6">
-          <TrackerScore score={trackerScore} />
+          <TrackerScore score={score} />
         </div>
         {/* Level Bar */}
-        <LevelBar level={trackerData.level} levelName={trackerData.levelName} progress={trackerData.levelProgress} />
+        <LevelBar level={level} levelName={levelName} progress={levelProgress} />
         {/* View Details Button */}
         <button
           className="mt-6 mb-4 px-6 py-2 rounded-full bg-gray-800 text-gray-200 font-semibold shadow hover:bg-gray-700 transition"
