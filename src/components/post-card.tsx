@@ -25,7 +25,7 @@ interface Post {
   reference_link: string | null;
   Profiles?: {
     avatar_url: string;
-    display_name: string;
+    username: string;
   };
   tags?: string[];
   views: number;
@@ -77,14 +77,14 @@ export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, 
                 {post.Profiles?.avatar_url ? (
                   <img
                     src={post.Profiles.avatar_url}
-                    alt={post.Profiles.display_name || "User"}
+                    alt={post.Profiles.username || "User"}
                     className="w-10 h-10 rounded-full object-cover border border-zinc-700 group-hover:ring-2 group-hover:ring-blue-500 transition"
                   />
                 ) : (
                   <UserCircle className="w-10 h-10 text-zinc-500 group-hover:text-blue-400 transition" />
                 )}
                 <div>
-                  <div className="text-white font-semibold text-base leading-tight group-hover:underline group-hover:text-blue-400 transition">{post.Profiles?.display_name || "Anonymous"}</div>
+                  <div className="text-white font-semibold text-base leading-tight group-hover:underline group-hover:text-blue-400 transition">{post.Profiles?.username || "Anonymous"}</div>
                   <div className="text-xs text-zinc-400">{formatDate(post.created_at)}</div>
                 </div>
               </Link>

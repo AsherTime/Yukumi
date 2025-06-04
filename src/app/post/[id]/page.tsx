@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { FiShare2, FiFlag, FiHeart, FiMessageCircle, FiEdit2, FiTrash2 } from "react-icons/fi"; // Importing icons
-
+import { ThumbsUp, ThumbsUpIcon, Flag } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -30,6 +30,7 @@ interface Comment {
 
 type NestedComment = Comment & {
   replies: NestedComment[];
+  depth: number;
 };
 
 type CommentItemProps = {
@@ -42,6 +43,9 @@ type CommentItemProps = {
   ) => void;                       // your existing handleAddComment
   onEditComment: (commentId: string, updatedContent: string) => void; // optional edit handler
   onDeleteComment: (commentId: string) => void; // optional delete handler
+  isLiked: boolean;
+  likeCount: number;
+  onToggleLike: (commentId: string, isLiked: boolean) => void;
 };
 
 type Reply = {
@@ -66,24 +70,46 @@ interface Post {
   }
 }
 
-function buildCommentTree(comments: Comment[]): NestedComment[] {
+function buildCommentTree(
+  comments: Comment[],
+  likeCounts: Record<string, number>
+): NestedComment[] {
   const commentMap: { [key: string]: NestedComment } = {};
   const roots: NestedComment[] = [];
 
+  // 1. Initialize comment map with depth = 0
   comments.forEach((comment) => {
-    commentMap[comment.id] = { ...comment, replies: [] };
+    commentMap[comment.id] = { ...comment, replies: [], depth: 0 };
   });
 
+  // 2. Assign children and compute depth
   comments.forEach((comment) => {
+    const current = commentMap[comment.id];
     if (comment.parent_id && commentMap[comment.parent_id]) {
-      commentMap[comment.parent_id].replies.push(commentMap[comment.id]);
+      const parent = commentMap[comment.parent_id];
+      current.depth = parent.depth + 1;
+      parent.replies.push(current);
     } else {
-      roots.push(commentMap[comment.id]);
+      roots.push(current);
     }
   });
 
+  // 3. Recursive sort helper
+  const sortByLikes = (a: NestedComment, b: NestedComment) =>
+    (likeCounts[b.id] || 0) - (likeCounts[a.id] || 0);
+
+  const sortReplies = (node: NestedComment) => {
+    node.replies.sort(sortByLikes);
+    node.replies.forEach(sortReplies); // Recurse
+  };
+
+  // 4. Sort roots and all nested replies
+  roots.sort(sortByLikes);
+  roots.forEach(sortReplies);
+
   return roots;
 }
+
 
 
 
@@ -95,11 +121,7 @@ const PostPage = () => {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
-  const [nestedComments, setNestedComments] = useState<NestedComment[]>(() => buildCommentTree(comments));
 
-  useEffect(() => {
-    setNestedComments(buildCommentTree(comments));
-  }, [comments]);
 
   useEffect(() => {
     if (!id) return;
@@ -320,6 +342,28 @@ const PostPage = () => {
     }
   };
 
+  const reportComment = async (commentId: string, userId: string | null) => {
+    if (!userId) {
+      alert("You must be logged in to report a comment.");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("comments")
+      .update({ is_reported: true })
+      .eq("id", commentId)
+      .eq("is_reported", false); // avoid unnecessary updates
+
+    if (error) {
+      console.error("Failed to report comment:", error);
+      alert("Something went wrong while reporting the comment.");
+    } else {
+      alert("Comment has been reported.");
+      // Optionally update UI or re-fetch comments
+    }
+  };
+
+
   const toggleLike = async () => {
     if (!user) {
       toast.error('Please log in to like posts');
@@ -378,7 +422,92 @@ const PostPage = () => {
     }
   };
 
+  const toggleCommentLike = async (commentId: string, isLiked: boolean) => {
+    if (!user) {
+      alert("You must be logged in to like a comment.");
+      return;
+    }
 
+    setLikeCounts(prev => ({
+      ...prev,
+      [commentId]: Math.max(0, (prev[commentId] || 0) + (isLiked ? -1 : 1)),
+    }));
+
+    setUserLikedSet(prev => {
+      const updated = new Set(prev);
+      if (isLiked) {
+        updated.delete(commentId);
+      } else {
+        updated.add(commentId);
+      }
+      return updated;
+    });
+
+    if (isLiked) {
+      // Remove like
+      const { error } = await supabase
+        .from('comment_likes')
+        .delete()
+        .eq('comment_id', commentId)
+        .eq('user_id', user.id);
+
+      if (error) console.error("Error removing like:", error);
+    } else {
+      // Add like
+      const { error } = await supabase
+        .from('comment_likes')
+        .upsert([{ comment_id: commentId, user_id: user.id }], { onConflict: 'comment_id,user_id' });
+
+      if (error) console.error("Error adding like:", error);
+    }
+
+    // Optionally: re-fetch likes/comments here or update local state
+  };
+
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
+  const [userLikedSet, setUserLikedSet] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchLikes = async () => {
+      // 1. Fetch like counts
+      // 1. Fetch all comment likes
+      const { data: allLikes, error: likeError } = await supabase
+        .from('comment_likes')
+        .select('comment_id');
+
+      if (likeError) {
+        console.error("Error fetching like counts:", likeError);
+      } else {
+        const countsMap: Record<string, number> = {};
+
+        allLikes.forEach(({ comment_id }) => {
+          countsMap[comment_id] = (countsMap[comment_id] || 0) + 1;
+        });
+
+        setLikeCounts(countsMap); // Now you can use likeCounts[comment.id]
+      }
+
+
+      // 2. Fetch likes by current user
+      const { data: likedData, error: likedError } = await supabase
+        .from('comment_likes')
+        .select('comment_id')
+        .eq('user_id', user?.id);
+
+      if (likedError) console.error(likedError);
+      setUserLikedSet(new Set(likedData?.map(d => d.comment_id)));
+    };
+
+    fetchLikes();
+  }, [user]);
+
+  const [nestedComments, setNestedComments] = useState<NestedComment[]>(() => buildCommentTree(comments, likeCounts));
+
+  useEffect(() => {
+    setNestedComments(buildCommentTree(comments, likeCounts));
+  }, [comments]);
 
 
   if (isLoading) {
@@ -389,6 +518,8 @@ const PostPage = () => {
     return <div className="max-w-3xl mx-auto p-6">Post not found</div>;
   }
 
+  const shouldAutoCollapse = (comment: NestedComment) =>
+    (comment.depth ?? 0) >= 6;
 
   const CommentItem = ({
     comment,
@@ -396,9 +527,13 @@ const PostPage = () => {
     onAddComment,
     onEditComment,
     onDeleteComment,
+    likeCount,
+    isLiked,
+    onToggleLike
   }: CommentItemProps) => {
     const [isReplying, setIsReplying] = useState(false);
     const [replyText, setReplyText] = useState("");
+    const [collapsed, setCollapsed] = useState(shouldAutoCollapse(comment));
 
     const FIFTEEN_MINUTES = 15 * 60 * 1000; // in milliseconds
 
@@ -431,6 +566,12 @@ const PostPage = () => {
     return (
       <div className="mb-6">
         <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="text-sm text-gray-500 hover:underline"
+          >
+            [{collapsed ? '+' : '-'}]
+          </button>
           {comment.user?.avatar_url && (
             <Image
               src={comment.user.avatar_url}
@@ -442,66 +583,91 @@ const PostPage = () => {
           )}
           <p className="font-semibold">{comment.user?.username || "Anonymous"}</p>
         </div>
-
-        <p className="mt-1">{comment.content}</p>
-        <div className="flex space-x-4 mt-1">
-          <button
-            onClick={() => setIsReplying(true)}
-            className="text-blue-500 hover:text-blue-400 text-sm flex items-center"
-            aria-label="Reply"
-          >
-            <FiCornerUpLeft size={20} />
-          </button>
-
-          {comment.user_id === user?.id && canEdit && (
-            <button
-              onClick={handleEditClick}
-              className="text-green-500 hover:text-green-400 text-sm flex items-center"
-              aria-label="Edit"
-            >
-              <FiEdit2 size={18} />
-            </button>
-          )}
-
-          {comment.user_id === user?.id && (
-            <button
-              onClick={handleDeleteClick}
-              className="text-red-500 hover:text-red-400 text-sm flex items-center"
-              aria-label="Delete"
-            >
-              <FiTrash2 size={18} />
-            </button>
-          )}
-        </div>
-
-        {isReplying && (
-          <div className="mt-2">
-            <textarea
-              className="w-full p-2 border rounded bg-[#2e2e2e] text-white border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              rows={3}
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              placeholder="Write your reply..."
-            />
-            <div className="flex gap-2 mt-1">
+        {!collapsed &&
+          <>
+            <p className="mt-1">{comment.content}</p>
+            <div className="flex space-x-4 mt-1 items-center">
               <button
-                type="button"
-                onClick={handleSubmitReply}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                onClick={() => onToggleLike(comment.id, isLiked)}
+                className={`flex items-center space-x-1 text-sm ${isLiked ? 'text-blue-500 font-bold' : 'text-gray-500'} hover:underline`}
               >
-                Submit
+                {isLiked ? (
+                  <ThumbsUpIcon className="w-5 h-5 text-blue-500" />
+                ) : (
+                  <ThumbsUpIcon className="w-5 h-5 text-gray-400 hover:text-blue-500" />
+                )}
+                <span>{likeCount}</span>
               </button>
+
               <button
-                onClick={() => setIsReplying(false)}
-                className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-800"
+                onClick={() => setIsReplying(true)}
+                className="text-blue-500 hover:text-blue-400 text-sm flex items-center"
+                aria-label="Reply"
               >
-                Cancel
+                <FiCornerUpLeft size={20} />
               </button>
+
+              {comment.user_id === user?.id && canEdit && (
+                <button
+                  onClick={handleEditClick}
+                  className="text-green-500 hover:text-green-400 text-sm flex items-center"
+                  aria-label="Edit"
+                >
+                  <FiEdit2 size={18} />
+                </button>
+              )}
+
+              {comment.user_id === user?.id && (
+                <button
+                  onClick={handleDeleteClick}
+                  className="text-red-500 hover:text-red-400 text-sm flex items-center"
+                  aria-label="Delete"
+                >
+                  <FiTrash2 size={18} />
+                </button>
+              )}
+
+              {comment.user_id !== user?.id && (
+              <button
+                onClick={() => reportComment(comment.id, user?.id || null)}
+                className="flex items-center text-xs text-red-500 hover:underline"
+                aria-label="Report comment"
+              >
+                <Flag className="w-5 h-5" />
+              </button>
+            )}
+            
             </div>
-          </div>
-        )}
 
-        {comment.replies?.length > 0 && (
+            {isReplying && (
+              <div className="mt-2">
+                <textarea
+                  className="w-full p-2 border rounded bg-[#2e2e2e] text-white border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  rows={3}
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Write your reply..."
+                />
+                <div className="flex gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={handleSubmitReply}
+                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  >
+                    Submit
+                  </button>
+                  <button
+                    onClick={() => setIsReplying(false)}
+                    className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-800"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        }
+        {!collapsed && comment.replies?.length > 0 && (
           <div className="ml-4 mt-4 border-l-2 border-gray-300 pl-4">
             {comment.replies.map((reply) => (
               <CommentItem
@@ -511,7 +677,11 @@ const PostPage = () => {
                 onAddComment={onAddComment}
                 onEditComment={onEditComment}
                 onDeleteComment={onDeleteComment}
+                likeCount={likeCounts[reply.id] || 0}
+                isLiked={userLikedSet.has(reply.id)}
+                onToggleLike={toggleCommentLike}
               />
+
             ))}
           </div>
         )}
@@ -615,8 +785,10 @@ const PostPage = () => {
                   onAddComment={handleAddComment}
                   onEditComment={handleEditComment}
                   onDeleteComment={handleDeleteComment}
+                  likeCount={likeCounts[comment.id] || 0}
+                  isLiked={userLikedSet.has(comment.id)}
+                  onToggleLike={toggleCommentLike}
                 />
-
 
               ))
             ) : (

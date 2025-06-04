@@ -20,7 +20,7 @@ interface Post {
     reference_link: string | null;
     Profiles?: {
         avatar_url: string;
-        display_name: string;
+        username: string;
     };
     tags?: string[];
     views: number;
@@ -47,7 +47,7 @@ export default function fetchPost() {
                 .from("posts")
                 .select(`
             id, title, content, created_at, user_id, image_url,
-            Profiles(display_name, avatar_url),
+            Profiles(username, avatar_url),
             animetitle_post, post_collections, original_work, reference_link,
             post_tags ( tags (name) ), views
           `, { count: "exact" })

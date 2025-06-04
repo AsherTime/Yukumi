@@ -19,7 +19,7 @@ interface Post {
     reference_link: string | null;
     Profiles?: {
         avatar_url: string;
-        display_name: string;
+        username: string;
     };
     tags?: string[];
     views: number;
