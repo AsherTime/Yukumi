@@ -24,33 +24,6 @@ import handleLike from "@/utils/handleLike";
 import handleFollow from "@/utils/handleFollow";
 
 
-
-
-interface Post {
-  id: string;
-  title: string;
-  content: string;
-  created_at: string;
-  user_id: string;
-  likes_count: number;
-  comments_count: number;
-  liked_by_user: boolean;
-  saved_by_user: boolean; // Added to track if the post is saved by the user
-  image_url: string;
-  animetitle_post: string | null;
-  post_collections: string | null;
-  original_work: boolean;
-  reference_link: string | null;
-  Profiles?: {
-    avatar_url: string;
-    display_name: string;
-  };
-  tags?: string[];
-  views: number;
-}
-
-
-
 export default function HomePage() {
   const { user } = useAuth();
   const router = useRouter();
