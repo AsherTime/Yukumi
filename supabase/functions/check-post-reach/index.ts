@@ -50,6 +50,8 @@ serve(async (req: Request) => {
           related_item_type: 'post',
         };
 
+        console.log('awardPoints payload:', awardPayload);
+
         const awardResponse = await fetch(awardPointsFunctionUrl, {
           method: 'POST',
           headers: {
@@ -124,13 +126,7 @@ const handleAddComment = async () => {
 
       // Award points for commenting
       try {
-        await awardPoints({
-          userId: user.id,
-          activityType: 'comment_made',
-          points: 15,
-          itemId: id,
-          itemType: 'post',
-        });
+        await awardPoints(user.id, 'comment_made', 15, id, 'post');
       } catch (pointsError) {
         console.error('Failed to award points for comment:', pointsError);
       }

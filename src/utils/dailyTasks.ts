@@ -16,8 +16,8 @@ export const wasTaskCompletedToday = (taskKey: string): boolean => {
   return lastDate.toDateString() === today.toDateString();
 };
 
-// Helper function to mark a task as completed
-const markTaskCompleted = (taskKey: string): void => {
+// Mark a task as completed for today
+export const markTaskCompleted = (taskKey: string) => {
   localStorage.setItem(taskKey, new Date().toISOString());
 };
 
@@ -30,12 +30,7 @@ export const handleDailyCheckIn = async (userId: string): Promise<boolean> => {
   }
 
   try {
-    await awardPoints({
-      userId,
-      activityType: 'daily_login',
-      points: DAILY_CHECK_IN_POINTS,
-    });
-    
+    await awardPoints(userId, 'daily_login', DAILY_CHECK_IN_POINTS);
     markTaskCompleted(taskKey);
     return true;
   } catch (error) {
@@ -57,14 +52,7 @@ export const handleCommentComrade = async (
   }
 
   try {
-    await awardPoints({
-      userId,
-      activityType: 'comment_made',
-      points: COMMENT_COMRADE_POINTS,
-      itemId: commentedItemId,
-      itemType: commentedItemType,
-    });
-    
+    await awardPoints(userId, 'comment_made', COMMENT_COMRADE_POINTS, commentedItemId, commentedItemType);
     markTaskCompleted(taskKey);
     return true;
   } catch (error) {
@@ -86,14 +74,7 @@ export const handleQuickReviewer = async (
   }
 
   try {
-    await awardPoints({
-      userId,
-      activityType: 'quick_reviewer_task',
-      points: QUICK_REVIEWER_POINTS,
-      itemId: reviewedItemId,
-      itemType: reviewedItemType,
-    });
-    
+    await awardPoints(userId, 'quick_reviewer_task', QUICK_REVIEWER_POINTS, reviewedItemId, reviewedItemType);
     markTaskCompleted(taskKey);
     return true;
   } catch (error) {
