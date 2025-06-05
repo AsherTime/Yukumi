@@ -6,6 +6,7 @@ import { TopNav } from "@/components/top-nav"
 import { createClient } from '@supabase/supabase-js'
 import { POINTS } from '@/utils/pointConfig'
 import { awardPoints } from '@/utils/awardPoints'
+import { wasTaskCompletedToday } from '@/utils/dailyTasks'
 
 // Minimal Card component for self-containment
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -413,6 +414,11 @@ export default function TrackerPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoadingReflection, setIsLoadingReflection] = useState(false)
   const [awardStatus, setAwardStatus] = useState<string | null>(null)
+  const [dailyTasks, setDailyTasks] = useState({
+    dailyCheckIn: false,
+    commentComrade: false,
+    quickReviewer: false,
+  });
 
   // Get the current user (adjust for your auth setup)
   const [userId, setUserId] = useState<string | null>(null)
@@ -448,6 +454,28 @@ export default function TrackerPage() {
     }
     fetchTracker()
   }, [userId, awardStatus])
+
+  useEffect(() => {
+    if (!userId) return;
+
+    // Check daily tasks status
+    const checkDailyTasks = () => {
+      const dailyCheckIn = wasTaskCompletedToday(`daily_check_in_${userId}`);
+      const commentComrade = wasTaskCompletedToday(`comment_comrade_${userId}_${new Date().toDateString()}`);
+      const quickReviewer = wasTaskCompletedToday(`quick_reviewer_${userId}_${new Date().toDateString()}`);
+
+      setDailyTasks({
+        dailyCheckIn,
+        commentComrade,
+        quickReviewer,
+      });
+    };
+
+    checkDailyTasks();
+    // Check every minute to update the status
+    const interval = setInterval(checkDailyTasks, 60000);
+    return () => clearInterval(interval);
+  }, [userId]);
 
   // Test award points button handler
   const handleTestAward = async () => {
@@ -532,6 +560,58 @@ export default function TrackerPage() {
   const levelName = trackerData.levelName // You may want to fetch this from DB in the future
   const levelProgress = tracker ? ((score % 200) / 200) * 100 : trackerData.levelProgress
 
+  // Update the trackerData.features array in the return statement
+  const features = [
+    {
+      id: 1,
+      title: "Daily Check-In",
+      icon: CheckCircle,
+      value: dailyTasks.dailyCheckIn ? "Completed" : "5 XP",
+      status: dailyTasks.dailyCheckIn ? "Completed" : "Available",
+      color: "from-emerald-500 to-teal-600",
+    },
+    {
+      id: 2,
+      title: "Comment Comrade",
+      icon: MessageSquare,
+      value: dailyTasks.commentComrade ? "Completed" : "15 XP",
+      status: dailyTasks.commentComrade ? "Completed" : "Available",
+      color: "from-blue-500 to-indigo-600",
+    },
+    {
+      id: 3,
+      title: "Quick Reviewer",
+      icon: Star,
+      value: dailyTasks.quickReviewer ? "Completed" : "25 XP",
+      status: dailyTasks.quickReviewer ? "Completed" : "Available",
+      color: "from-amber-500 to-orange-600",
+    },
+    {
+      id: 4,
+      title: "Badge Display",
+      icon: Trophy,
+      value: "12",
+      status: "Earned",
+      color: "from-purple-500 to-violet-600",
+    },
+    {
+      id: 5,
+      title: "Weekly Stats",
+      icon: BarChart3,
+      value: "94%",
+      status: "Progress",
+      color: "from-pink-500 to-rose-600",
+    },
+    {
+      id: 6,
+      title: "Daily Login",
+      icon: Flame,
+      value: "15",
+      status: "Day Streak",
+      color: "from-red-500 to-orange-600",
+    },
+  ];
+
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden"
@@ -586,7 +666,7 @@ export default function TrackerPage() {
         </button>
         {/* Feature Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full mb-12">
-          {trackerData.features.map((feature) => (
+          {features.map((feature) => (
             <FeatureCard key={feature.id} feature={feature} />
           ))}
         </div>

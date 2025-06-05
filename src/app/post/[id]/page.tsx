@@ -12,6 +12,7 @@ import Image from "next/image";
 import { FiCornerUpLeft } from 'react-icons/fi';
 import { awardPoints } from '@/utils/awardPoints';
 import { POINTS } from '@/utils/pointConfig';
+import { handleCommentComrade } from '@/utils/dailyTasks';
 
 
 
@@ -235,8 +236,9 @@ const PostPage = () => {
         setComments((prev) => [commentData, ...prev]);
         setNewComment('');
 
-        // Try to award points, but don't let it break the comment flow
+        // Try to award points for both regular comment and daily task
         try {
+          // Award regular comment points
           await awardPoints({
             userId: user.id,
             activityType: 'comment_post',
@@ -244,7 +246,19 @@ const PostPage = () => {
             itemId: String(id),
             itemType: 'post',
           });
-          toast.success('Comment added and points awarded!');
+
+          // Try to award daily task points
+          const wasAwarded = await handleCommentComrade(
+            user.id,
+            String(id),
+            'post'
+          );
+
+          if (wasAwarded) {
+            toast.success('Comment added and daily task completed! +15 XP');
+          } else {
+            toast.success('Comment added and points awarded!');
+          }
         } catch (pointsError) {
           console.error('Failed to award points for comment:', pointsError);
           toast.warning('Comment added, but points system is temporarily unavailable');

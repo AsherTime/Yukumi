@@ -14,6 +14,7 @@ import { toast } from "sonner"
 import DOMPurify from 'dompurify';
 import ImageKit from "imagekit-javascript";
 import { IKContext, IKUpload } from 'imagekitio-react';
+import { awardPoints } from "@/utils/awardPoints"
 
 
 interface Anime {
@@ -249,7 +250,20 @@ try {
         console.error("Post creation error:", postError)
         throw new Error(postError.message)
       } else {
-    alert('Post created successfully!');
+    // Award points for creating a post
+    try {
+      await awardPoints(
+        user.id,
+        'post_created',
+        25,
+        newPost.id,
+        'post'
+      );
+      toast.success('Post created successfully! +25 XP');
+    } catch (pointsError) {
+      console.error('Failed to award points for post creation:', pointsError);
+      toast.success('Post created successfully!');
+    }
     setTitle('');
     setContent('');
     setImageUrl('');
@@ -295,7 +309,6 @@ try {
       }
 
       console.log("Post created successfully:", newPost)
-      toast.success("Post created successfully!")
       router.push('/homepage')
     } catch (error: any) {
       console.error("Error creating post:", error)

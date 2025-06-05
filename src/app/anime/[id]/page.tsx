@@ -10,6 +10,9 @@ import Footer from "@/components/footer";
 import { ListPlus, Pause, X, Play, Calendar, Check, ChevronDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { handleQuickReviewer } from "@/utils/dailyTasks";
+import { toast } from "sonner";
+import { awardPoints } from "@/utils/awardPoints";
 
 export default function AnimeDetail() {
   type Anime = {
@@ -109,9 +112,57 @@ export default function AnimeDetail() {
     upsertUserAnime();
   }, [shouldUpdate, user, id, watchlistStatus, progress, score]);
 
-  const handleUpdate = () => {
-    if (watchlistStatus && watchlistStatus !== "Add to My List") {
-      setShouldUpdate(true);
+  const handleUpdate = async () => {
+    if (!user || !id) return;
+
+    try {
+      // Update watchlist status and progress
+      const { error } = await supabase
+        .from("UserAnime")
+        .upsert({
+          user_id: user.id,
+          anime_id: id,
+          status: watchlistStatus,
+          progress: progress,
+          score: score,
+        });
+
+      if (error) throw error;
+
+      // If a score was provided, try to award points for the Quick Reviewer task
+      if (score > 0) {
+        try {
+          const wasAwarded = await handleQuickReviewer(
+            user.id,
+            id,
+            'anime'
+          );
+
+          if (wasAwarded) {
+            toast.success('Review submitted and daily task completed! +25 XP');
+          } else {
+            // Award points for review submission even if daily task is already completed
+            await awardPoints(
+              user.id,
+              'review_submitted',
+              15,
+              id,
+              'anime'
+            );
+            toast.success('Review submitted successfully! +15 XP');
+          }
+        } catch (pointsError) {
+          console.error('Failed to award points for review:', pointsError);
+          toast.warning('Review submitted, but points system is temporarily unavailable');
+        }
+      } else {
+        toast.success('Watchlist updated successfully!');
+      }
+
+      setShouldUpdate(false);
+    } catch (error) {
+      console.error('Error updating watchlist:', error);
+      toast.error('Failed to update watchlist. Please try again.');
     }
   };
 

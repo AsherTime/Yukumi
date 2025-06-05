@@ -25,81 +25,63 @@ interface Post {
     views: number;
 }
 
+export const toggleLike = async (postId: string, liked: boolean, userId: string) => {
+    try {
+        if (liked) {
+            // Unlike
+            const { error } = await supabase
+                .from('likes')
+                .delete()
+                .eq('post_id', postId)
+                .eq('user_id', userId);
+
+            if (error) throw error;
+
+            // Update post likes count
+            await supabase.rpc('decrement_likes', { post_id: postId });
+        } else {
+            // Like
+            const { error } = await supabase
+                .from('likes')
+                .insert([{ post_id: postId, user_id: userId }]);
+
+            if (error) throw error;
+
+            // Update post likes count
+            await supabase.rpc('increment_likes', { post_id: postId });
+
+            // Award points for liking
+            try {
+                await awardPoints(
+                    userId,
+                    'post_liked',
+                    5,
+                    postId,
+                    'post'
+                );
+            } catch (pointsError) {
+                console.error('Failed to award points for like:', pointsError);
+            }
+        }
+    } catch (error) {
+        console.error('Error toggling like:', error);
+        throw error;
+    }
+};
+
 export default function handleLike(
     user: { id: string } | null,
     setPostsData: React.Dispatch<React.SetStateAction<Post[]>>,
     fetchPosts: () => Promise<void>
 ) {
-    const toggleLike = async (postId: string, liked: boolean) => {
-        if (!user) {
-            console.log("No user found, cannot like");
-            return;
-        }
-
-        try {
-            console.log("Attempting to toggle like:", { postId, liked, userId: user.id });
-
-            if (liked) {
-                // Unlike the post
-                const { error: unlikeError } = await supabase
-                    .from("likes")
-                    .delete()
-                    .eq("post_id", postId)
-                    .eq("user_id", user.id);
-
-                if (unlikeError) {
-                    console.error("Error unliking post:", unlikeError);
-                    return;
-                }
-                console.log("Successfully unliked post");
-            } else {
-                // Like the post
-                const { error: likeError } = await supabase
-                    .from("likes")
-                    .insert({
-                        post_id: postId,
-                        user_id: user.id
-                    });
-
-                if (likeError) {
-                    console.error("Error liking post:", likeError);
-                    return;
-                }
-                console.log("Successfully liked post");
-                // Award XP for liking a post
-                await awardPoints({
-                    userId: user.id,
-                    activityType: 'like_post',
-                    points: POINTS.like_post,
-                    itemId: postId,
-                    itemType: 'post'
-                });
-            }
-
-            // Update the UI immediately
-            setPostsData(prevPosts =>
-                prevPosts.map(post =>
-                    post.id === postId
-                        ? {
-                            ...post,
-                            liked_by_user: !liked,
-                            likes_count: liked ? post.likes_count - 1 : post.likes_count + 1
-                        }
-                        : post
-                )
-            );
-
-            // Then refresh the data in the background
-            fetchPosts();
-        } catch (error) {
-            console.error("Error in toggleLike:", error);
-        }
-    };
-
     const handleLikeClick = async (e: React.MouseEvent, postId: string, liked: boolean) => {
         e.preventDefault();
         e.stopPropagation();
-        await toggleLike(postId, liked);
+        if (user) {
+            await toggleLike(postId, liked, user.id);
+        } else {
+            console.log("No user found, cannot like");
+        }
     };
 
     return { handleLikeClick };
