@@ -25,7 +25,15 @@ interface Post {
     views: number;
 }
 
-export const toggleLike = async (postId: string, liked: boolean, userId: string) => {
+
+
+export default function handleLike(
+    user: { id: string } | null,
+    setPostsData: React.Dispatch<React.SetStateAction<Post[]>>,
+    fetchPosts: () => Promise<void>
+) {
+
+    const toggleLike = async (postId: string, liked: boolean, userId: string) => {
     try {
         if (liked) {
             // Unlike
@@ -63,17 +71,29 @@ export const toggleLike = async (postId: string, liked: boolean, userId: string)
                 console.error('Failed to award points for like:', pointsError);
             }
         }
+
+        // Update the UI immediately
+            setPostsData(prevPosts =>
+                prevPosts.map(post =>
+                    post.id === postId
+                        ? {
+                            ...post,
+                            liked_by_user: !liked,
+                            likes_count: liked ? post.likes_count - 1 : post.likes_count + 1
+                        }
+                        : post
+                )
+            );
+
+            fetchPosts();
+
+            
     } catch (error) {
         console.error('Error toggling like:', error);
         throw error;
     }
 };
 
-export default function handleLike(
-    user: { id: string } | null,
-    setPostsData: React.Dispatch<React.SetStateAction<Post[]>>,
-    fetchPosts: () => Promise<void>
-) {
     const handleLikeClick = async (e: React.MouseEvent, postId: string, liked: boolean) => {
         e.preventDefault();
         e.stopPropagation();
