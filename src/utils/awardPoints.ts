@@ -11,8 +11,6 @@ export async function awardPoints(
     // Get the current session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError) throw sessionError;
-    if (!session) throw new Error('No active session');
-
     // Construct the payload
     const payload = {
       user_id: userId,
@@ -22,10 +20,21 @@ export async function awardPoints(
       related_item_type: relatedItemType
     };
 
-    // Get the function URL from environment variable
-    const functionUrl = process.env.NEXT_PUBLIC_SUPABASE_EDGE_FUNCTION_URL;
+    // Build the full function URL for the award-tracker-points edge function
+    const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_EDGE_FUNCTION_URL}/functions/v1/award-tracker-points`;
     if (!functionUrl) {
       throw new Error('Edge function URL not configured');
+    }
+
+    // Use the user's session token if available, otherwise fall back to anon key
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const authToken = session?.access_token || anonKey;
+
+    // Debug: Print the authToken
+    console.log('Auth token being sent:', authToken);
+
+    if (!authToken || authToken === '') {
+      throw new Error('No auth token available for awardPoints. Check session and anon key.');
     }
 
     console.log('Awarding points with payload:', payload);
@@ -40,7 +49,7 @@ export async function awardPoints(
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
+            'Authorization': `Bearer ${authToken}`
           },
           body: JSON.stringify(payload)
         });

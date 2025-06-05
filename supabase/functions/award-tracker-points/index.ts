@@ -3,6 +3,12 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// CORS headers for browser access
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 // Define the view milestones and their corresponding points (kept for reference, though not used here directly)
 const VIEW_MILESTONES = [
   { threshold: 1000, points: 25, identifier: '1k_views' },
@@ -12,6 +18,11 @@ const VIEW_MILESTONES = [
 ];
 
 serve(async (req) => {
+  // Handle CORS preflight request
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   // Create a Supabase client with the service_role key
   // This bypasses RLS for trusted backend operations
   const supabaseClient = createClient(
@@ -26,7 +37,7 @@ serve(async (req) => {
     if (!user_id || !activity_type || typeof points_awarded !== 'number' || points_awarded < 0) {
       return new Response(
         JSON.stringify({ error: 'Invalid payload: Missing user_id, activity_type, or invalid points_awarded.' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -70,7 +81,7 @@ serve(async (req) => {
           console.error('Error checking daily task completion:', checkCompletionError);
           return new Response(
             JSON.stringify({ error: 'Failed to check daily task completion status.' }),
-            { status: 500, headers: { 'Content-Type': 'application/json' } }
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -79,7 +90,7 @@ serve(async (req) => {
           console.log(`Daily task '${activity_type}' already completed by user ${user_id} today. No points awarded.`);
           return new Response(
             JSON.stringify({ message: `Daily task '${activity_type}' already completed today.`, new_xp: null, new_level: null }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } } // Return 200 as it's not an error, just no points awarded
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } } // Return 200 as it's not an error, just no points awarded
           );
         }
 
@@ -96,7 +107,7 @@ serve(async (req) => {
           console.error('Error inserting daily task completion:', insertCompletionError);
           return new Response(
             JSON.stringify({ error: 'Failed to log daily task completion.' }),
-            { status: 500, headers: { 'Content-Type': 'application/json' } }
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
       }
@@ -116,7 +127,7 @@ serve(async (req) => {
       console.error('Error fetching tracker:', fetchError)
       return new Response(
         JSON.stringify({ error: 'Failed to fetch user tracker' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -143,7 +154,7 @@ serve(async (req) => {
       console.error('Error updating tracker:', upsertError)
       return new Response(
         JSON.stringify({ error: 'Failed to update user tracker' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -177,7 +188,7 @@ serve(async (req) => {
         new_level: newLevel,
         points_awarded,
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error: unknown) {
@@ -185,7 +196,7 @@ serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 });
