@@ -179,7 +179,7 @@ export default function HomePage() {
               {loadingMore && (
                 <div className="text-center text-zinc-400 py-4 animate-pulse">Loading more...</div>
               )}
-              
+              {/* ... */}
 
             </div>
           </div>
