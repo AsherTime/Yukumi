@@ -1,20 +1,12 @@
 "use client";
 
-import { Upload } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { FollowButton } from "@/components/ui/FollowButton";
 import { useDropzone } from 'react-dropzone';
-import { UserPosts } from "./user-posts";
-import { ContentFeed } from "./content-feed";
-import { FiMoreHorizontal, FiHeart, FiMessageCircle } from "react-icons/fi";
-import { FaHeart } from "react-icons/fa";
-import { set } from "react-hook-form";
 import useSWR from 'swr';
 import PostCardContainer from "@/components/post-card-container";
 import fetchPost from "@/utils/fetch-post";
@@ -58,7 +50,7 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
   const [avatarUrl, setAvatarUrl] = useState<string>("/placeholder.svg");
   const [displayName, setDisplayName] = useState<string>("Loading...");
   const [about, setAbout] = useState<string>("");
-  const [editMode, setEditMode] = useState<boolean>(false);
+  const [, setEditMode] = useState<boolean>(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [followedIds, setFollowedIds] = useState<string[]>([]);
@@ -73,19 +65,18 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
   const [activeTab, setActiveTab] = useState('Posts');
   const [username, setUsername] = useState<string | null>(null);
 
-  const router = useRouter();
   let profileId = userId || user?.id;
-  const { postsData, setPostsData, fetchPosts } = fetchPost();
+  const { setPostsData, fetchPosts } = fetchPost();
   const { saved, savedLoading, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
   const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
   const { following, handleFollowToggle } = handleFollow(user);
 
-  const { data: savedPosts, error } = useSWR(
+  const { data: savedPosts } = useSWR(
     () => (saved.length ? ['savedPosts', saved] : null),
     async () => {
       const { data, error } = await supabase
         .from('posts')
-        .select("*, Profiles:Profiles(avatar_url, display_name, id)")
+        .select("*, Profiles:Profiles(avatar_url, username, id)")
         .in('id', saved);
 
       if (error) throw error;
@@ -160,173 +151,6 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
     if (profileId) fetchFollowCounts(profileId);
   }, [userId, user?.id]);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      const file = e.target.files?.[0];
-      if (!file) {
-        toast.error("No file selected");
-        return;
-      }
-
-      // Check file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("File size should be less than 5MB");
-        return;
-      }
-
-      // Check file type
-      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
-      if (!allowedTypes.includes(file.type)) {
-        toast.error("Invalid file type. Please upload an image (PNG, JPEG, JPG, WEBP, or GIF)");
-        return;
-      }
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        toast.error("No active session");
-        return;
-      }
-
-      console.log("User session:", {
-        id: session.user.id,
-        email: session.user.email,
-        role: session.user.role
-      });
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${session.user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `${session.user.id}/${fileName}`;
-
-      console.log("Starting upload process...");
-      console.log("File path:", filePath);
-      console.log("File type:", file.type);
-      console.log("File size:", file.size);
-
-      // Upload new avatar
-      console.log("Uploading new file...");
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true,
-          contentType: file.type
-        });
-
-      if (uploadError) {
-        console.error("Upload error details:", {
-          message: uploadError.message,
-          name: uploadError.name,
-          stack: uploadError.stack
-        });
-        throw uploadError;
-      }
-
-      console.log("Upload successful:", uploadData);
-
-      // Get the public URL
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      if (!urlData.publicUrl) {
-        throw new Error("Failed to generate public URL");
-      }
-
-      const publicUrl = urlData.publicUrl;
-      console.log("Generated public URL:", publicUrl);
-
-      // Check if profile exists and create/update accordingly
-      const { data: existingProfile, error: fetchError } = await supabase
-        .from('Profiles')  // Capital P
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error("Error fetching profile:", fetchError);
-        throw fetchError;
-      }
-
-      let profileError;
-      if (!existingProfile) {
-        console.log("Creating new profile...");
-        const { error: insertError } = await supabase
-          .from('Profiles')  // Capital P
-          .insert([{
-            id: session.user.id,
-            avatar_url: publicUrl,
-            display_name: displayName || 'Anonymous',
-            updated_at: new Date().toISOString()
-          }])
-          .select()
-          .single();
-
-        if (insertError) {
-          console.error("Insert error details:", insertError);
-          profileError = insertError;
-        }
-      } else {
-        console.log("Updating existing profile...");
-        const { error: updateError } = await supabase
-          .from('Profiles')  // Capital P
-          .update({
-            avatar_url: publicUrl,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', session.user.id)
-          .select()
-          .single();
-
-        if (updateError) {
-          console.error("Update error details:", updateError);
-          profileError = updateError;
-        }
-      }
-
-      if (profileError) {
-        throw profileError;
-      }
-
-      // Update local state
-      setProfileImage(publicUrl);
-      setAvatarUrl(publicUrl);
-
-      toast.success("Profile picture updated successfully!");
-    } catch (error: any) {
-      console.error("Upload process failed - Full error:", error);
-
-      let errorMessage = "Failed to upload image. ";
-      if (error?.message) {
-        errorMessage += error.message;
-      } else {
-        errorMessage += "Please try again.";
-      }
-
-      toast.error(errorMessage);
-    }
-  };
-
-  const handleSaveDisplayName = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("No user session");
-
-      const { error } = await supabase
-        .from('Profiles')  // Capital P
-        .update({
-          display_name: displayName,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', session.user.id);
-
-      if (error) throw error;
-
-      setEditMode(false);
-      toast.success("Display name updated successfully!");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update display name");
-    }
-  };
 
   // Dropzone for banner
   const onDrop = (acceptedFiles: File[]) => {
@@ -345,7 +169,7 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
     const fileExt = file.name.split('.').pop();
     const fileName = `${session.user.id}-banner-${Date.now()}.${fileExt}`;
     const filePath = `${session.user.id}/${fileName}`;
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(filePath, file, { cacheControl: '3600', upsert: true, contentType: file.type });
     if (uploadError) {
@@ -389,7 +213,6 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
       toast.error("Failed to update profile");
     }
   };
-  console.log(savedPosts ? savedPosts[0] : null);
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -480,7 +303,7 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
           )}
           {activeTab === 'Saved' && !userId && (
             <div className="w-full max-w-2xl relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[90vh] overflow-y-auto">
-            <AnimatePresence mode="wait">
+            <AnimatePresence>
               {savedLoading ? (
                 <motion.div
                   key="loading-saved"
@@ -576,9 +399,8 @@ function ProfilePosts({ userId }: { userId?: string }) {
   const { user } = useAuth();
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [followedIds, setFollowedIds] = useState<string[]>([]);
-  const { postsData, setPostsData, fetchPosts } = fetchPost();
-  const { saved, savedLoading, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
+  const { setPostsData, fetchPosts } = fetchPost();
+  const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
   const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
   const { following, handleFollowToggle } = handleFollow(user);
 
@@ -589,7 +411,7 @@ function ProfilePosts({ userId }: { userId?: string }) {
       setLoading(true);
       const { data, error } = await supabase
         .from("posts")
-        .select("*, Profiles(display_name, avatar_url, id)")
+        .select("*, Profiles(username, avatar_url, id)")
         .eq("user_id", id)
         .order("created_at", { ascending: false });
       if (error) {
@@ -602,27 +424,13 @@ function ProfilePosts({ userId }: { userId?: string }) {
     fetchUserPosts();
   }, [userId, user]);
 
-  useEffect(() => {
-    // Fetch followed ids for the current user
-    const fetchFollowedIds = async () => {
-      if (!user?.id) return;
-      const { data, error } = await supabase
-        .from("follows")
-        .select("followed_id")
-        .eq("follower_id", user.id);
-      if (!error && data) {
-        setFollowedIds(data.map((row: any) => row.followed_id));
-      }
-    };
-    if (user) fetchFollowedIds();
-  }, [user]);
-  console.log(posts[0]);
+  
   if (loading) {
     return <div className="w-full text-center text-white py-8">Loading...</div>;
   }
   return (
     <div className="w-full max-w-2xl relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[90vh] overflow-y-auto">
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         {posts.length === 0 ? (
           <motion.div
             key="no-posts"

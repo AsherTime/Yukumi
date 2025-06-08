@@ -1,19 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Upload, User, Edit } from "lucide-react"
+import { Upload, User } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Sidebar, SidebarProvider } from "@/components/ui/sidebar"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 
 export default function ProfileSetup() {
   const [profileImage, setProfileImage] = useState<string | null>(null)
-  const [isEditingDisplayName, setIsEditingDisplayName] = useState(false)
   const [displayName, setDisplayName] = useState("")
   const [username, setUsername] = useState("")
   const [age, setAge] = useState("")

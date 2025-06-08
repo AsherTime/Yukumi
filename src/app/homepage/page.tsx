@@ -1,23 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { LeftSidebar } from "@/components/left-sidebar";
 import { FeaturePanel } from "@/components/feature-panel";
 import { TopNav } from "@/components/top-nav";
 import useSavedPosts from "@/utils/use-saved-posts";
 import { Card } from "@/components/ui/card";
-import { FiFlag, FiHeart, FiMessageCircle, FiMoreHorizontal, FiBookmark } from "react-icons/fi";
-import { FaHeart, FaBookmark } from "react-icons/fa"; // Filled heart
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
-import Link from "next/link";
-import { FollowButton } from "@/components/ui/FollowButton";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserCircle, Heart, MessageCircle, Eye, MoreVertical, FootprintsIcon } from "lucide-react";
-import { PostgrestError } from "@supabase/supabase-js";
 import Footer from "@/components/footer"
-import PostCard from "@/components/post-card";
 import PostCardContainer from "@/components/post-card-container";
 import fetchPost from "@/utils/fetch-post";
 import handleLike from "@/utils/handleLike";
@@ -26,7 +18,6 @@ import handleFollow from "@/utils/handleFollow";
 
 export default function HomePage() {
   const { user } = useAuth();
-  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedSidebarFilter, setSelectedSidebarFilter] = useState<string>("Recommended");
@@ -38,8 +29,8 @@ export default function HomePage() {
     { label: "Discussion", value: "Discussion" },
     { label: "News", value: "News" },
   ];
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [, setPage] = useState(1);
+  const [hasMore, ] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const { postsData, setPostsData, fetchPosts } = fetchPost();
   const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
@@ -148,7 +139,7 @@ export default function HomePage() {
                 </div>
               </div>
               {/* Posts List */}
-              <AnimatePresence mode="wait">
+              <AnimatePresence>
                 {uniquePosts.length === 0 ? (
                   <motion.div
                     key="no-posts"

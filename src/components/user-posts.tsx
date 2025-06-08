@@ -6,7 +6,7 @@ import { FiHeart, FiMessageCircle, FiMoreHorizontal } from "react-icons/fi";
 import { FaHeart } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { FollowButton } from "@/components/ui/FollowButton";
+import { FollowButton } from "@/components/FollowButton";
 import { PostgrestError } from "@supabase/supabase-js";
 
 export function UserPosts({ userId }: { userId?: string }) {

@@ -8,33 +8,3 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-const fetchJoinedCommunities = async () => {
-  if (!user) return;
-  try {
-    // Step 1: Get the list of community_ids the user follows
-    const { data: follows, error: followsError } = await supabase
-      .from('follows')
-      .select('community_id')
-      .eq('user_id', user.id)
-      .limit(10);
-    if (followsError) throw followsError;
-
-    const communityIds = (follows || []).map((row: any) => row.community_id);
-    if (communityIds.length === 0) {
-      setJoinedCommunities([]);
-      return;
-    }
-
-    // Step 2: Fetch the community details
-    const { data: communities, error: communitiesError } = await supabase
-      .from('community')
-      .select('id, title, members, banner_url, avatar_url')
-      .in('id', communityIds);
-
-    if (communitiesError) throw communitiesError;
-    setJoinedCommunities(communities || []);
-  } catch (error) {
-    console.error('Error fetching joined communities:', error);
-  }
-};

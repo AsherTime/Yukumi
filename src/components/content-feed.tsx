@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase"; 
 import { Card } from "@/components/ui/card";
-import { FollowButton } from "@/components/ui/FollowButton";
+import { FollowButton } from "@/components/FollowButton";
 import { FiHeart, FiMessageCircle, FiMoreHorizontal } from "react-icons/fi";
 import { FaHeart } from "react-icons/fa";
 import Link from "next/link";
