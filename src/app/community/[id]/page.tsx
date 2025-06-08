@@ -1,21 +1,15 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { TopNav } from "@/components/top-nav";
 import { supabase } from "@/lib/supabase";
-import { Heart, MessageCircle, Share2, Upload, UserCircle, Eye } from "lucide-react";
+import {  Upload } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-hot-toast";
 import JoinedCommunitiesSidebar from "@/components/joined-communities";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiMoreHorizontal } from "react-icons/fi";
-import Link from "next/link";
-import { FollowButton } from "@/components/ui/FollowButton";
-import { PostgrestError } from "@supabase/supabase-js";
-import { ContentFeed } from "@/components/content-feed";
 import Footer from "@/components/footer"
 import PostCardContainer from "@/components/post-card-container";
 import fetchPost from "@/utils/fetch-post";

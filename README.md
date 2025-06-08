@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌸 Yukumi - Anime Tracker & Community
 
-## Getting Started
+Yukumi is a full-stack anime website where users can track their watched anime, score them, and engage in community discussions. Inspired by platforms like MyAnimeList and Reddit, Yukumi brings together tracking, scoring, and social interaction — all in one place.
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### 📝 Anime Tracking
+- Search and browse anime.
+- Add anime to your personal list with status: `Watching`, `Completed`, `On-Hold`, `Dropped`, or `Plan to Watch`.
+- Score each anime out of 10 and view community average scores.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 👥 Community
+- Create posts and engage with others in a Reddit-style community system.
+- Like, comment, and share content around specific anime.
+- Filter content feed based on anime.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 📊 Profile & Stats
+- View and edit your profile with custom display name, age, gender, and location.
+- Track progress and stats on your anime list and interactions.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 🔐 Authentication
+- Sign up or log in with email or Google or Facebook.
+- Personalized experience once logged in.
 
-## Learn More
+### 📷 Media & Hosting
+- Anime posters and assets are served through [supabase](https://supabase.com/) and [ImageKit](https://imagekit.io/).
+- Images are optimized for fast delivery and caching.
 
-To learn more about Next.js, take a look at the following resources:
+## ⚙️ Tech Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Frontend:** React (with TypeScript), Tailwind CSS, Next.js (App Router)
+- **Backend:** Supabase (Database, Auth, RLS Policies, Edge Functions)
+- **Auth:** Firebase Authentication
+- **Storage/CDN:** Supabase + ImageKit

@@ -4,15 +4,13 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Loader2, Bold, Italic, Underline, ImageIcon } from "lucide-react"
+import { Loader2, Bold, Italic, Underline } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import DOMPurify from 'dompurify';
-import ImageKit from "imagekit-javascript";
 import { IKContext, IKUpload } from 'imagekitio-react';
 import { awardPoints } from "@/utils/awardPoints"
 
@@ -40,7 +38,7 @@ export default function CoverUpload() {
   const [selectedAnime, setSelectedAnime] = useState<string | null>(null)
   const [selectedCollection, setSelectedCollection] = useState<string | undefined>(undefined)
   const editorRef = useRef<HTMLDivElement>(null)
-  const { user } = useAuth()
+  const { user, loading: isLoading } = useAuth()
   const router = useRouter()
   const [animeLoading, setAnimeLoading] = useState(false);
   const [postTags, setPostTags] = useState<string[]>([]);
@@ -50,9 +48,11 @@ export default function CoverUpload() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    if (isLoading) return
+
+    // 2. Once loading is false, if there’s no user, redirect
     if (!user) {
       router.push('/auth/login')
-      return
     }
     // Check for community_id in query params
     const communityId = searchParams.get('community_id');
@@ -81,7 +81,7 @@ export default function CoverUpload() {
     } else {
       fetchAnimeList();
     }
-  }, [user, router, searchParams]);
+  }, [user, router, searchParams, isLoading]);
 
   const fetchAnimeList = async (query: string = "") => {
     try {
@@ -168,7 +168,7 @@ export default function CoverUpload() {
     if (!selectedText) return
 
     document.execCommand('styleWithCSS', false, 'true')
-    
+
     switch (style) {
       case 'bold':
         document.execCommand('bold', false)
@@ -193,8 +193,7 @@ export default function CoverUpload() {
   }
 
   const buttonClass = (tag: string) =>
-    `p-1.5 rounded transition-colors ${
-      activeStyles.includes(tag) ? "bg-[#3A3A3A]" : "hover:bg-[#3A3A3A]"
+    `p-1.5 rounded transition-colors ${activeStyles.includes(tag) ? "bg-[#3A3A3A]" : "hover:bg-[#3A3A3A]"
     }`
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -216,19 +215,19 @@ export default function CoverUpload() {
     reader.readAsDataURL(file)
   }
 
-  
-const [imageUrl, setImageUrl] = useState('');
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-try {
-  const user = (await supabase.auth.getUser()).data.user;
-  if (!user) {
-    alert('You must be logged in to post.');
-    return;
-  }
-  const selectedAnimeTitle = selectedAnime ? animeList.find(a => a.id === selectedAnime)?.title : null
-  const postData = {
+  const [imageUrl, setImageUrl] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) {
+        alert('You must be logged in to post.');
+        return;
+      }
+      const selectedAnimeTitle = selectedAnime ? animeList.find(a => a.id === selectedAnime)?.title : null
+      const postData = {
         user_id: user.id,
         title,
         content,
@@ -240,41 +239,41 @@ try {
         reference_link: referenceLink || null
       }
 
-  const { data: newPost, error: postError } = await supabase
+      const { data: newPost, error: postError } = await supabase
         .from("posts")
         .insert(postData)
         .select()
         .single();
 
-  if (postError) {
+      if (postError) {
         console.error("Post creation error:", postError)
         throw new Error(postError.message)
       } else {
-    // Award points for creating a post
-    try {
-      await awardPoints(
-        user.id,
-        'post_created',
-        25,
-        newPost.id,
-        'post'
-      );
-      toast.success('Post created successfully! +25 XP');
-    } catch (pointsError) {
-      console.error('Failed to award points for post creation:', pointsError);
-      toast.success('Post created successfully!');
-    }
-    setTitle('');
-    setContent('');
-    setImageUrl('');
-    setPreviewImage('');
-  }
-   let finalTags = [...postTags];
-  if (tagInput.trim() !== "" && !postTags.includes(tagInput.trim().toLowerCase())) {
-    finalTags.push(tagInput.trim().toLowerCase());
-  }
-  console.log("Final tags:", finalTags)
-  for (const tag of finalTags) {
+        // Award points for creating a post
+        try {
+          await awardPoints(
+            user.id,
+            'post_created',
+            25,
+            newPost.id,
+            'post'
+          );
+          toast.success('Post created successfully! +25 XP');
+        } catch (pointsError) {
+          console.error('Failed to award points for post creation:', pointsError);
+          toast.success('Post created successfully!');
+        }
+        setTitle('');
+        setContent('');
+        setImageUrl('');
+        setPreviewImage('');
+      }
+      let finalTags = [...postTags];
+      if (tagInput.trim() !== "" && !postTags.includes(tagInput.trim().toLowerCase())) {
+        finalTags.push(tagInput.trim().toLowerCase());
+      }
+      console.log("Final tags:", finalTags)
+      for (const tag of finalTags) {
         // 1. Check if tag exists
         let tagId: string | null = null;
         const { data: tagRow, error: tagFetchError } = await supabase
@@ -317,7 +316,7 @@ try {
       setLoading(false)
     }
 
-};
+  };
 
 
   // Tag input handlers
@@ -367,7 +366,7 @@ try {
           &times;
         </button>
         <h1 className="text-2xl font-bold mb-6">Upload New Post</h1>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="bg-red-500/10 border border-red-500 text-red-500 p-3 rounded">
@@ -386,47 +385,48 @@ try {
             />
           </div>
 
-        <IKContext
-  publicKey={process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY!}
-  urlEndpoint={process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT!}
-  authenticator={async () => {
-    const res = await fetch("/api/imagekit-auth");
-    return await res.json();
-  }}
->
-  <div className="space-y-2">
-    <Label htmlFor="image">Cover Image</Label>
+          <IKContext
+            publicKey={process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY!}
+            urlEndpoint={process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT!}
+            authenticator={async () => {
+              const res = await fetch("/api/imagekit-auth");
+              return await res.json();
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="image">Cover Image</Label>
 
-    <IKUpload
-  fileName="cover-image.jpg"
-  folder="/posts" // ✅ Uploads image to the 'posts' folder
-  onSuccess={(res: { url: string }) => {
-    console.log("Upload success:", res);
-    setPreviewImage(res.url);
-    setImageUrl(res.url);
-  }}
-  onError={(err: Error) => {
-    console.error("Upload error:", err);
-  }}
-  className="bg-[#2e2e2e] border-0"
-/>
+              <IKUpload
+                id="image"
+                fileName="cover-image.jpg"
+                folder="/posts" // ✅ Uploads image to the 'posts' folder
+                onSuccess={(res: { url: string }) => {
+                  console.log("Upload success:", res);
+                  setPreviewImage(res.url);
+                  setImageUrl(res.url);
+                }}
+                onError={(err: Error) => {
+                  console.error("Upload error:", err);
+                }}
+                className="bg-[#2e2e2e] border-0"
+              />
 
 
-    {previewImage && (
-      <div className="mt-2">
-        <img
-          src={previewImage}
-          alt="Preview"
-          className="max-h-48 rounded"
-        />
-      </div>
-    )}
-  </div>
-</IKContext>
+              {previewImage && (
+                <div className="mt-2">
+                  <img
+                    src={previewImage}
+                    alt="Preview"
+                    className="max-h-48 rounded"
+                  />
+                </div>
+              )}
+            </div>
+          </IKContext>
 
 
           <div className="space-y-2">
-            <Label>Content</Label>
+            <Label>Content
             <div className="bg-[#2A2A2A] p-2 flex gap-2 border-b border-[#3A3A3A]">
               <button
                 type="button"
@@ -451,21 +451,26 @@ try {
               </button>
             </div>
             <div
+              id="editor"
               ref={editorRef}
               contentEditable
+              tabIndex={0} 
+              role="textbox" 
+              aria-multiline="true" 
               className="w-full h-64 p-4 bg-[#2A2A2A] text-white resize-none focus:outline-none border border-[#3A3A3A] rounded-lg mt-2 overflow-auto"
               onSelect={updateActiveStyles}
-              onInput={(e) => {               
-              const safeContent = DOMPurify.sanitize(e.currentTarget.innerHTML);
-              setContent(safeContent);
+              onInput={(e) => {
+                const safeContent = DOMPurify.sanitize(e.currentTarget.innerHTML);
+                setContent(safeContent);
               }}
             />
+            </Label>
           </div>
 
           <div className="space-y-2">
-            <Label>Select Collection</Label>
-            <Select onValueChange={setSelectedCollection}>
-              <SelectTrigger className="bg-[#2e2e2e] border-0">
+            <Label htmlFor="select-collection">Select Collection</Label>
+            <Select name="select-collection-container" onValueChange={setSelectedCollection}>
+              <SelectTrigger id="select-collection" className="bg-[#2e2e2e] border-0">
                 <SelectValue placeholder="Select Collection" />
               </SelectTrigger>
               <SelectContent className="bg-[#2e2e2e] border-[#3A3A3A]">
@@ -478,10 +483,11 @@ try {
           </div>
 
           <div className="space-y-2">
-            <Label>Select Anime</Label>
+            <Label htmlFor="search-anime">Select Anime</Label>
             <div className="relative">
               <Input
                 type="text"
+                id="search-anime"
                 value={searchQuery}
                 onChange={handleSearch}
                 onFocus={() => setShowAnimeDropdown(true)}
@@ -522,7 +528,7 @@ try {
           </div>
 
           <div className="space-y-2">
-            <Label>Original Work</Label>
+            <Label htmlFor="reference-link">Original Work</Label>
             <div className="flex items-center gap-4 p-4 bg-[#2e2e2e] rounded-lg">
               <div className="flex items-center gap-2">
                 <input
@@ -550,6 +556,7 @@ try {
             {!isOriginalWork && (
               <Input
                 value={referenceLink}
+                id="reference-link"
                 onChange={(e) => setReferenceLink(e.target.value)}
                 placeholder="Enter reference link"
                 className="bg-[#2e2e2e] border-0 mt-2"
@@ -558,7 +565,7 @@ try {
           </div>
 
           <div className="space-y-2">
-            <Label>Add topic</Label>
+            <Label htmlFor="tag-input">Add topic</Label>
             <div className="flex flex-wrap items-center gap-2 bg-[#2e2e2e] border border-[#3A3A3A] rounded-lg px-2 py-2">
               {postTags.map((tag) => (
                 <span key={tag} className="flex items-center bg-[#232232] text-white rounded-full px-4 py-1 text-sm mr-1 mb-1">
@@ -576,6 +583,7 @@ try {
               {postTags.length < 5 && (
                 <input
                   type="text"
+                  id="tag-input"
                   value={tagInput}
                   onChange={handleTagInputChange}
                   onKeyDown={handleTagInputKeyDown}

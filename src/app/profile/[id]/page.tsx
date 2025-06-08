@@ -2,7 +2,6 @@
 
 import { TopNav } from "@/components/top-nav";
 import { UserProfile } from "@/components/user-profile";
-import { UserPosts } from "@/components/user-posts";
 import { useParams } from "next/navigation";
 import Footer from "@/components/footer"
 

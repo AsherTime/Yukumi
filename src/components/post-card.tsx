@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { UserCircle, Heart, MessageCircle, Eye } from 'lucide-react';
 import { FiMoreHorizontal, FiBookmark } from 'react-icons/fi';
 import { FaBookmark } from 'react-icons/fa';
-import { FollowButton } from "@/components/ui/FollowButton";
+import { FollowButton } from "@/components/FollowButton";
 import useViewCountOnVisible from '@/hooks/use-view-count';
 import useSavedPosts from '@/utils/use-saved-posts';
 import handleFollow from '@/utils/handleFollow';

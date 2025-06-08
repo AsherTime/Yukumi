@@ -26,7 +26,7 @@ export default function AnimeDetail() {
   const { user } = useAuth();
   const router = useRouter();
 
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [anime, setAnime] = useState<Anime | null>(null);
   const [watchlistStatus, setWatchlistStatus] = useState<string | null>(null);

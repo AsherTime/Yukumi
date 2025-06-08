@@ -1,8 +1,6 @@
 "use client";
 
 import PostCard from '@/components/post-card';
-import useSavedPosts from '@/utils/use-saved-posts';
-import { motion } from 'framer-motion';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from "@/contexts/AuthContext";

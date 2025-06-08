@@ -12,7 +12,6 @@ import { supabase } from "@/lib/supabase"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Twitter, Github, Mail } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Command, CommandItem } from "@/components/ui/command";
 
@@ -46,10 +45,7 @@ const statusColors: Record<string, string> = {
   Dropped: "text-red-500",
   Planning: "text-blue-500",
 };
-type Props = {
-  userId: string;
-  animeId: string;
-};
+
 
 interface AnimeCardProps {
   anime: Anime;
@@ -84,7 +80,7 @@ const AnimeCard = ({ anime, favourites, selectedStatus,  score, onViewDetails, o
   )}
 </button>
       <div className="relative w-full h-48 rounded-t-lg overflow-hidden">
-        <Image src={anime.image_url || "/placeholder.svg"} alt={anime.title} fill className="object-cover" />
+        <Image src={anime.image_url || "/placeholder.svg"} alt={anime.title} fill sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw" className="object-cover" />
       </div>
       <CardHeader className="pb-2">
         <CardTitle className="text-lg font-bold text-white truncate">{anime.title}</CardTitle>
@@ -183,6 +179,7 @@ const AnimeSearchBar = ({ value, onChange }: AnimeSearchBarProps) => (
       <Input
         type="text"
         placeholder="Search anime..."
+        id="anime-search"
         value={value}
         onChange={onChange}
         className="pl-10 pr-4 py-3 bg-[#181828] border border-zinc-700 text-white rounded-lg shadow focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-zinc-400"
@@ -370,7 +367,6 @@ const [scoreMap, setScoreMap] = useState<Record<string, number | null>>({});
 useEffect(() => {
   async function loadData() {
       if (!userId) {
-      console.warn("No userId available, skipping fetchUserAnimeData");
       return;
     }
     const fetchedAnimeList = await fetchAnimeList();

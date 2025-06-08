@@ -3,10 +3,9 @@
 import React, { useState, useEffect } from "react"
 import { CheckCircle, Trophy, BarChart3, MessageSquare, BookOpen, Flame, Star, Hexagon } from "lucide-react"
 import { TopNav } from "@/components/top-nav"
-import { createClient } from '@supabase/supabase-js'
-import { POINTS } from '@/utils/pointConfig'
 import { awardPoints } from '@/utils/awardPoints'
 import { wasTaskCompletedToday } from '@/utils/dailyTasks'
+import { supabase } from '@/lib/supabase'
 
 // Minimal Card component for self-containment
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -402,10 +401,6 @@ function TrackerScore({ score }: { score: number }) {
   )
 }
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 export default function TrackerPage() {
   const [tracker, setTracker] = useState<{ xp: number; level: number } | null>(null)
@@ -482,11 +477,11 @@ export default function TrackerPage() {
     setAwardStatus(null)
     if (!userId) return
     try {
-      await awardPoints({
+      await awardPoints(
         userId,
-        activityType: 'test_award',
-        points: 10,
-      })
+        'test_award',
+        10,
+      )
       setAwardStatus('Points awarded! Reloading...')
       setTimeout(() => setAwardStatus(null), 2000)
     } catch (e) {

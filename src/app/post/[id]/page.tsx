@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { FiShare2, FiFlag, FiHeart, FiMessageCircle, FiEdit2, FiTrash2 } from "react-icons/fi"; // Importing icons
-import { ThumbsUp, ThumbsUpIcon, Flag } from 'lucide-react';
+import { ThumbsUpIcon, Flag } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";

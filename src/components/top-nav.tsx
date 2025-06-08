@@ -9,7 +9,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,7 +58,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
   const [navLinks, setNavLinks] = useState([
     { href: "/homepage", label: "Home" },
     { href: "/anime", label: "Anime" },
-    { href: "/community/a8a96442-c394-41dd-9632-8a968e53a7fe", label: "Community" }, // placeholder
+    { href: "/community/a8a96442-c394-41dd-9632-8a968e53a7fe", label: "Community" }, 
     { href: "/tracker", label: "Tracker" },
   ]);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -274,6 +273,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
             <div className="relative flex-1 max-w-md mr-10">
               <select
                 value={selectedCategory}
+                id="category"
                 onChange={(e) => setSelectedCategory(e.target.value as 'anime' | 'community' | 'users')}
                 className="absolute inset-y-0 left-0 w-20 appearance-none bg-[#f8f8f8] text-black px-2 py-2 rounded-l border-r border-gray-300 focus:outline-none"
               >
@@ -285,6 +285,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
 
               <input
                 type="text"
+                id="search"
                 placeholder="Search anime, community, users..."
                 value={searchTerm}
                 onChange={handleChange}
@@ -293,7 +294,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
 
 
 
-              {searchResults && (
+              {searchTerm.trim() !== '' && searchResults && (
                 <div className="absolute bg-white shadow-lg z-10 w-full max-w-md border border-gray-300 rounded mt-1">
 
                   {selectedCategory === 'anime' && searchResults.anime.length > 0 && (
