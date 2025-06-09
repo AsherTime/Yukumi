@@ -14,6 +14,7 @@ import handleLike from "@/utils/handleLike";
 import useSavedPosts from "@/utils/use-saved-posts";
 import { AnimatePresence, motion } from "framer-motion";
 import handleFollow from "@/utils/handleFollow";
+import FanMangaCard from './fan-manga-card';
 
 interface Post {
   id: string;
@@ -437,39 +438,55 @@ function ProfilePosts({ userId }: { userId?: string }) {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [recentPosts, setRecentPosts] = useState<Post[]>(() => {
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("recentPosts");
-    return stored ? JSON.parse(stored) : [];
-  }
-  return [];
-});
-
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("recentPosts");
+      return stored ? JSON.parse(stored) : [];
+    }
+    return [];
+  });
   const { setPostsData, fetchPosts } = fetchPost();
-  const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
+  const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts);
   const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
   const { following, handleFollowToggle } = handleFollow(user);
-
   useEffect(() => {
-    const fetchUserPosts = async () => {
+    const fetchUserPostsAndMangas = async () => {
       const id = userId || user?.id;
       if (!id) return;
       setLoading(true);
-      const { data, error } = await supabase
+      // Fetch regular posts
+      const { data: posts, error: postsError } = await supabase
         .from("posts")
         .select("*, Profiles(username, avatar_url, id)")
         .eq("user_id", id)
         .order("created_at", { ascending: false });
-      if (error) {
-        setPosts([]);
-      } else {
-        setPosts(data || []);
-      }
+      // Fetch fan mangas
+      const { data: mangas, error: mangasError } = await supabase
+        .from("fan_stories")
+        .select("*, Profiles:Profiles(username, avatar_url, id)")
+        .eq("user_id", id)
+        .order("created_at", { ascending: false });
+      // Normalize and merge
+      const normalizedMangas = (mangas || []).map(manga => ({
+        ...manga,
+        isFanManga: true,
+        likes_count: 0,
+        comments_count: 0,
+        liked_by_user: false,
+        image_url: manga.cover_image_url,
+        tags: manga.tags || [],
+        Profiles: Array.isArray(manga.Profiles) ? manga.Profiles[0] : manga.Profiles
+      }));
+      const normalizedPosts = (posts || []).map(post => ({
+        ...post,
+        isFanManga: false,
+        Profiles: Array.isArray(post.Profiles) ? post.Profiles[0] : post.Profiles
+      }));
+      const merged = [...normalizedPosts, ...normalizedMangas].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setPosts(merged);
       setLoading(false);
     };
-    fetchUserPosts();
+    fetchUserPostsAndMangas();
   }, [userId, user]);
-
-
   if (loading) {
     return <div className="w-full text-center text-white py-8">Loading...</div>;
   }
@@ -488,25 +505,29 @@ function ProfilePosts({ userId }: { userId?: string }) {
           </motion.div>
         ) : (
           posts.map((post, idx) => (
-            <PostCardContainer
-              key={post.id || idx}  // Use post.id if available, fallback to index
-              post={post}
-              idx={idx}
-              total={posts.length}
-              onLikeToggle={handleLikeClick}
-              following={following}
-              handleFollowToggle={handleFollowToggle}
-              saved={saved}
-              onToggleSave={() => toggleSave(post.id)}
-              onPostOpen={(post: Post) => {
-                setRecentPosts(prev => {
-                  const filtered = prev.filter(p => p.id !== post.id);
-                  const updated = [post, ...filtered].slice(0, 10);
-                  localStorage.setItem("recentPosts", JSON.stringify(updated));
-                  return updated;
-                });
-              }}
-            />
+            post.isFanManga ? (
+              <FanMangaCard key={post.id} manga={post} idx={idx} total={posts.length} />
+            ) : (
+              <PostCardContainer
+                key={post.id || idx}
+                post={post}
+                idx={idx}
+                total={posts.length}
+                onLikeToggle={handleLikeClick}
+                following={following}
+                handleFollowToggle={handleFollowToggle}
+                saved={saved}
+                onToggleSave={() => toggleSave(post.id)}
+                onPostOpen={(post: Post) => {
+                  setRecentPosts(prev => {
+                    const filtered = prev.filter(p => p.id !== post.id);
+                    const updated = [post, ...filtered].slice(0, 10);
+                    localStorage.setItem("recentPosts", JSON.stringify(updated));
+                    return updated;
+                  });
+                }}
+              />
+            )
           ))
         )}
       </AnimatePresence>
