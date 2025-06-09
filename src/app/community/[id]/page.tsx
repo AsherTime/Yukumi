@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { TopNav } from "@/components/top-nav";
 import { supabase } from "@/lib/supabase";
-import {  Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-hot-toast";
@@ -38,6 +38,28 @@ interface Anime {
   banner_url?: string;
 }
 
+interface Post {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  likes_count: number;
+  comments_count: number;
+  liked_by_user: boolean;
+  image_url: string;
+  animetitle_post: string | null;
+  post_collections: string | null;
+  original_work: boolean;
+  reference_link: string | null;
+  Profiles?: {
+    avatar_url: string;
+    username: string;
+  };
+  tags?: string[];
+  views: number;
+}
+
 
 const bgImageUrl = "https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Flux_Dev_a_stunning_illustration_of_Create_a_highquality_origi_2.jpg?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5X2EwNWE5MzA2LTNiZGItNDliNC1hZGQ2LTFjMjEzNjhiYzcwMSJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9GbHV4X0Rldl9hX3N0dW5uaW5nX2lsbHVzdHJhdGlvbl9vZl9DcmVhdGVfYV9oaWdocXVhbGl0eV9vcmlnaV8yLmpwZyIsImlhdCI6MTc0NzUxMjU1NiwiZXhwIjoxNzc5MDQ4NTU2fQ.Yr4W2KUDf1CWy5aI4dcTEWkJVTR0okuddtHugyA_niM";
 
@@ -45,7 +67,6 @@ const bgImageUrl = "https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/s
 
 
 export default function CommunityIdPage() {
-  const [activeTab, setActiveTab] = useState<"Recommended" | "Recents">("Recommended");
   const [community, setCommunity] = useState<Community | null>(null);
   const [anime, setAnime] = useState<Anime | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,14 +75,36 @@ export default function CommunityIdPage() {
   const params = useParams();
   const { user } = useAuth();
   const router = useRouter();
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const POSTS_PER_PAGE = 10;
+  const [followedIds, setFollowedIds] = useState<string[]>([]);
+  const [recentPosts, setRecentPosts] = useState<Post[]>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("recentPosts");
+      return stored ? JSON.parse(stored) : [];
+    }
+    return [];
+  });
+
   const { postsData, setPostsData, fetchPosts } = fetchPost();
   const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
   const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
   const { following, handleFollowToggle } = handleFollow(user);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  // Fetch followed user IDs for 'Following' filter
+  useEffect(() => {
+    const fetchFollowedIds = async () => {
+      if (!user?.id) return;
+      const { data, error } = await supabase
+        .from("follows")
+        .select("followed_id")
+        .eq("follower_id", user.id);
+      if (!error && data) {
+        setFollowedIds(data.map((row: any) => row.followed_id));
+      }
+    };
+    if (user) fetchFollowedIds();
+  }, [following])
 
   useEffect(() => {
     const fetchCommunityAndAnime = async () => {
@@ -176,24 +219,29 @@ export default function CommunityIdPage() {
 
 
 
-
-
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
   };
 
-
+  const handleCategorySelect = (category: string) => {
+    setSelectedCategory(prev =>
+      prev === category ? null : category // toggle off if already selected
+    );
+  };
 
   const filteredPosts = postsData
     .filter((post) => post.animetitle_post === anime?.title)
     .filter((post) =>
       selectedTags.length === 0 ||
       selectedTags.every(tag => post.tags?.includes(tag))
-    );
+    )
+    .filter((post) => {
+      if (!selectedCategory) return true;
+      if (selectedCategory === "Following") return followedIds.includes(post.user_id);
+      return post.post_collections?.includes(selectedCategory);
+    })
 
   const uniquePosts = Array.from(new Map(filteredPosts.map(p => [p.id, p])).values());
 
@@ -217,8 +265,8 @@ export default function CommunityIdPage() {
   }
 
   return (
-    <div className="relative min-h-screen">
-      {/* Background image with gradient overlay */}
+    <div className="flex flex-col relative min-h-screen">
+      {/* Background Image */}
       <div
         className="fixed inset-0 z-0"
         style={{
@@ -227,146 +275,176 @@ export default function CommunityIdPage() {
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
           backgroundAttachment: "fixed",
-          filter: "brightness(0.95)"
+          filter: "brightness(0.95)",
         }}
       />
-      {/* Main content */}
-      <div className="relative z-10">
-        <TopNav />
-        {/* Banner */}
-        <div className="w-full flex justify-center relative">
-          <div className="hidden md:block fixed top-16 left-0 w-64 h-[calc(100vh-4rem)] bg-[#18181b] border-r border-zinc-800 px-4 py-6 z-30">
-            <JoinedCommunitiesSidebar userId={user?.id ?? null} />
-          </div>
 
-          <div className="w-[80%] h-48 md:h-64 relative rounded-2xl shadow-2xl ml-[14.5rem]">
-            <Image
-              src={community.banner_url || anime.banner_url || "/banner-placeholder.jpg"}
-              alt="Community Banner"
-              fill
-              className="object-cover w-full h-full rounded-2xl"
-              priority
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent rounded-2xl" />
-          </div>
-          {/* Overlapping Avatar and Header - now outside the banner container */}
-          <div className="absolute left-1/2 -translate-x-1/2 -bottom-12 flex items-end justify-between z-20 w-[80%] ml-[7.5rem]">
-            <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white overflow-hidden bg-zinc-800 shadow-lg">
+      {/* Top Nav */}
+      <div className="fixed top-0 left-0 right-0 z-50">
+        <TopNav />
+      </div>
+
+      {/* Sidebar (fixed) */}
+      <div className="hidden md:block fixed top-16 left-0 w-64 h-[calc(100vh-4rem)] overflow-y-auto border-r border-zinc-800 px-4 py-6 z-30 pb-24">
+        <JoinedCommunitiesSidebar userId={user?.id ?? null} />
+      </div>
+
+      {/* Main Content Area (margin left to avoid sidebar overlap) */}
+      <div className="flex-1 relative z-10 ml-0 md:ml-64 pt-20 pb-12 px-4 md:px-8">
+        <div className="max-w-7xl mx-auto space-y-12">
+          {/* === BANNER + AVATAR/HEADER === */}
+          <div className="px-4 md:px-8 pt-6 pb-12">
+            {/* Banner */}
+            <div className="w-full h-48 md:h-64 relative rounded-2xl shadow-2xl">
               <Image
-                src={community.avatar_url || anime.image_url || "/avatar-placeholder.png"}
-                alt="Community Avatar"
-                width={128}
-                height={128}
-                className="object-cover w-full h-full"
+                src={community.banner_url || anime.banner_url || "/banner-placeholder.jpg"}
+                alt="Community Banner"
+                fill
+                className="object-cover w-full h-full rounded-2xl"
+                priority
               />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent rounded-2xl" />
             </div>
-            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6 pb-4 md:pb-0 flex-1">
-              <h1 className="text-2xl md:text-3xl font-bold leading-tight text-white drop-shadow-lg">{community.title || anime.title}</h1>
-              <div className="flex gap-4 text-zinc-300 text-sm md:text-base">
-                <span>Members: <span className="font-semibold text-white">{community.members}</span></span>
+
+            {/* Avatar + Header */}
+            <div className="relative z-20 -mt-12 flex flex-col md:flex-row md:items-end justify-between w-full gap-4">
+              <div className="flex items-end gap-4">
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white overflow-hidden bg-zinc-800 shadow-lg">
+                  <Image
+                    src={community.avatar_url?.trim() || anime.image_url?.trim() || "/avatar-placeholder.png"}
+                    alt="Community Avatar"
+                    width={128}
+                    height={128}
+                    className="object-cover w-full h-full"
+                  />
+                </div>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg">{community.title || anime.title}</h1>
+                  <p className="text-sm text-zinc-300">Members: <span className="font-semibold text-white">{community.members}</span></p>
+                </div>
               </div>
-              <Button
-                className={`px-6 py-2 rounded-full text-lg font-semibold transition-colors ml-0 md:ml-4 ${joined
-                  ? "bg-zinc-700 text-zinc-300 cursor-default"
-                  : "bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700"
-                  }`}
-                disabled={joined}
-                onClick={handleJoinCommunity}
-              >
-                {joined ? "Joined" : "+ Join Community"}
-              </Button>
-              <Button
-                className="w-auto bg-black border border-white/10 hover:bg-white/5 ml-0 md:ml-2"
-                onClick={() => router.push(`/upload?community_id=${community.id}`)}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Create Post
-              </Button>
+
+              <div className="flex flex-wrap gap-2 md:gap-4">
+                <Button
+                  className={`px-6 py-2 rounded-full text-lg font-semibold transition-colors ${joined
+                    ? "bg-zinc-700 text-zinc-300 cursor-default"
+                    : "bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700"
+                    }`}
+                  disabled={joined}
+                  onClick={handleJoinCommunity}
+                >
+                  {joined ? "Joined" : "+ Join Community"}
+                </Button>
+                <Button
+                  className="w-auto bg-black border border-white/10 hover:bg-white/5"
+                  onClick={() => router.push(`/upload?community_id=${community.id}`)}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Create Post
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-        {/* Header Spacer for Overlap */}
-        <div className="h-20 md:h-24" />
-        <div className="flex">
-          {/* Left Sidebar */}
+        {/* === POSTS FEED + RIGHT SIDEBAR === */}
+        <div className="max-w-7xl mx-auto px-4 md:px-8 pb-16">
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* Main Posts Feed */}
+            <div className="flex-1 flex flex-col bg-[#18181b] space-y-4">
+              <AnimatePresence mode="wait">
+                {uniquePosts.length === 0 ? (
+                  <motion.div
+                    key="no-posts"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="text-center text-zinc-400 py-12"
+                  >
+                    No posts found in this category.
+                  </motion.div>
+                ) : (
+                  uniquePosts.map((post, idx) => (
+                    <PostCardContainer
+                      key={post.id || idx}
+                      post={post}
+                      idx={idx}
+                      total={uniquePosts.length}
+                      onLikeToggle={handleLikeClick}
+                      following={following}
+                      handleFollowToggle={handleFollowToggle}
+                      saved={saved}
+                      onToggleSave={() => toggleSave(post.id)}
+                      onPostOpen={(post: Post) => {
+                        setRecentPosts(prev => {
+                          const filtered = prev.filter(p => p.id !== post.id);
+                          const updated = [post, ...filtered].slice(0, 10);
+                          localStorage.setItem("recentPosts", JSON.stringify(updated));
+                          return updated;
+                        });
+                      }}
+                    />
+                  ))
+                )}
+              </AnimatePresence>
+            </div>
 
-
-          {/* Main Content Layout */}
-          <div className="flex-1">
-            <div className="max-w-7xl mx-auto mt-4 px-4 pb-8">
-              <div className="flex flex-col md:flex-row gap-8 md:ml-32">
-
-                {/* ➜ Main Posts Feed column */}
-                <div className="flex-1 flex flex-col bg-[#18181b] space-y-4">     {/* ← NEW wrapper */}
-                  <AnimatePresence mode="wait">
-                    {uniquePosts.length === 0 ? (
-                      <motion.div
-                        key="no-posts"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        className="text-center text-zinc-400 py-12"
-                      >
-                        No posts found in this category.
-                      </motion.div>
-                    ) : (
-                      uniquePosts.map((post, idx) => (
-                        <PostCardContainer
-                          key={post.id || idx}  // Use post.id if available, fallback to index
-                          post={post}
-                          idx={idx}
-                          total={uniquePosts.length}
-                          onLikeToggle={handleLikeClick}
-                          following={following}
-                          handleFollowToggle={handleFollowToggle}
-                          saved={saved}
-                          onToggleSave={() => toggleSave(post.id)}
-                        />
-                      ))
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Right Sidebar */}
-                <div className="w-full md:w-80 flex-shrink-0 space-y-8 ml-auto">
-                  {/* Trending Tags */}
-                  <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
-                    <h3 className="text-lg font-semibold mb-4">Trending Topics</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {community.trending_tags?.map((tag, index) => (
-                        <button
-                          key={index}
-                          onClick={() => toggleTag(tag)}
-                          className={`px-3 py-1 rounded-full font-medium text-sm ${selectedTags.includes(tag)
-                            ? "bg-purple-700 text-white"
-                            : "bg-zinc-700 text-zinc-300"
-                            }`}
-                        >
-                          {tag}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {/* Community Description */}
-                  {community.description && (
-                    <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
-                      <h3 className="text-lg font-semibold mb-4">About</h3>
-                      <p className="text-zinc-300">{community.description}</p>
-                    </div>
-                  )}
-                  {community.rules && (
-                    <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
-                      <h3 className="text-lg font-semibold mb-4">Rules</h3>
-                      <p className="text-zinc-300">{community.rules}</p>
-                    </div>
-                  )}
+            {/* Right Sidebar */}
+            <div className="w-full md:w-80 flex-shrink-0 space-y-8">
+              <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
+                <h3 className="text-lg font-semibold mb-4">Categories</h3>
+                <div className="flex flex-wrap gap-2">
+                  {["Fanart", "Memes", "Discussion", "News", "Following", "Events"].map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => handleCategorySelect(category)}
+                      className={`px-3 py-1 rounded-full font-medium text-sm ${selectedCategory === category
+                        ? "bg-purple-700 text-white"
+                        : "bg-zinc-700 text-zinc-300"
+                        }`}
+                    >
+                      {category}
+                    </button>
+                  ))}
                 </div>
               </div>
+
+              {/* Trending Tags */}
+              <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
+                <h3 className="text-lg font-semibold mb-4">Trending Topics</h3>
+                <div className="flex flex-wrap gap-2">
+                  {community.trending_tags?.map((tag, index) => (
+                    <button
+                      key={index}
+                      onClick={() => toggleTag(tag)}
+                      className={`px-3 py-1 rounded-full font-medium text-sm ${selectedTags.includes(tag)
+                        ? "bg-purple-700 text-white"
+                        : "bg-zinc-700 text-zinc-300"
+                        }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Community Info */}
+              {community.description && (
+                <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
+                  <h3 className="text-lg font-semibold mb-4">About</h3>
+                  <p className="text-zinc-300">{community.description}</p>
+                </div>
+              )}
+              {community.rules && (
+                <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
+                  <h3 className="text-lg font-semibold mb-4">Rules</h3>
+                  <p className="text-zinc-300">{community.rules}</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-      <div className="relative z-50">
+      <div className="z-50">
         <Footer />
       </div>
     </div>

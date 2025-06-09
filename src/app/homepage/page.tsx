@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LeftSidebar } from "@/components/left-sidebar";
 import { FeaturePanel } from "@/components/feature-panel";
 import { TopNav } from "@/components/top-nav";
 import useSavedPosts from "@/utils/use-saved-posts";
@@ -14,7 +13,29 @@ import PostCardContainer from "@/components/post-card-container";
 import fetchPost from "@/utils/fetch-post";
 import handleLike from "@/utils/handleLike";
 import handleFollow from "@/utils/handleFollow";
+import { RecentPosts } from "@/components/recent-posts";
 
+interface Post {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  likes_count: number;
+  comments_count: number;
+  liked_by_user: boolean;
+  image_url: string;
+  animetitle_post: string | null;
+  post_collections: string | null;
+  original_work: boolean;
+  reference_link: string | null;
+  Profiles?: {
+    avatar_url: string;
+    username: string;
+  };
+  tags?: string[];
+  views: number;
+}
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -28,13 +49,23 @@ export default function HomePage() {
     { label: "Memes", value: "Memes" },
     { label: "Discussion", value: "Discussion" },
     { label: "News", value: "News" },
+    { label: "Following", value: "Following" },
+    { label: "Events", value: "Events" },
   ];
   const [, setPage] = useState(1);
-  const [hasMore, ] = useState(true);
+  const [hasMore,] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+ const [recentPosts, setRecentPosts] = useState<Post[]>(() => {
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem("recentPosts");
+    return stored ? JSON.parse(stored) : [];
+  }
+  return [];
+});
+
   const { postsData, setPostsData, fetchPosts } = fetchPost();
   const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
-  const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts); 
+  const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
   const { following, handleFollowToggle } = handleFollow(user);
 
 
@@ -56,7 +87,7 @@ export default function HomePage() {
       }
     };
     if (user) fetchFollowedIds();
-  }, [user])
+  }, [following])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -73,12 +104,12 @@ export default function HomePage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [hasMore, loadingMore]);
 
-  
+
   const filteredPosts = postsData.filter(post => {
-    const categoryMatch = selectedCategory === "All" || post.post_collections === selectedCategory;
-    if (selectedSidebarFilter === "Following") {
-      return categoryMatch && followedIds.includes(post.user_id);
+    if (selectedCategory === "Following") {
+      return followedIds.includes(post.user_id);
     }
+    const categoryMatch = selectedCategory === "All" || post.post_collections === selectedCategory;
     return categoryMatch;
   });
 
@@ -108,15 +139,12 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-8 space-y-12">
         <div className="flex gap-6 pt-16">
           {/* Left Sidebar */}
-          <div className="w-1/4 hidden lg:block">
-            <LeftSidebar
-              selectedFilter={selectedSidebarFilter}
-              onFilterChange={setSelectedSidebarFilter}
-            />
+          <div className="w-[20%] hidden lg:block">
+            <FeaturePanel />
           </div>
 
           {/* Main Content */}
-          <div className="w-full lg:w-1/2 flex flex-col gap-y-6">
+          <div className="w-full lg:w-[55%] flex flex-col gap-y-6">
             {/* Main Box for Posts and Filter Bar */}
             <div className="relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[90vh] overflow-y-auto">
               {/* Collection Filter Bar inside the box, sticky */}
@@ -148,7 +176,7 @@ export default function HomePage() {
                     exit={{ opacity: 0, y: -20 }}
                     className="text-center text-zinc-400 py-12"
                   >
-                    No posts found in this category.
+                    Loading posts...
                   </motion.div>
                 ) : (
                   uniquePosts.map((post, idx) => (
@@ -162,6 +190,14 @@ export default function HomePage() {
                       handleFollowToggle={handleFollowToggle}
                       saved={saved}
                       onToggleSave={() => toggleSave(post.id)}
+                      onPostOpen={(post: Post) => {
+                        setRecentPosts(prev => {
+                          const filtered = prev.filter(p => p.id !== post.id);
+                          const updated = [post, ...filtered].slice(0, 10);
+                          localStorage.setItem("recentPosts", JSON.stringify(updated));
+                          return updated;
+                        });
+                      }}
                     />
                   ))
 
@@ -177,7 +213,7 @@ export default function HomePage() {
 
           {/* Right Sidebar - Feature Panel */}
           <div className="w-1/4 hidden lg:block">
-            <FeaturePanel />
+            <RecentPosts recentPosts={recentPosts} />
           </div>
         </div>
       </div>

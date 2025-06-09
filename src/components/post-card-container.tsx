@@ -1,11 +1,12 @@
 "use client";
 
 import PostCard from '@/components/post-card';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from 'next/navigation';
 import { PostgrestError } from "@supabase/supabase-js";
+import { formatDistanceToNow } from "date-fns";
 
 interface Post {
     id: string;
@@ -38,6 +39,7 @@ type PostCardContainerProps = {
     handleFollowToggle: (followedUserId: string) => Promise<void>;
     saved: string[];
     onToggleSave: (postId: string) => Promise<void>;
+    onPostOpen: (post: Post) => void;
 };
 
 export default function PostCardContainer({
@@ -48,7 +50,8 @@ export default function PostCardContainer({
     following,
     handleFollowToggle,
     saved,
-    onToggleSave
+    onToggleSave,
+    onPostOpen
 }: PostCardContainerProps) {
     const { user } = useAuth();
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
@@ -59,21 +62,45 @@ export default function PostCardContainer({
 
 
     const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-        });
+        return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+    };
+
+    const navigateToCommunity = async (animeName: string | null) => {
+
+        const { data: animeData, error: animeError } = await supabase
+            .from("Anime")
+            .select("id")
+            .ilike("title", `${animeName}`) 
+            .limit(1);
+
+        if (animeError) {
+            console.error("Error fetching anime:", animeError.message);
+            return null;
+        }
+        const animeId = animeData?.[0]?.id;
+        const { data, error } = await supabase
+            .from("community")
+            .select("id")
+            .eq("anime_id", animeId)
+            .single(); 
+
+        if (error) {
+            console.error("Error fetching community ID:", error.message);
+            return;
+        }
+
+        if (data?.id) {
+            router.push(`/community/${data.id}`);
+        }
     };
 
     const handleLikeClick = (e: React.MouseEvent) => {
         onLikeToggle(e, post.id, post.liked_by_user);
     };
-    
-   async function handleFollowClick(followedUserId: string): Promise<void> {
-    await handleFollowToggle(followedUserId); 
-}
+
+    async function handleFollowClick(followedUserId: string): Promise<void> {
+        await handleFollowToggle(followedUserId);
+    }
 
 
     // Redirecting to comment section for each post
@@ -153,6 +180,7 @@ export default function PostCardContainer({
             idx={idx}
             total={total}
             formatDate={formatDate}
+            navigatetoCommunity={navigateToCommunity}
             setMenuOpenId={setMenuOpenId}
             menuOpenId={menuOpenId}
             user={user}
@@ -168,6 +196,7 @@ export default function PostCardContainer({
             handleSave={onToggleSave}
             isFollowing={following.has(post.user_id)}
             handleFollowClick={handleFollowClick}
+            onPostOpen={onPostOpen}
         />
     );
 }

@@ -533,7 +533,7 @@ const PostPage = () => {
   }
 
   const shouldAutoCollapse = (comment: NestedComment) =>
-    (comment.depth ?? 0) >= 6;
+    (comment.depth ?? 0) >= 2;
 
   const CommentItem = ({
     comment,
@@ -642,15 +642,15 @@ const PostPage = () => {
               )}
 
               {comment.user_id !== user?.id && (
-              <button
-                onClick={() => reportComment(comment.id, user?.id || null)}
-                className="flex items-center text-xs text-red-500 hover:underline"
-                aria-label="Report comment"
-              >
-                <Flag className="w-5 h-5" />
-              </button>
-            )}
-            
+                <button
+                  onClick={() => reportComment(comment.id, user?.id || null)}
+                  className="flex items-center text-xs text-red-500 hover:underline"
+                  aria-label="Report comment"
+                >
+                  <Flag className="w-5 h-5" />
+                </button>
+              )}
+
             </div>
 
             {isReplying && (
@@ -707,13 +707,15 @@ const PostPage = () => {
   const bg_url = "https://ik.imagekit.io/g19tkydww/Background_Images/night-view-3615087_1280.jpg?updatedAt=1748103791775";
   return (
     <div className="relative min-h-screen">
-      <Image
-        src={bg_url}
-        alt="Anime Banner"
-        fill
-        className="object-cover"
-        priority
-      />
+      <div className="fixed top-0 left-0 w-full h-full -z-10">
+        <Image
+          src={bg_url}
+          alt="Anime Banner"
+          fill
+          className="object-cover"
+          priority
+        />
+      </div>
       <div className="absolute inset-0 bg-black opacity-70 z-10"></div>
       <div className="relative z-10 max-w-7xl mx-auto p-6 text-white">
         <Card key={post.id} className="bg-[#2e2e2e] border-0 p-4 relative">

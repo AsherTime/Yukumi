@@ -58,7 +58,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
   const [navLinks, setNavLinks] = useState([
     { href: "/homepage", label: "Home" },
     { href: "/anime", label: "Anime" },
-    { href: "/community/a8a96442-c394-41dd-9632-8a968e53a7fe", label: "Community" }, 
+    { href: "/community/a8a96442-c394-41dd-9632-8a968e53a7fe", label: "Community" },
     { href: "/tracker", label: "Tracker" },
   ]);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -245,14 +245,14 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
   return (
     <div className={`overflow-hidden ${isDashboard ? "min-h-screen" : ""}`}>
       {/* Fixed Navbar - full width, flush with top, no extra block below */}
-      <header className="fixed top-0 left-0 right-0 w-full z-50 bg-[#181828] border-b border-zinc-800 shadow-sm m-0 p-0">
+      <header className="fixed top-0 left-0 right-0 w-full z-50 bg-black border-b border-zinc-800 shadow-sm m-0 p-0">
         <nav className="flex items-center px-8 py-4 m-0 p-0 w-full">
-          <Link href="/" className="relative w-24 h-8 mr-8">
+          <Link href="/" className="relative mr-8">
             <Image
               src={"https://res.cloudinary.com/difdc39kr/image/upload/v1740159528/Simplification_gho0s6.svg"}
               alt="YUKUMI"
-              width={96}
-              height={32}
+              width={192}
+              height={64}
               className="object-contain"
               priority
             />
@@ -262,10 +262,9 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
               <Link
                 key={link.label}
                 href={link.href}
-                className="text-white hover:text-gray-300 transition-colors text-sm relative group"
+                className="text-white text-sm relative px-2 py-1 transition-colors duration-200 rounded group hover:bg-white hover:text-black"
               >
                 {link.label}
-                <span className="absolute left-0 right-0 bottom-0 h-0.5 bg-white transform scale-x-0 transition-transform duration-300 group-hover:scale-x-100"></span>
               </Link>
             ))}
           </div>
@@ -275,7 +274,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
                 value={selectedCategory}
                 id="category"
                 onChange={(e) => setSelectedCategory(e.target.value as 'anime' | 'community' | 'users')}
-                className="absolute inset-y-0 left-0 w-20 appearance-none bg-[#f8f8f8] text-black px-2 py-2 rounded-l border-r border-gray-300 focus:outline-none"
+                className="absolute inset-y-0 left-0 w-30 appearance-none bg-[#f8f8f8] text-black px-2 py-2 rounded-l border-r border-gray-300 focus:outline-none"
               >
                 <option value="anime">Anime</option>
                 <option value="community">Community</option>
@@ -289,7 +288,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
                 placeholder="Search anime, community, users..."
                 value={searchTerm}
                 onChange={handleChange}
-                className="w-full pl-24 pr-10 py-2 bg-[#f8f8f8] text-black rounded focus:outline-none"
+                className="w-full pl-32 pr-10 py-2 bg-[#f8f8f8] text-black rounded focus:outline-none"
               />
 
 
