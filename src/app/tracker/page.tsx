@@ -528,23 +528,10 @@ export default function TrackerPage() {
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-300">Loading your tracker...</div>
 
-  if (!loading && !tracker) {
+  if (!tracker && !loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-red-300">
         No tracker data found for your user.<br />
-        Please trigger an action to earn points, or check your Supabase table.<br />
-        (Check the browser console for debug info.)<br />
-        {userId && (
-          <>
-            <button
-              className="mt-6 px-6 py-3 rounded-full bg-indigo-700 text-white font-semibold hover:bg-indigo-800 transition"
-              onClick={handleTestAward}
-            >
-              Award Test Points
-            </button>
-            {awardStatus && <div className="mt-2 text-green-400">{awardStatus}</div>}
-          </>
-        )}
       </div>
     )
   }

@@ -9,7 +9,6 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export function DailyTasksPanel() {
   const { user } = useAuth();
-  const [isExpanded, setIsExpanded] = useState(false);
   const [dailyTasks, setDailyTasks] = useState({
     dailyCheckIn: false,
     commentComrade: false,
@@ -71,8 +70,7 @@ export function DailyTasksPanel() {
   return (
     <Card className="bg-zinc-900/80 border border-zinc-800/60 rounded-2xl p-4 shadow-lg">
       <CardHeader 
-        className="p-0 mb-4 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
+        className="p-0 mb-4 cursor-pointer"  
       >
         <div className="flex items-center justify-between">
           <CardTitle className="text-white font-bold text-base">Your Daily Quests</CardTitle>
@@ -89,7 +87,7 @@ export function DailyTasksPanel() {
         </div>
       </CardHeader>
       <AnimatePresence>
-        {isExpanded && (
+        
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -120,7 +118,6 @@ export function DailyTasksPanel() {
               ))}
             </div>
           </motion.div>
-        )}
       </AnimatePresence>
     </Card>
   );

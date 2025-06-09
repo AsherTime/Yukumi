@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-// If you generated Supabase types with the CLI, import them instead of `any`
+import { Input } from "@/components/ui/input";
 
 interface Community {
   id: number;
   title: string;
+  banner_url: string
 }
 
 interface Props {
@@ -17,47 +18,71 @@ interface Props {
 export default function JoinedCommunitiesSidebar({ userId }: Props) {
   const [communities, setCommunities] = useState<Community[]>([]);
   const router = useRouter();
+  const [search, setSearch] = useState("");
 
- useEffect(() => {
-  if (!userId) return;
+  const filteredCommunities = useMemo(() => {
+    return communities.filter(c =>
+      c.title.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [search, communities]);
 
-  const fetchCommunities = async () => {
-    console.log(userId)
-    const { data, error } = await supabase
-      .from("members")
-      .select("community_id, community(title)") // only fetch the title from the related community
-      .eq("user_id", userId);
+  useEffect(() => {
+    if (!userId) return;
 
-    if (error) {
-      console.error("Failed to fetch communities:", error.message);
-      return;
-    }
+    const fetchCommunities = async () => {
+      console.log(userId)
+      const { data, error } = await supabase
+        .from("members")
+        .select("community_id, community(title, banner_url)")
+        .eq("user_id", userId);
 
-    // Map to [{ id: community_id, title }]
-    const mapped: Community[] = (data as any[]).map((row) => ({
-      id: row.community_id,
-      title: row.community?.title,
-    }));
+      if (error) {
+        console.error("Failed to fetch communities:", error.message);
+        return;
+      }
 
-    setCommunities(mapped);
-  };
+      // Map to [{ id: community_id, title }]
+      const mapped: Community[] = (data as any[]).map((row) => ({
+        id: row.community_id,
+        title: row.community?.title,
+        banner_url: row.community?.banner_url
+      }));
 
-  fetchCommunities();
-}, [userId]);
+      setCommunities(mapped);
+    };
+
+    fetchCommunities();
+  }, [userId]);
 
 
   return (
-    <aside className="w-60 shrink-0 border-r border-gray-200 p-4">
-      <h2 className="mb-3 text-lg font-semibold">Joined Communities</h2>
+    <aside className="w-60 shrink-0 border-r bg-transparent border-gray-200 p-4">
 
-      <ul className="space-y-1">
-        {communities.map((c) => (
+      <div className="sticky top-0 z-10 pb-4">
+        <Input
+          type="text"
+          placeholder="Search communities..."
+          className="pl-2 pr-4 py-3 bg-[#181828] border border-zinc-700 text-white rounded-lg shadow focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-zinc-400"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+      <ul className="space-y-4"> {/* Increased spacing between items */}
+        {filteredCommunities.map((c) => (
           <li key={c.id}>
             <button
               onClick={() => router.push(`/community/${c.id}`)}
-              className="w-full rounded px-3 py-2 text-left hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className={`
+          w-full px-6 py-4 text-white font-medium rounded-full
+          bg-gradient-to-r from-pink-400 to-purple-600
+          hover:opacity-90 transition-all duration-200
+          ${c.banner_url ? 'bg-cover bg-center text-white' : ''}
+        `}
+              style={c.banner_url ? { backgroundImage: `url(${c.banner_url})` } : {}}
             >
-              {c.title}
+              <span className={`${c.banner_url ? 'bg-black/70' : ''} rounded-md`}>
+                {c.title}
+              </span>
             </button>
           </li>
         ))}
@@ -68,6 +93,8 @@ export default function JoinedCommunitiesSidebar({ userId }: Props) {
           </li>
         )}
       </ul>
+
+
     </aside>
   );
 }

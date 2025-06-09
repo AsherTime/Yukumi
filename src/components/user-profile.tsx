@@ -15,6 +15,27 @@ import useSavedPosts from "@/utils/use-saved-posts";
 import { AnimatePresence, motion } from "framer-motion";
 import handleFollow from "@/utils/handleFollow";
 
+interface Post {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  likes_count: number;
+  comments_count: number;
+  liked_by_user: boolean;
+  image_url: string;
+  animetitle_post: string | null;
+  post_collections: string | null;
+  original_work: boolean;
+  reference_link: string | null;
+  Profiles?: {
+    avatar_url: string;
+    username: string;
+  };
+  tags?: string[];
+  views: number;
+}
 
 const DEFAULT_BANNER = "https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Flux_Dev_a_stunning_illustration_of_Create_an_animethemed_webs_0.jpg?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5X2EwNWE5MzA2LTNiZGItNDliNC1hZGQ2LTFjMjEzNjhiYzcwMSJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9GbHV4X0Rldl9hX3N0dW5uaW5nX2lsbHVzdHJhdGlvbl9vZl9DcmVhdGVfYW5fYW5pbWV0aGVtZWRfd2Vic18wLmpwZyIsImlhdCI6MTc0NzU2NDg0NiwiZXhwIjoxNzc5MTAwODQ2fQ.ow7wQ-1Dunza5HIya7Ky4wjGdYULgrged7V6J-Smag0";
 
@@ -57,6 +78,14 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const { user } = useAuth();
+  const [recentPosts, setRecentPosts] = useState<Post[]>(() => {
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem("recentPosts");
+    return stored ? JSON.parse(stored) : [];
+  }
+  return [];
+});
+
   const [bannerUrl, setBannerUrl] = useState<string>(DEFAULT_BANNER);
   const [editBanner, setEditBanner] = useState<string | null>(null);
   const [editBannerFile, setEditBannerFile] = useState<File | null>(null);
@@ -303,30 +332,30 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
           )}
           {activeTab === 'Saved' && !userId && (
             <div className="w-full max-w-2xl relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[90vh] overflow-y-auto">
-            <AnimatePresence>
-              {savedLoading ? (
-                <motion.div
-                  key="loading-saved"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="text-center text-zinc-400 py-12"
-                >
-                  Loading saved posts...
-                </motion.div>
-              ) : uniqueSavedPosts.length === 0 ? (
-                <motion.div
-                  key="no-saved"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="text-center text-zinc-400 py-12"
-                >
-                  No saved posts yet.
-                </motion.div>
-              ) : (
-                uniqueSavedPosts.map((post, idx) => (
-                  
+              <AnimatePresence>
+                {savedLoading ? (
+                  <motion.div
+                    key="loading-saved"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="text-center text-zinc-400 py-12"
+                  >
+                    Loading saved posts...
+                  </motion.div>
+                ) : uniqueSavedPosts.length === 0 ? (
+                  <motion.div
+                    key="no-saved"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="text-center text-zinc-400 py-12"
+                  >
+                    No saved posts yet.
+                  </motion.div>
+                ) : (
+                  uniqueSavedPosts.map((post, idx) => (
+
                     <PostCardContainer
                       key={post.id || idx}
                       post={post}
@@ -337,10 +366,18 @@ export function UserProfile({ userId, readOnly = false }: { userId?: string, rea
                       handleFollowToggle={handleFollowToggle}
                       saved={saved}
                       onToggleSave={() => toggleSave(post.id)}
+                      onPostOpen={(post: Post) => {
+                        setRecentPosts(prev => {
+                          const filtered = prev.filter(p => p.id !== post.id);
+                          const updated = [post, ...filtered].slice(0, 10);
+                          localStorage.setItem("recentPosts", JSON.stringify(updated));
+                          return updated;
+                        });
+                      }}
                     />
-                ))
-              )}
-            </AnimatePresence>
+                  ))
+                )}
+              </AnimatePresence>
             </div>
 
           )}
@@ -399,6 +436,14 @@ function ProfilePosts({ userId }: { userId?: string }) {
   const { user } = useAuth();
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [recentPosts, setRecentPosts] = useState<Post[]>(() => {
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem("recentPosts");
+    return stored ? JSON.parse(stored) : [];
+  }
+  return [];
+});
+
   const { setPostsData, fetchPosts } = fetchPost();
   const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
   const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
@@ -424,7 +469,7 @@ function ProfilePosts({ userId }: { userId?: string }) {
     fetchUserPosts();
   }, [userId, user]);
 
-  
+
   if (loading) {
     return <div className="w-full text-center text-white py-8">Loading...</div>;
   }
@@ -453,6 +498,14 @@ function ProfilePosts({ userId }: { userId?: string }) {
               handleFollowToggle={handleFollowToggle}
               saved={saved}
               onToggleSave={() => toggleSave(post.id)}
+              onPostOpen={(post: Post) => {
+                setRecentPosts(prev => {
+                  const filtered = prev.filter(p => p.id !== post.id);
+                  const updated = [post, ...filtered].slice(0, 10);
+                  localStorage.setItem("recentPosts", JSON.stringify(updated));
+                  return updated;
+                });
+              }}
             />
           ))
         )}

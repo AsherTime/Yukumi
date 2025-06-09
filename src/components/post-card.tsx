@@ -5,9 +5,8 @@ import { UserCircle, Heart, MessageCircle, Eye } from 'lucide-react';
 import { FiMoreHorizontal, FiBookmark } from 'react-icons/fi';
 import { FaBookmark } from 'react-icons/fa';
 import { FollowButton } from "@/components/FollowButton";
+import PostShareMenu from '@/components/post-share-menu';
 import useViewCountOnVisible from '@/hooks/use-view-count';
-import useSavedPosts from '@/utils/use-saved-posts';
-import handleFollow from '@/utils/handleFollow';
 
 interface Post {
   id: string;
@@ -31,11 +30,12 @@ interface Post {
   views: number;
 }
 
-export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, menuOpenId, user, setShowConfirmId, showConfirmId, reportConfirmId, setReportConfirmId, handleDelete, handleLikeClick, handleCommentClick, handleReport, saved, handleSave, isFollowing, handleFollowClick }: {
+export default function PostCard({ post, idx, total, formatDate, navigatetoCommunity, setMenuOpenId, menuOpenId, user, setShowConfirmId, showConfirmId, reportConfirmId, setReportConfirmId, handleDelete, handleLikeClick, handleCommentClick, handleReport, saved, handleSave, isFollowing, handleFollowClick, onPostOpen }: {
   post: Post,
   idx: number,
   total: number,
   formatDate: (dateString: string) => string,
+  navigatetoCommunity: (communityId: string | null) => void,
   setMenuOpenId: React.Dispatch<React.SetStateAction<string | null>>,
   menuOpenId: string | null,
   user: any,
@@ -51,11 +51,15 @@ export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, 
   handleSave: (postId: string) => void,
   isFollowing: boolean,
   handleFollowClick: (followedUserId: string) => Promise<void>
+  onPostOpen: (post: Post) => void
 }) {
   const viewRef = useViewCountOnVisible(post.id);
   const isSaved = saved.includes(post.id);
   return (
-    <>
+    <div onClick={() => {
+      onPostOpen(post); 
+      handleCommentClick(post.id)
+    }} className="cursor-pointer">
       <motion.section
         ref={viewRef}
         key={post.id}
@@ -72,7 +76,7 @@ export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, 
         {/* Top Row: Avatar, Username, Timestamp, Follow, More */}
         <div className="relative">
           <div className="flex items-center justify-between px-6 pt-5 pb-2">
-            <div className="flex items-center gap-3">
+            <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-3">
               <Link href={`/profile/${post.user_id}`} className="flex items-center gap-3 group" prefetch={false}>
                 {post.Profiles?.avatar_url ? (
                   <img
@@ -89,7 +93,7 @@ export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, 
                 </div>
               </Link>
             </div>
-            <div className="absolute top-3 right-3 flex items-center gap-2">
+            <div onClick={(e) => e.stopPropagation()} className="absolute top-3 right-3 flex items-center gap-2">
               <FollowButton
                 followedId={post.user_id}
                 isFollowing={isFollowing}
@@ -169,10 +173,36 @@ export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, 
         </div>
         {/* Title */}
         <h3 className="text-2xl font-bold text-white px-6 pb-2">{post.title}</h3>
+        {post.animetitle_post && (
+          <span onClick={(e) => {
+            e.stopPropagation();
+            navigatetoCommunity(post.animetitle_post);
+          }} className="px-2 py-1 ml-5 mb-2 inline-block rounded-full text-xs font-semibold text-purple-400 bg-purple-500/10">
+            {post.animetitle_post}
+          </span>
+        )}
         {/* Image */}
         {post.image_url && (
-          <div className="relative mb-4 px-6 overflow-hidden rounded-xl">
-            <a href={post.image_url} target="_blank" rel="noopener noreferrer">
+          <div onClick={(e) => e.stopPropagation()} className="relative mb-4 px-6 overflow-hidden rounded-xl">
+            {/* Blurred background */}
+            <div
+              className="absolute inset-0 blur-2xl scale-110 opacity-30"
+              style={{
+                backgroundImage: `url(${post.image_url})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                filter: 'blur(20px)',
+                zIndex: 0,
+              }}
+            />
+
+            {/* Foreground image */}
+            <a
+              href={post.image_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative z-5 block"
+            >
               <img
                 src={post.image_url}
                 alt={post.title}
@@ -183,22 +213,19 @@ export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, 
           </div>
         )}
 
-        {/* Content */}
+        {/* Reference Link 
+        { /* Content}
         <p className="text-gray-300 px-6 pb-2" dangerouslySetInnerHTML={{ __html: post.content }}></p>
-        {/* Tags */}
+        {/* Tags }
         <div className="flex flex-wrap gap-2 px-6 pb-2 mt-1">
           {post.post_collections && (
             <span className="px-2 py-1 rounded-full text-xs font-semibold text-blue-400 bg-blue-500/10">
               {post.post_collections}
             </span>
           )}
-          {post.animetitle_post && (
-            <span className="px-2 py-1 rounded-full text-xs font-semibold text-purple-400 bg-purple-500/10">
-              {post.animetitle_post}
-            </span>
-          )}
+          
         </div>
-        {/* User Tags */}
+        {/* User Tags }
         {post.tags && post.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 px-6 pb-2">
             {post.tags.map((tag: string) => (
@@ -208,30 +235,35 @@ export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, 
             ))}
           </div>
         )}
+
+        */}
+
+
         {/* Bottom Row: Like, Comment, View */}
-        <div className="flex items-center justify-end gap-6 px-6 py-3">
+        <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-start gap-6 px-6 py-3">
           <button
             onClick={(e) => handleLikeClick(e, post.id, post.liked_by_user)}
-            className={`flex items-center gap-1 text-zinc-400 hover:text-pink-500 transition-colors group ${post.liked_by_user ? 'font-bold text-pink-500' : ''}`}
+            className={`flex items-center gap-1 text-white hover:text-pink-500 transition-colors group ${post.liked_by_user ? 'font-bold text-pink-500' : ''}`}
           >
             <Heart className="w-5 h-5 mr-1 group-hover:scale-110 transition-transform" fill={post.liked_by_user ? '#ec4899' : 'none'} />
             <span>{post.likes_count || 0}</span>
           </button>
           <button
             onClick={() => handleCommentClick(post.id)}
-            className="flex items-center gap-1 text-zinc-400 hover:text-purple-400 transition-colors"
+            className="flex items-center gap-1 text-white hover:text-purple-400 transition-colors group"
           >
-            <MessageCircle className="w-5 h-5 mr-1" />
+            <MessageCircle className="w-5 h-5 mr-1 group-hover:scale-110 transition-transform" />
             {post.comments_count}
           </button>
-          <span className="flex items-center gap-1 text-zinc-500">
+          <span className="flex items-center gap-1 text-white cursor-default">
             <Eye className="w-5 h-5 mr-1" />
             {post.views}
           </span>
+          <PostShareMenu path={`/post/${post.id}`} title={post.title} />
         </div>
       </motion.section>
       {reportConfirmId && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-20">
+        <div onClick={(e) => e.stopPropagation()} className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-20">
           <div className="bg-white p-6 rounded-lg shadow-lg text-center">
             <p className="mb-4 text-black text-lg font-semibold">
               Are you sure you want to report this post?
@@ -256,6 +288,6 @@ export default function PostCard({ post, idx, total, formatDate, setMenuOpenId, 
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
