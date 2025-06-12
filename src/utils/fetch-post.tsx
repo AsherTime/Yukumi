@@ -45,12 +45,7 @@ export default function fetchPost() {
 
             const { data: posts, error, count } = await supabase
                 .from("posts")
-                .select(`
-            id, title, content, created_at, user_id, image_url,
-            Profiles(username, avatar_url),
-            animetitle_post, post_collections, original_work, reference_link,
-            post_tags ( tags (name) ), views
-          `, { count: "exact" })
+                .select(`*, Profiles(username, avatar_url),post_tags(tags(name))`, { count: "exact" })
                 .order("created_at", { ascending: false })
                 .range(from, to);
 

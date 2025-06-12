@@ -17,6 +17,7 @@ interface Post {
     likes_count: number;
     comments_count: number;
     liked_by_user: boolean;
+    saved_by_user: boolean; // Added to track if the post is saved by the user
     image_url: string;
     animetitle_post: string | null;
     post_collections: string | null;
@@ -39,7 +40,7 @@ type PostCardContainerProps = {
     handleFollowToggle: (followedUserId: string) => Promise<void>;
     saved: string[];
     onToggleSave: (postId: string) => Promise<void>;
-    onPostOpen: (post: Post) => void;
+    onPostOpen?: (post: Post) => void;
 };
 
 export default function PostCardContainer({

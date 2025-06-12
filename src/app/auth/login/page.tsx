@@ -128,7 +128,16 @@ export default function LoginPage() {
           status: error.status,
           name: error.name
         });
-        throw error;
+        if (
+          error.message.toLowerCase().includes("invalid login credentials") ||
+          error.status === 400
+        ) {
+          alert("Incorrect email or password.");
+        } else {
+          alert("An unexpected error occurred. Please try again later.");
+        }
+
+        return;
       }
 
       if (data.user) {
@@ -137,14 +146,12 @@ export default function LoginPage() {
         setFormData({ email: "", password: "" });
         router.push("/homepage"); // Redirect to home page
       }
-    } catch (error: any) {
-      console.error("Login failed with error:", error);
-      if (error.message === "Email not confirmed") {
-        toast.error("Please check your email and confirm your account before logging in.");
-      } else {
-        toast.error(error.message || "Something went wrong. Please try again.");
-      }
-    } finally {
+    }
+    catch (err: any) {
+      //console.error("Unexpected sign-in error:", err);  // Optional
+      alert("Something went wrong. Please try again.");
+    }
+    finally {
       setIsLoading(false);
     }
   }

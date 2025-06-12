@@ -42,14 +42,14 @@ export function RecentPosts({ recentPosts }: { recentPosts: Post[] }) {
                 href={`/post/${post.id}`}
                 className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50"
               >
-                <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md">
+                {post.image_url && (<div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md">
                   <Image
                     src={post.image_url || "/placeholder.svg"}
                     alt={post.title}
                     fill
                     className="object-cover"
                   />
-                </div>
+                </div>)}
                 <div className="overflow-hidden">
                   <h3 className="text-sm font-medium text-white truncate max-w-xs">
                     {post.title}

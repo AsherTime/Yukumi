@@ -1,8 +1,7 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
-import { FiShare2, FiFlag, FiHeart, FiMessageCircle, FiEdit2, FiTrash2 } from "react-icons/fi"; // Importing icons
-import { ThumbsUpIcon, Flag } from 'lucide-react';
+import { FiEdit2, FiTrash2 } from "react-icons/fi"; // Importing icons
+import { ThumbsUpIcon, Flag, Eye } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -13,8 +12,17 @@ import { FiCornerUpLeft } from 'react-icons/fi';
 import { awardPoints } from '@/utils/awardPoints';
 import { POINTS } from '@/utils/pointConfig';
 import { handleCommentComrade } from '@/utils/dailyTasks';
+import PostCardContainer from "@/components/post-card-container";
+import useSavedPosts from "@/utils/use-saved-posts";
+import fetchPost from "@/utils/fetch-post";
+import handleLike from "@/utils/handleLike";
+import handleFollow from "@/utils/handleFollow";
 
 
+interface Profile {
+  username: string;
+  avatar_url: string;
+}
 
 interface Comment {
   id: string
@@ -23,7 +31,7 @@ interface Comment {
   user_id: string
   content: string
   parent_id: string | null
-  user?: {
+  Profiles?: {
     username: string
     avatar_url: string
   }
@@ -36,12 +44,8 @@ type NestedComment = Comment & {
 
 type CommentItemProps = {
   comment: NestedComment;          // contains id, content, replies[]
-  postId: string | number;         // id of the post the thread belongs to
-  onAddComment: (
-    postId: string | number,
-    parentId: string | number | null,
-    text: string
-  ) => void;                       // your existing handleAddComment
+  postId: string;         // id of the post the thread belongs to
+  onAddComment: (postId: string, parentId: string | null, text: string) => void;
   onEditComment: (commentId: string, updatedContent: string) => void; // optional edit handler
   onDeleteComment: (commentId: string) => void; // optional delete handler
   isLiked: boolean;
@@ -49,26 +53,27 @@ type CommentItemProps = {
   onToggleLike: (commentId: string, isLiked: boolean) => void;
 };
 
-type Reply = {
-  id: string;
-  text: string;
-};
 
 interface Post {
-  id: string
-  created_at: string
-  user_id: string
-  title: string
-  image_url: string
-  content: string
-  likes_count: number
-  comments_count: number
-  views: number
-  liked_by_user: boolean
-  user?: {
-    username: string
-    avatar_url: string
-  }
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  likes_count: number;
+  comments_count: number;
+  liked_by_user: boolean;
+  image_url: string;
+  animetitle_post: string | null;
+  post_collections: string | null;
+  original_work: boolean;
+  reference_link: string | null;
+  Profiles?: {
+    avatar_url: string;
+    username: string;
+  };
+  tags?: string[];
+  views: number;
 }
 
 function buildCommentTree(
@@ -119,15 +124,42 @@ const PostPage = () => {
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState<string>("");
-  const [replyTo, setReplyTo] = useState<string | null>(null);
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const { postsData, setPostsData, fetchPosts } = fetchPost();
+  const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
+  const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
+  const { following, handleFollowToggle } = handleFollow(user);
+  const [profile, setProfile] = useState<Profile | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchProfile = async () => {
+      const { data, error } = await supabase
+        .from("Profiles")
+        .select("username, avatar_url")
+        .eq("id", user.id)
+        .single();
+
+      if (data) setProfile(data);
+    };
+
+    fetchProfile();
+  }, [user]);
+
 
 
   useEffect(() => {
     if (!id) return;
 
     const fetchPostAndComments = async () => {
+      const [{ count: likes = 0 }, { count: comments = 0 }] = await Promise.all([
+        supabase.from("likes").select("*", { count: "exact", head: true }).eq("post_id", id),
+        supabase.from("comments").select("*", { count: "exact", head: true }).eq("post_id", id),
+      ]);
+
       try {
         // Fetch post with user details
         const { data: postData, error: postError } = await supabase
@@ -161,8 +193,11 @@ const PostPage = () => {
         setPost({
           ...postData,
           user: postData.Profiles,
-          liked_by_user: likedByUser
+          liked_by_user: likedByUser,
+          likes_count: likes,
+          comments_count: comments
         });
+
 
         // Fetch comments with user details
         const { data: commentsData, error: commentsError } = await supabase
@@ -209,6 +244,7 @@ const PostPage = () => {
     return () => clearTimeout(timer);
   }, [id]);
 
+  /*
   const handleAddComment = async () => {
     if (!newComment.trim() || !user) return;
 
@@ -239,13 +275,13 @@ const PostPage = () => {
         // Try to award points for both regular comment and daily task
         try {
           // Award regular comment points
-          await awardPoints({
-            userId: user.id,
-            activityType: 'comment_post',
-            points: POINTS.comment_post,
-            itemId: String(id),
-            itemType: 'post',
-          });
+          await awardPoints(
+            user.id,
+            'comment_post',
+            POINTS.comment_post,
+            String(id),
+            'post'
+          );
 
           // Try to award daily task points
           const wasAwarded = await handleCommentComrade(
@@ -269,6 +305,104 @@ const PostPage = () => {
       toast.error('Failed to add comment. Please try again.');
     }
   };
+  */
+
+  const handleAddComment: (postId: string, parentId: string | null, content: string) => Promise<void> = async (
+    postId,
+    parentId,
+    content
+  ) => {
+    if (!user) {
+      toast.error('Please log in to comment');
+      return;
+    }
+
+    if (!content.trim()) {
+      toast.error('Comment cannot be empty');
+      return;
+    }
+
+    try {
+      const { data: newCommentData, error } = await supabase
+        .from('comments')
+        .insert({
+          post_id: postId,
+          user_id: user.id,
+          content: content.trim(),
+          parent_id: parentId
+        })
+        .select(`
+        *,
+        Profiles!comments_user_id_fkey (
+          username,
+          avatar_url
+        )
+      `)
+        .single();
+
+      if (error) throw error;
+      console.log("Supabase returned newCommentData:", newCommentData); // <--- ADD THIS
+
+
+      const enrichedComment = {
+        ...newCommentData,
+        Profiles: { // Ensure this matches the structure your comment rendering component expects
+          username: newCommentData.Profiles.username,
+          avatar_url: newCommentData.Profiles.avatar_url,
+        }
+      };
+      console.log("Constructed enrichedComment:", enrichedComment); // <--- ADD THIS
+
+      setComments(prev => [enrichedComment, ...prev]);
+
+
+      // Update post comment count
+      if (post) {
+        setPost({
+          ...post,
+          comments_count: (post.comments_count || 0) + 1
+        });
+
+        await supabase
+          .from('posts')
+          .update({ comments_count: (post.comments_count || 0) + 1 })
+          .eq('id', postId);
+      }
+      setNewComment(''); // Clear input field
+      setReplyTo(null); // Reset reply state
+      toast.success('Comment added successfully');
+      try {
+        // Award regular comment points
+        await awardPoints(
+          user.id,
+          'comment_post',
+          POINTS.comment_post,
+          String(id),
+          'post'
+        );
+
+        // Try to award daily task points
+        const wasAwarded = await handleCommentComrade(
+          user.id,
+          String(id),
+          'post'
+        );
+
+        if (wasAwarded) {
+          toast.success('Comment added and daily task completed! +15 XP');
+        } else {
+          toast.success('Comment added and points awarded!');
+        }
+      } catch (pointsError) {
+        console.error('Failed to award points for comment:', pointsError);
+        toast.warning('Comment added, but points system is temporarily unavailable');
+      }
+    } catch (error) {
+      console.error('Error adding comment:', JSON.stringify(error, null, 2));
+      toast.error('Failed to add comment');
+    }
+  };
+
 
   const handleDeleteComment = async (commentId: string) => {
     if (!user) {
@@ -377,64 +511,22 @@ const PostPage = () => {
     }
   };
 
+  const onLikeClick = async (e: React.MouseEvent, postId: string, liked: boolean) => {
+    // Optimistically update post state
+    setPost(prev => {
+      if (!prev || prev.id !== postId) return prev;
 
-  const toggleLike = async () => {
-    if (!user) {
-      toast.error('Please log in to like posts');
-      return;
-    }
+      return {
+        ...prev,
+        liked_by_user: !liked,
+        likes_count: liked ? prev.likes_count - 1 : prev.likes_count + 1,
+      };
+    });
 
-    if (!post) return;
-
-    try {
-      const newLikedState = !post.liked_by_user;
-
-      if (newLikedState) {
-        // Add like
-        const { error: likeError } = await supabase
-          .from('likes')
-          .insert({
-            post_id: id,
-            user_id: user.id
-          });
-
-        if (likeError) throw likeError;
-      } else {
-        // Remove like
-        const { error: unlikeError } = await supabase
-          .from('likes')
-          .delete()
-          .eq('post_id', id)
-          .eq('user_id', user.id);
-
-        if (unlikeError) throw unlikeError;
-      }
-
-      // Always recount likes after the operation
-      const { count } = await supabase
-        .from('likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('post_id', id);
-
-      const likeCount = count ?? 0; // Default to 0 if null
-
-      await supabase
-        .from('posts')
-        .update({ likes_count: likeCount })
-        .eq('id', id);
-
-      // Update post in state
-      setPost({
-        ...post,
-        likes_count: likeCount,
-        liked_by_user: newLikedState
-      });
-
-    } catch (error) {
-      console.error('Error toggling like:', error);
-      toast.error('Failed to update like');
-    }
+    // Then call the real function
+    await handleLikeClick(e, postId, liked);
   };
+
 
   const toggleCommentLike = async (commentId: string, isLiked: boolean) => {
     if (!user) {
@@ -577,8 +669,11 @@ const PostPage = () => {
       }
     };
 
+    const username = comment.Profiles?.username || "Anonymous";
+    const avatarUrl = comment.Profiles?.avatar_url || "/placeholder.svg"; // No fallback here if Image component handles null/undefined
+
     return (
-      <div className="mb-6">
+      <div className="mb-6 bg-slate-600/20 p-4 rounded-lg shadow-md">
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setCollapsed(!collapsed)}
@@ -586,21 +681,21 @@ const PostPage = () => {
           >
             [{collapsed ? '+' : '-'}]
           </button>
-          {comment.user?.avatar_url && (
+          {comment.Profiles?.avatar_url && (
             <Image
-              src={comment.user.avatar_url}
+              src={avatarUrl} // Use the avatarUrl variable
               alt="Avatar"
               width={32}
               height={32}
               className="rounded-full"
             />
           )}
-          <p className="font-semibold">{comment.user?.username || "Anonymous"}</p>
+          <p className="font-semibold">{username}</p>
         </div>
         {!collapsed &&
           <>
-            <p className="mt-1">{comment.content}</p>
-            <div className="flex space-x-4 mt-1 items-center">
+            <p className="mt-2 pt-2">{comment.content}</p>
+            <div className="flex space-x-4 mt-1 items-center pt-2 pb-2">
               <button
                 onClick={() => onToggleLike(comment.id, isLiked)}
                 className={`flex items-center space-x-1 text-sm ${isLiked ? 'text-blue-500 font-bold' : 'text-gray-500'} hover:underline`}
@@ -614,7 +709,7 @@ const PostPage = () => {
               </button>
 
               <button
-                onClick={() => setIsReplying(true)}
+                onClick={() => { setReplyTo(comment.id); setIsReplying(true); }}
                 className="text-blue-500 hover:text-blue-400 text-sm flex items-center"
                 aria-label="Reply"
               >
@@ -657,6 +752,7 @@ const PostPage = () => {
               <div className="mt-2">
                 <textarea
                   className="w-full p-2 border rounded bg-[#2e2e2e] text-white border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  id="replyText"
                   rows={3}
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
@@ -718,58 +814,24 @@ const PostPage = () => {
       </div>
       <div className="absolute inset-0 bg-black opacity-70 z-10"></div>
       <div className="relative z-10 max-w-7xl mx-auto p-6 text-white">
-        <Card key={post.id} className="bg-[#2e2e2e] border-0 p-4 relative">
-          {/* Report Button */}
-          <button className="absolute top-4 right-4 bg-black/30 p-2 rounded-full text-white hover:text-red-500">
-            <FiFlag size={20} />
-          </button>
-
-          {/* User Info */}
-          <div className="flex items-center gap-4">
-            <img
-              src={post.user?.avatar_url || "/default-avatar.png"}
-              alt="User"
-              className="w-10 h-10 rounded-full cursor-pointer"
-            />
-            <div>
-              <p className="text-white font-semibold">{post.user?.username || "Unknown User"}</p>
-              <p className="text-gray-400 text-sm">{new Date(post.created_at).toLocaleDateString()}</p>
-            </div>
+        <div className="relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md">
+          <PostCardContainer
+            key={post.id}
+            idx={0}
+            total={1}
+            post={post}
+            onLikeToggle={onLikeClick}
+            following={following}
+            handleFollowToggle={handleFollowToggle}
+            saved={saved}
+            onToggleSave={() => toggleSave(post.id)}
+          />
+        </div>
+        {post.image_url && post.content && (
+          <div className="relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md mt-6 pt-3 pb-3">
+            <p className="text-gray-300 px-6 pb-2" dangerouslySetInnerHTML={{ __html: post.content }}></p>
           </div>
-
-          {/* Post Image */}
-          <div className="mt-4">
-            <img
-              src={post.image_url}
-              alt={post.title}
-              className="max-w-full max-h-[32rem] mx-auto rounded object-contain"
-              loading="lazy"
-            />
-          </div>
-
-          {/* Post Actions */}
-          <div className="flex items-center gap-6 mt-4 text-gray-400">
-            <button
-              className={`flex items-center gap-1 ${post.liked_by_user ? "text-red-500" : "text-gray-400"}`}
-              onClick={toggleLike}
-            >
-              <FiHeart className="cursor-pointer hover:text-red-500" />
-              <span>{post.likes_count || 0}</span>
-            </button>
-
-            <button className="flex items-center gap-1">
-              <FiMessageCircle className="cursor-pointer hover:text-blue-400" />
-              <span>{post.comments_count || 0}</span>
-            </button>
-
-            <button className="flex items-center gap-1 cursor-pointer hover:text-blue-400">
-              <FiShare2 />
-            </button>
-
-            <p className="text-sm">{post.views || 0} Views</p>
-          </div>
-        </Card>
-
+        )}
         {/* Comments Section */}
         <div className="mt-8">
           <h2 className="text-2xl font-semibold mb-4">Comments</h2>
@@ -777,13 +839,14 @@ const PostPage = () => {
           {/* Add Comment Box */}
           <div className="mt-4">
             <textarea
+              id="newComment"
               className="w-full p-2 border rounded bg-[#2e2e2e] text-white border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               placeholder="Write a comment..."
             />
             <button
-              onClick={handleAddComment}
+              onClick={() => handleAddComment(post.id, null, newComment)}
               className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
             >
               Add Comment
