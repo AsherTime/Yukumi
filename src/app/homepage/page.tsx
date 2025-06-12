@@ -55,13 +55,13 @@ export default function HomePage() {
   const [, setPage] = useState(1);
   const [hasMore,] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
- const [recentPosts, setRecentPosts] = useState<Post[]>(() => {
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("recentPosts");
-    return stored ? JSON.parse(stored) : [];
-  }
-  return [];
-});
+  const [recentPosts, setRecentPosts] = useState<Post[]>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("recentPosts");
+      return stored ? JSON.parse(stored) : [];
+    }
+    return [];
+  });
 
   const { postsData, setPostsData, fetchPosts } = fetchPost();
   const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
@@ -131,6 +131,15 @@ export default function HomePage() {
         </div>
       </div>
     );
+  }
+  const targetId = "50dc1bbd-d2cb-48c7-bd8c-494f05a4e2b0"; // replace with the actual id you're looking for
+
+  const postIMP = uniquePosts.find(p => p.id === targetId);
+
+  if (postIMP) {
+    console.log("Post:", postIMP);
+  } else {
+    console.log("Post not found");
   }
 
   return (

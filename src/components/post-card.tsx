@@ -17,6 +17,7 @@ interface Post {
   likes_count: number;
   comments_count: number;
   liked_by_user: boolean;
+  saved_by_user: boolean; // Added to track if the post is saved by the user
   image_url: string;
   animetitle_post: string | null;
   post_collections: string | null;
@@ -51,13 +52,13 @@ export default function PostCard({ post, idx, total, formatDate, navigatetoCommu
   handleSave: (postId: string) => void,
   isFollowing: boolean,
   handleFollowClick: (followedUserId: string) => Promise<void>
-  onPostOpen: (post: Post) => void
+  onPostOpen?: (post: Post) => void
 }) {
   const viewRef = useViewCountOnVisible(post.id);
   const isSaved = saved.includes(post.id);
   return (
     <div onClick={() => {
-      onPostOpen(post); 
+      {onPostOpen && onPostOpen(post);}
       handleCommentClick(post.id)
     }} className="cursor-pointer">
       <motion.section
@@ -214,8 +215,8 @@ export default function PostCard({ post, idx, total, formatDate, navigatetoCommu
         )}
 
         {/* Reference Link 
-        { /* Content}
-        <p className="text-gray-300 px-6 pb-2" dangerouslySetInnerHTML={{ __html: post.content }}></p>
+        { /* Content */}
+        {!post.image_url && <p className="text-gray-300 px-6 pb-2" dangerouslySetInnerHTML={{ __html: post.content }}></p>}
         {/* Tags }
         <div className="flex flex-wrap gap-2 px-6 pb-2 mt-1">
           {post.post_collections && (

@@ -57,19 +57,6 @@ export default function handleLike(
 
             // Update post likes count
             await supabase.rpc('increment_likes', { post_id: postId });
-
-            // Award points for liking
-            try {
-                await awardPoints(
-                    userId,
-                    'post_liked',
-                    5,
-                    postId,
-                    'post'
-                );
-            } catch (pointsError) {
-                console.error('Failed to award points for like:', pointsError);
-            }
         }
 
         // Update the UI immediately
@@ -86,6 +73,19 @@ export default function handleLike(
             );
 
             fetchPosts();
+
+            // Award points for liking
+            try {
+                await awardPoints(
+                    userId,
+                    'post_liked',
+                    5,
+                    postId,
+                    'post'
+                );
+            } catch (pointsError) {
+                console.error('Failed to award points for like:', pointsError);
+            }
 
             
     } catch (error) {

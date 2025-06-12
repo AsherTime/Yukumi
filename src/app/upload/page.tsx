@@ -426,7 +426,7 @@ export default function CoverUpload() {
 
 
           <div className="space-y-2">
-            <Label>Content
+            <Label>Content</Label>
             <div className="bg-[#2A2A2A] p-2 flex gap-2 border-b border-[#3A3A3A]">
               <button
                 type="button"
@@ -464,7 +464,7 @@ export default function CoverUpload() {
                 setContent(safeContent);
               }}
             />
-            </Label>
+            
           </div>
 
           <div className="space-y-2">
@@ -477,7 +477,7 @@ export default function CoverUpload() {
                 <SelectItem value="Fanart">Fanart</SelectItem>
                 <SelectItem value="Memes">Memes</SelectItem>
                 <SelectItem value="Discussion">Discussion</SelectItem>
-                <SelectItem value="Theory">Theory</SelectItem>
+                <SelectItem value="News">News</SelectItem>
               </SelectContent>
             </Select>
           </div>

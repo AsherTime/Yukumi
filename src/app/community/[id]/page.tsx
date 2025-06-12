@@ -409,6 +409,7 @@ export default function CommunityIdPage() {
               </div>
 
               {/* Trending Tags */}
+              {community.trending_tags && community.trending_tags.length > 0 && (
               <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
                 <h3 className="text-lg font-semibold mb-4">Trending Topics</h3>
                 <div className="flex flex-wrap gap-2">
@@ -426,19 +427,6 @@ export default function CommunityIdPage() {
                   ))}
                 </div>
               </div>
-
-              {/* Community Info */}
-              {community.description && (
-                <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
-                  <h3 className="text-lg font-semibold mb-4">About</h3>
-                  <p className="text-zinc-300">{community.description}</p>
-                </div>
-              )}
-              {community.rules && (
-                <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
-                  <h3 className="text-lg font-semibold mb-4">Rules</h3>
-                  <p className="text-zinc-300">{community.rules}</p>
-                </div>
               )}
             </div>
           </div>

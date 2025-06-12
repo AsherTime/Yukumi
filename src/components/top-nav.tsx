@@ -182,30 +182,63 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
 
 
   useEffect(() => {
-    let isMounted = true
+    let isMounted = true;
 
-    if (!user?.id) return
+    if (!user?.id) return;
 
     const fetchNotifications = async () => {
+      // Step 1: Fetch user preferences
+      const { data: profilePrefs, error: prefsError } = await supabase
+        .from('Profiles')
+        .select('notif_all, notif_likes, notif_replies, notif_follows')
+        .eq('id', user.id)
+        .single();
+
+      if (prefsError) {
+        console.error('Error fetching preferences:', prefsError.message);
+        return;
+      }
+
+      const { notif_all, notif_likes, notif_replies, notif_follows } = profilePrefs;
+
+      // Step 2: Build filter types based on preferences
+      let typesToInclude: string[] = [];
+
+      if (notif_all) {
+        typesToInclude = ['like_milestone', 'comment_reply', 'follow'];
+      } else {
+        if (notif_likes) typesToInclude.push('like_milestone');
+        if (notif_replies) typesToInclude.push('comment_reply');
+        if (notif_follows) typesToInclude.push('follow');
+      }
+
+      // If no types are included, don't bother querying
+      if (typesToInclude.length === 0) {
+        return;
+      }
+
+      // Step 3: Fetch notifications matching selected types
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+        .in('type', typesToInclude)
+        .order('created_at', { ascending: false });
 
       if (!error && data && isMounted) {
-        setNotifications(data as Notification[])
+        setNotifications(data as Notification[]);
       } else if (error) {
-        console.error('Error fetching notifications:', error.message)
+        console.error('Error fetching notifications:', error.message);
       }
-    }
+    };
 
-    fetchNotifications()
+    fetchNotifications();
 
     return () => {
-      isMounted = false
-    }
-  }, [user?.id])
+      isMounted = false;
+    };
+  }, [user?.id]);
+
 
   const handleNotificationClick = async (notification: Notification) => {
     // Mark it as read
@@ -428,7 +461,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 bg-[#181828] border border-zinc-800">
                     <DropdownMenuItem className="text-white hover:bg-zinc-800 cursor-pointer">
-                      <Link href="/profile" className="flex items-center w-full">
+                      <Link href={`/profile/${user.id}`} className="flex items-center w-full">
                         <User className="mr-2 h-4 w-4" />
                         Profile
                       </Link>
