@@ -32,10 +32,15 @@ interface Post {
   reference_link: string | null;
   Profiles?: {
     avatar_url: string;
-    display_name: string;
+    username: string;
   };
   tags?: string[];
   isFanManga: boolean;
+  saved_by_user: boolean;
+  views: number;
+  synopsis?: string;
+  cover_image_url?: string;
+  status?: string;
 }
 
 type ContentFeedProps = {
@@ -134,15 +139,22 @@ export function ContentFeed({ selectedAnime, recentPosts, setRecentPosts, homepa
         likes_count: 0,
         comments_count: 0,
         liked_by_user: false,
-        image_url: manga.cover_image_url,
+        image_url: manga.cover_image_url || '',
         animetitle_post: null,
         post_collections: null,
         original_work: false,
         reference_link: null,
-        Profiles: Array.isArray(manga.Profiles) ? manga.Profiles[0] : manga.Profiles,
+        Profiles: manga.Profiles ? {
+          avatar_url: manga.Profiles.avatar_url || '/placeholder.svg',
+          username: manga.Profiles.username || 'Anonymous'
+        } : undefined,
         tags: manga.tags || [],
         views: manga.views || 0,
         isFanManga: true,
+        saved_by_user: false,
+        synopsis: manga.synopsis || '',
+        cover_image_url: manga.cover_image_url,
+        status: manga.status || 'published'
       }));
       const normalizedPosts = (posts || []).map(post => ({
         ...post,
@@ -269,174 +281,4 @@ export function ContentFeed({ selectedAnime, recentPosts, setRecentPosts, homepa
       localStorage.setItem("recentPosts", JSON.stringify(updated));
       return updated.slice(0, 5);
     });
-    router.push(`/post/${post.id}`);
-  };
-
-  // Add a click handler with event prevention
-  const handleLikeClick = async (e: React.MouseEvent, postId: string, liked: boolean) => {
-    e.preventDefault();
-    e.stopPropagation();
-    await toggleLike(postId, liked);
-  };
-
-  const deletePostIfOwner = async (
-    postId: string,
-    currentUserId: string
-  ): Promise<{ success: boolean; error?: PostgrestError | string }> => {
-    // Step 1: Fetch the post to check ownership
-    const { data: post, error: fetchError } = await supabase
-      .from('posts')
-      .select('user_id')
-      .eq('id', postId)
-      .single();
-  
-    if (fetchError) {
-      return { success: false, error: fetchError };
-    }
-  
-    if (!post || post.user_id !== currentUserId) {
-      return { success: false, error: 'Unauthorized: You are not the owner of this post.' };
-    }
-  
-    // Step 2: Delete the post
-    const { error: deleteError } = await supabase
-      .from('posts')
-      .delete()
-      .eq('id', postId);
-  
-    if (deleteError) {
-      return { success: false, error: deleteError };
-    }
-  
-    return { success: true };
-  };
-  
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const [showConfirmId, setShowConfirmId] = useState<string | null>(null);
-
-  const handleDelete = async (postId: string) => {
-  const result = await deletePostIfOwner(postId, user?.id || "");
-  
-  if (result.success) {
-    alert('Post deleted.');
-  } else {
-    alert(`Failed to delete post: ${result.error}`);
-  }
-
-  setShowConfirmId(null);
-  setMenuOpenId(null);
-};
-
-  const [reportConfirmId, setReportConfirmId] = useState<string | null>(null);
-
-  const handleReport = async (postId: string) => {
-  try {
-    const { error } = await supabase
-      .from("posts")
-      .update({ isReported: true })
-      .eq("id", postId);
-
-    if (error) {
-      console.error("Report failed:", error);
-      alert("Failed to report the post.");
-    } else {
-      alert("Post reported successfully.");
-    }
-  } catch (err) {
-    console.error("Unexpected error reporting post:", err);
-    alert("Something went wrong.");
-  }
-};
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-  // Filter posts based on selected category and sidebar filter
-  const filteredPosts = posts.filter(post => {
-    // Category filter
-    const categoryMatch = selectedCategory === "All" || post.post_collections === selectedCategory;
-    // Sidebar filter
-    if (selectedSidebarFilter === "Following") {
-      return categoryMatch && followedIds.includes(post.user_id);
-    }
-    // 'Recommended' (default) just returns all matching category
-    return categoryMatch;
-  });
-
-  // For shares, add a function to award points when a post is shared
-  const handleShare = async (postId: string) => {
-    if (!user) return;
-    try {
-      await awardPoints(
-        user.id,
-        'post_shared',
-        2,
-        postId,
-        'post'
-      );
-    } catch (pointsError) {
-      console.error('Failed to award points for share:', pointsError);
-    }
-  };
-
-  if (posts.length === 0)
-    return <div className="text-white p-4">No posts found.</div>;
-
-  if (!mounted) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid gap-6">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="bg-[#2e2e2e] border-0 p-4 relative">
-              <div className="animate-pulse">
-                <div className="h-4 bg-gray-700 rounded w-3/4 mb-4"></div>
-                <div className="h-4 bg-gray-700 rounded w-1/2"></div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-
-  return (
-    <div className="space-y-0">
-      {posts.map((post, idx) => (
-        post.isFanManga ? (
-          <FanMangaCard key={post.id} manga={post} idx={idx} total={posts.length} />
-        ) : (
-          <PostCard
-            key={post.id}
-            post={post}
-            idx={idx}
-            total={posts.length}
-            formatDate={formatDate}
-            navigatetoCommunity={() => {}}
-            setMenuOpenId={() => {}}
-            menuOpenId={null}
-            user={user}
-            setShowConfirmId={() => {}}
-            showConfirmId={null}
-            reportConfirmId={null}
-            setReportConfirmId={() => {}}
-            handleDelete={() => {}}
-            handleLikeClick={() => {}}
-            handleCommentClick={() => {}}
-            handleReport={() => {}}
-            saved={[]}
-            handleSave={() => {}}
-            isFollowing={false}
-            handleFollowClick={async () => {}}
-            onPostOpen={() => {}}
-          />
-        )
-      ))}
-    </div>
-  );
-}
+    router.push(`

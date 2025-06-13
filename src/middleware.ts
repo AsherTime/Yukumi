@@ -1,22 +1,29 @@
-import { NextRequest, NextResponse } from "next/server";
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export function middleware(req: NextRequest) {
-    const token = req.cookies.get("firebase-auth-token")?.value; // Get the auth token
+export async function middleware(request: NextRequest) {
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req: request, res });
 
-    // You can set headers or modify requests if needed
-    const requestHeaders = new Headers(req.headers);
-    if (token) {
-        requestHeaders.set("X-User-Authenticated", "true");
-    } else {
-        requestHeaders.set("X-User-Authenticated", "false");
-    }
+  // Refresh session if expired
+  await supabase.auth.getSession();
 
-    return NextResponse.next({
-        headers: requestHeaders,
-    });
+  // Allow access to public uploads
+  if (request.nextUrl.pathname.startsWith('/uploads/')) {
+    return NextResponse.next();
+  }
+
+  // Allow access to the upload API endpoint
+  if (request.nextUrl.pathname === '/api/upload') {
+    return NextResponse.next();
+  }
+
+  return res;
 }
 
-// Middleware applies to these routes (optional)
 export const config = {
-    matcher: ["/tracker/:path*"], // Middleware still runs on tracker pages
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
 };

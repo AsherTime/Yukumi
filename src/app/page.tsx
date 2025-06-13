@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase"
 import { ButtonCarousel } from "@/components/button-carousel"
 import Footer from "@/components/footer"
 import { TopNav } from "@/components/top-nav"
+import { MangaFeed } from "@/components/manga/manga-feed"
 
 function MainContent() { 
   const carousel = useCarousel(); 
@@ -26,6 +27,7 @@ function MainContent() {
     const checkUser = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
+        console.log("User session:", session?.user);
         setUser(session?.user || null)
       } catch (error) {
         console.error("Error checking user session:", error)
@@ -37,6 +39,7 @@ function MainContent() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("Auth state changed:", session?.user);
       setUser(session?.user || null)
     })
 
@@ -58,14 +61,17 @@ function MainContent() {
             backgroundImage: `url(${encodeURI(activeImage)})`,
           }}
         />
-        <div className="relative z-10 max-w-7xl mx-auto px-8 pt-20 flex flex-row h-[calc(100vh-80px)] justify-between items-center">
-          <div className="flex flex-col items-center gap-0 relative">
+        <div className="relative z-10 max-w-7xl mx-auto px-8 pt-20 flex flex-col h-[calc(100vh-80px)]">
+          <div className="flex flex-col items-center gap-0 relative mb-8">
             <div className="relative w-full flex justify-center mt-2 max-w-md h-[300px]">
               <ImageCarousel />
             </div>
             <div className="w-full max-w-lg">
               <ButtonCarousel />
             </div>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <MangaFeed />
           </div>
         </div>
       </main>
@@ -86,9 +92,9 @@ function MainContent() {
       />
 
       {/* Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-8 pt-20 flex flex-row h-[calc(100vh-80px)] justify-between items-center">
-        {/* Left Side: Join Now Button */}
-        <div className="flex flex-col items-center gap-0 relative">
+      <div className="relative z-10 max-w-7xl mx-auto px-8 pt-20 flex flex-col h-[calc(100vh-80px)]">
+        {/* Top Section: Carousel and Buttons */}
+        <div className="flex flex-col items-center gap-0 relative mb-8">
           <div className="relative w-full flex justify-center mt-2 max-w-md h-[300px]">
             <ImageCarousel />
           </div>
@@ -109,9 +115,14 @@ function MainContent() {
               JOIN NOW
             </Link>
           )}
+          <div className="w-full max-w-lg">
+            <ButtonCarousel />
+          </div>
         </div>
-        <div className="w-full max-w-lg">
-          <ButtonCarousel />
+        
+        {/* Manga Feed Section */}
+        <div className="flex-1 overflow-y-auto">
+          <MangaFeed />
         </div>
       </div>
     </main>

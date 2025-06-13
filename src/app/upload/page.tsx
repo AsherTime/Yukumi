@@ -13,6 +13,7 @@ import { toast } from "sonner"
 import DOMPurify from 'dompurify';
 import { IKContext, IKUpload } from 'imagekitio-react';
 import { awardPoints } from "@/utils/awardPoints"
+import { useImageUpload } from '@/hooks/useImageUpload';
 
 
 interface Anime {
@@ -46,11 +47,18 @@ export default function CoverUpload() {
   const [tagError, setTagError] = useState<string | null>(null);
   const [showAnimeDropdown, setShowAnimeDropdown] = useState(false);
   const searchParams = useSearchParams();
+  const { uploadImage, uploadProgress } = useImageUpload({
+    folder: '/posts',
+    maxSizeMB: 5,
+    quality: 80,
+    width: 1920, // Max width for cover images
+    height: 1080 // Max height for cover images
+  });
 
   useEffect(() => {
     if (isLoading) return
 
-    // 2. Once loading is false, if there’s no user, redirect
+    // 2. Once loading is false, if there's no user, redirect
     if (!user) {
       router.push('/auth/login')
     }
@@ -196,25 +204,23 @@ export default function CoverUpload() {
     `p-1.5 rounded transition-colors ${activeStyles.includes(tag) ? "bg-[#3A3A3A]" : "hover:bg-[#3A3A3A]"
     }`
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setError("Please select an image file")
-      return
+    try {
+      setLoading(true);
+      const imageUrl = await uploadImage(file);
+      setPreviewImage(imageUrl);
+      setImageUrl(imageUrl);
+      toast.success('Image uploaded successfully!');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload image');
+    } finally {
+      setLoading(false);
     }
-
-    setSelectedFile(file)
-    setError(null)
-
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setPreviewImage(reader.result as string)
-    }
-    reader.readAsDataURL(file)
-  }
-
+  };
 
   const [imageUrl, setImageUrl] = useState('');
 
@@ -385,45 +391,41 @@ export default function CoverUpload() {
             />
           </div>
 
-          <IKContext
-            publicKey={process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY!}
-            urlEndpoint={process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT!}
-            authenticator={async () => {
-              const res = await fetch("/api/imagekit-auth");
-              return await res.json();
-            }}
-          >
-            <div className="space-y-2">
-              <Label htmlFor="image">Cover Image</Label>
-
-              <IKUpload
-                id="image"
-                fileName="cover-image.jpg"
-                folder="/posts" // ✅ Uploads image to the 'posts' folder
-                onSuccess={(res: { url: string }) => {
-                  console.log("Upload success:", res);
-                  setPreviewImage(res.url);
-                  setImageUrl(res.url);
-                }}
-                onError={(err: Error) => {
-                  console.error("Upload error:", err);
-                }}
-                className="bg-[#2e2e2e] border-0"
-              />
-
-
-              {previewImage && (
-                <div className="mt-2">
-                  <img
-                    src={previewImage}
-                    alt="Preview"
-                    className="max-h-48 rounded"
+          <div className="space-y-2">
+            <Label htmlFor="image">Cover Image</Label>
+            <Input
+              id="image"
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="bg-[#2e2e2e] border-0"
+            />
+            {uploadProgress.status !== 'idle' && (
+              <div className="mt-2">
+                <div className="h-2 bg-[#2e2e2e] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 transition-all duration-300"
+                    style={{ width: `${uploadProgress.progress}%` }}
                   />
                 </div>
-              )}
-            </div>
-          </IKContext>
-
+                <p className="text-sm text-gray-400 mt-1">
+                  {uploadProgress.status === 'processing' && 'Converting to WebP...'}
+                  {uploadProgress.status === 'uploading' && 'Uploading...'}
+                  {uploadProgress.status === 'done' && 'Upload complete!'}
+                  {uploadProgress.status === 'error' && uploadProgress.error}
+                </p>
+              </div>
+            )}
+            {previewImage && (
+              <div className="mt-2">
+                <img
+                  src={previewImage}
+                  alt="Preview"
+                  className="max-h-48 rounded"
+                />
+              </div>
+            )}
+          </div>
 
           <div className="space-y-2">
             <Label>Content</Label>

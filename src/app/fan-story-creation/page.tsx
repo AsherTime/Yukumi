@@ -3,6 +3,27 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Upload, Image, Palette, Link, Bold, Italic, Underline, Type, AlignLeft, AlignCenter, AlignRight, List, Quote, BookText, ListOrdered, MessageSquare, Lightbulb, ChevronDown, ChevronUp, Plus, Trash2, Pencil, XCircle } from 'lucide-react';
 import { supabase } from "@/lib/supabase"; // At the top if not already
 import { awardPoints } from '@/utils/awardPoints';
+import { useImageUpload } from '@/hooks/useImageUpload';
+import { toast } from 'react-hot-toast';
+
+interface Particle {
+  id: number;
+  left: number;
+  delay: number;
+  duration: number;
+  size: number;
+}
+
+interface StoryContentEditorProps {
+  currentContent: string;
+  setCurrentContent: (content: string) => void;
+  title: string;
+  setTitle: (title: string) => void;
+  coverImage: File | null;
+  setCoverImage: (file: File | null) => void;
+  coverImageUrl: string;
+  setCoverImageUrl: (url: string) => void;
+}
 
 // Custom Tailwind colors for a cozy dark anime vibe
 const customColors = {
@@ -60,71 +81,93 @@ function FloatingDustParticles() {
 
 
 // --- StoryContentEditor Component (Enhanced for Rich Text and Image Upload) ---
-function StoryContentEditor({ currentContent, setCurrentContent, title, setTitle, coverImage, setCoverImage, coverImageUrl, setCoverImageUrl }) {
-  const editorRef = useRef(null);
-  const fileInputRef = useRef(null); // Ref for hidden file input
+const StoryContentEditor: React.FC<StoryContentEditorProps> = ({ 
+  currentContent, 
+  setCurrentContent, 
+  title, 
+  setTitle, 
+  coverImage, 
+  setCoverImage, 
+  coverImageUrl, 
+  setCoverImageUrl 
+}) => {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [particles, setParticles] = useState<Particle[]>([]);
 
-  // Synchronize contentEditable div with React state
+  // Initialize image upload hooks for different purposes
+  const { uploadImage: uploadCoverImage, uploadProgress: coverUploadProgress } = useImageUpload({
+    folder: '/manga-covers',
+    maxSizeMB: 5,
+    quality: 85,
+    width: 1920,
+    height: 1080
+  });
+
+  const { uploadImage: uploadPanelImage, uploadProgress: panelUploadProgress } = useImageUpload({
+    folder: '/manga-panels',
+    maxSizeMB: 5,
+    quality: 80,
+    width: 1600,
+    height: 1600
+  });
+
+  // Generate particles for the background effect
   useEffect(() => {
-    if (editorRef.current) {
-      const placeholderHtml = '<p class="text-gray-500 italic">Start writing your amazing story here. You can insert text, images, and more! Manga panels go here.</p>';
-      const contentToSet = currentContent || placeholderHtml;
-      
-      if (editorRef.current.innerHTML !== contentToSet) {
-          editorRef.current.innerHTML = contentToSet;
-      }
-    }
-  }, [currentContent]);
+    const newParticles: Particle[] = Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      delay: Math.random() * 5,
+      duration: 3 + Math.random() * 2,
+      size: 2 + Math.random() * 3
+    }));
+    setParticles(newParticles);
+  }, []);
 
-  // Handle content changes from the contentEditable div
-  const handleEditorInput = useCallback(() => {
+  const handleEditorInput = () => {
     if (editorRef.current) {
-      const currentHtml = editorRef.current.innerHTML;
-      const placeholderHtml = '<p class="text-gray-500 italic">Start writing your amazing story here. You can insert text, images, and more! Manga panels go here.</p>';
-      
-      if (currentHtml === placeholderHtml || currentHtml === '<p><br></p>' || currentHtml === '<div><br></div>' || currentHtml === '') {
-          setCurrentContent('');
-      } else {
-          setCurrentContent(currentHtml);
-      }
+      setCurrentContent(editorRef.current.innerHTML);
     }
-  }, [setCurrentContent]);
-
-  const handleImageUploadClick = () => {
-    fileInputRef.current?.click(); // Trigger click on hidden file input
   };
 
-  const handleFileChange = (event) => {
+  const handleImageUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageUrl = e.target.result;
+      try {
+        const file = event.target.files[0];
+        const imageUrl = await uploadPanelImage(file);
         // Insert image at current cursor position
         document.execCommand('insertHTML', false, `<img src="${imageUrl}" class="inline-block max-w-full h-auto rounded-md shadow-md my-4" alt="Manga Panel" style="max-height: 400px; display: block; margin: 16px auto;" />`);
         handleEditorInput(); // Update state after image insertion
-      };
-      reader.readAsDataURL(file); // Read file as data URL for immediate embedding
+      } catch (error) {
+        console.error('Failed to upload panel image:', error);
+        toast.error('Failed to upload panel image');
+      }
     }
   };
 
-  // Basic rich text formatting commands
-  const formatText = (command, value = null) => {
+  const handleCoverImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      try {
+        const file = event.target.files[0];
+        const imageUrl = await uploadCoverImage(file);
+        setCoverImage(file);
+        setCoverImageUrl(imageUrl);
+        toast.success('Cover image uploaded successfully!');
+      } catch (error) {
+        console.error('Failed to upload cover image:', error);
+        toast.error('Failed to upload cover image');
+      }
+    }
+  };
+
+  const formatText = (command: string, value?: string) => {
     document.execCommand(command, false, value);
-    editorRef.current.focus(); // Keep focus on editor after formatting
     handleEditorInput(); // Update state after formatting
   };
-
-  // Handle cover image separately from inline images
-  const handleCoverImageUpload = (event) => {
-    if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0];
-      setCoverImage(file);
-      setCoverImageUrl(URL.createObjectURL(file));
-      console.log("Cover image selected:", file.name);
-    }
-  };
-
 
   return (
     <div className="flex-1 space-y-8 p-6 bg-gray-800/60 rounded-xl border border-gray-700/50 shadow-lg flex flex-col">
@@ -152,10 +195,26 @@ function StoryContentEditor({ currentContent, setCurrentContent, title, setTitle
           Choose Cover
         </label>
         {coverImage && <span className="text-gray-400 text-sm mt-2">{coverImage.name}</span>}
+        {coverUploadProgress.status !== 'idle' && (
+          <div className="mt-2 w-full">
+            <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-600 transition-all duration-300"
+                style={{ width: `${coverUploadProgress.progress}%` }}
+              />
+            </div>
+            <p className="text-sm text-gray-400 mt-1">
+              {coverUploadProgress.status === 'processing' && 'Converting to WebP...'}
+              {coverUploadProgress.status === 'uploading' && 'Uploading...'}
+              {coverUploadProgress.status === 'done' && 'Upload complete!'}
+              {coverUploadProgress.status === 'error' && coverUploadProgress.error}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Manga Title */}
-      <div>
+      <div className="space-y-2">
         <label htmlFor="title" className="sr-only">Manga Title</label>
         <input
           type="text"
@@ -169,35 +228,72 @@ function StoryContentEditor({ currentContent, setCurrentContent, title, setTitle
       </div>
 
       {/* Story Content - Rich Text Editor */}
-      <div className="bg-gray-800 rounded-md border border-gray-700 flex-1 overflow-hidden flex flex-col"> {/* flex-1 to make it fill available vertical space */}
+      <div className="bg-gray-800 rounded-md border border-gray-700 flex-1 overflow-hidden flex flex-col">
         {/* Rich Text Editor Toolbar */}
-        <div className="p-2 border-b border-gray-700 flex flex-wrap gap-2 text-sm text-gray-400">
-          <button type="button" title="Bold" className="px-2 py-1 rounded hover:bg-gray-700" onClick={() => formatText('bold')}>Bold</button>
-          <button type="button" title="Italic" className="px-2 py-1 rounded hover:bg-gray-700" onClick={() => formatText('italic')}>Italic</button>
-          <button type="button" title="Underline" className="px-2 py-1 rounded hover:bg-gray-700" onClick={() => formatText('underline')}>Underline</button>
-          <span className="border-l border-gray-600 mx-1"></span>
-          <button type="button" title="Insert Image" className="px-2 py-1 rounded hover:bg-gray-700" onClick={handleImageUploadClick}>Image</button>
-          <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" /> {/* Hidden file input */}
-          <button type="button" title="Insert Link" className="px-2 py-1 rounded hover:bg-gray-700" onClick={() => formatText('createLink', prompt('Enter the URL'))}>Link</button>
-          <span className="border-l border-gray-600 mx-1"></span>
-          <button type="button" title="Align Left" className="px-2 py-1 rounded hover:bg-gray-700" onClick={() => formatText('justifyLeft')}>Left</button>
-          <button type="button" title="Align Center" className="px-2 py-1 rounded hover:bg-gray-700" onClick={() => formatText('justifyCenter')}>Center</button>
-          <button type="button" title="Align Right" className="px-2 py-1 rounded hover:bg-gray-700" onClick={() => formatText('justifyRight')}>Right</button>
-          <span className="border-l border-gray-600 mx-1"></span>
-          <button type="button" title="Numbered List" className="px-2 py-1 rounded hover:bg-gray-700" onClick={() => formatText('insertOrderedList')}>Numbered List</button>
-          <button type="button" title="Blockquote" className="px-2 py-1 rounded hover:bg-gray-700" onClick={() => formatText('formatBlock', 'blockquote')}>Quote</button>
-          {/* Add more formatting options as needed */}
+        <div className="flex items-center gap-2 p-2 border-b border-gray-700 bg-gray-900">
+          <button
+            type="button"
+            onClick={() => formatText('bold')}
+            className="p-2 hover:bg-gray-700 rounded"
+          >
+            <Bold className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => formatText('italic')}
+            className="p-2 hover:bg-gray-700 rounded"
+          >
+            <Italic className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => formatText('underline')}
+            className="p-2 hover:bg-gray-700 rounded"
+          >
+            <Underline className="w-4 h-4" />
+          </button>
+          <div className="h-6 w-px bg-gray-700 mx-2" />
+          <button
+            type="button"
+            onClick={handleImageUploadClick}
+            className="p-2 hover:bg-gray-700 rounded flex items-center gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            <span>Add Panel</span>
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            className="hidden"
+          />
         </div>
-        {/* Content Editable Area */}
+
+        {/* Editor Content */}
         <div
           ref={editorRef}
-          contentEditable="true"
+          contentEditable
           onInput={handleEditorInput}
-          className="w-full flex-1 p-4 bg-gray-800 text-cozy-text-light focus:outline-none resize-none overflow-y-auto leading-relaxed"
-          style={{ minHeight: '300px' }} // Ensure a minimum height
-        >
-          {/* Content is set by useEffect */}
-        </div>
+          className="flex-1 p-4 overflow-y-auto focus:outline-none"
+          style={{ minHeight: '300px' }}
+        />
+        {panelUploadProgress.status !== 'idle' && (
+          <div className="p-2 border-t border-gray-700">
+            <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-600 transition-all duration-300"
+                style={{ width: `${panelUploadProgress.progress}%` }}
+              />
+            </div>
+            <p className="text-sm text-gray-400 mt-1">
+              {panelUploadProgress.status === 'processing' && 'Converting to WebP...'}
+              {panelUploadProgress.status === 'uploading' && 'Uploading...'}
+              {panelUploadProgress.status === 'done' && 'Upload complete!'}
+              {panelUploadProgress.status === 'error' && panelUploadProgress.error}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
