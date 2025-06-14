@@ -64,9 +64,9 @@ export default function AnimeDetail() {
   const [error, setError] = useState<string | null>(null);
   const [anime, setAnime] = useState<Anime | null>(null);
   const [animeList, setAnimeList] = useState<UserAnime>();
-  const [watchlistStatus, setWatchlistStatus] = useState<string>("");
+  const [watchlistStatus, setWatchlistStatus] = useState<string>("Watching");
   const [progress, setProgress] = useState(1);
-  const [score, setScore] = useState(1);
+  const [score, setScore] = useState(10);
   const [shouldUpdate, setShouldUpdate] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
 
@@ -100,21 +100,15 @@ export default function AnimeDetail() {
       if (error) throw error;
       setIsInList(!!data);
       setAnimeList(data || null);
-      setWatchlistStatus(data?.status || "");
+      setWatchlistStatus(data?.status || "Watching");
       setProgress(data?.progress || 1);
-      setScore(data?.score || 1);
+      setScore(data?.score || 10);
     }
     if (id) {
       fetchAnimeDetails();
       inList();
     }
   }, [id, user]);
-
-  useEffect(() => {
-    console.log("Anime? :", isInList);
-    console.log("Anime List:", animeList);
-  }, [animeList]);
-
 
   const handleUpdate = async () => {
     if (!user || !id) return;
@@ -137,6 +131,36 @@ export default function AnimeDetail() {
 
       if (error) throw error;
 
+      // If a score was provided, try to award points for the Quick Reviewer task
+      if (score > 0) {
+        try {
+          const wasAwarded = await handleQuickReviewer(
+            user.id,
+            id,
+            'anime'
+          );
+
+          if (wasAwarded) {
+            toast.success('Review submitted and daily task completed! +25 XP');
+          } else {
+            // Award points for review submission even if daily task is already completed
+            await awardPoints(
+              user.id,
+              'review_submitted',
+              15,
+              id,
+              'anime'
+            );
+            toast.success('Review submitted successfully! +15 XP');
+          }
+        } catch (pointsError) {
+          console.error('Failed to award points for review:', pointsError);
+          toast.warning('Review submitted, but points system is temporarily unavailable');
+        }
+      } else {
+        toast.success('Watchlist updated successfully!');
+      }
+
       setShouldUpdate(false);
       setUpdateSuccess(true);
     } catch (error: any) {
@@ -157,10 +181,11 @@ export default function AnimeDetail() {
         .eq("anime_id", id);
       if (error) throw error;
       setIsInList(false);
-      setWatchlistStatus("");
+      setWatchlistStatus("Watching");
       setProgress(1);
-      setScore(1);
+      setScore(10);
       toast.success('Anime removed from your list successfully!');
+      router.refresh();
     } catch (error) {
       console.error('Error deleting anime from list:', error);
       toast.error('Failed to remove anime from your list. Please try again.');
@@ -194,13 +219,12 @@ export default function AnimeDetail() {
           {/* Left Column - Image & Community */}
           <div className="space-y-4">
             {/* Anime Image */}
-            <div className="p-4 flex justify-center items-center relative" style={{ maxHeight: '400px' }}>
+            <div className="p-4 relative w-full h-[400px]">
               <Image
                 src={anime.image_url || "/placeholder.svg"}
                 alt={anime.title || "Anime image"}
-                width={500}
-                height={400}
-                className="rounded-lg object-contain w-full h-full"
+                fill // this makes it fill the parent absolutely
+                className="rounded-lg object-cover"
               />
             </div>
 
@@ -214,41 +238,46 @@ export default function AnimeDetail() {
             </button>
 
             <div className="bg-[#1f1f1f] text-white p-4 rounded space-y-4 mt-4">
-              {/* Status Dropdown */}
-              <div>
-                <label htmlFor="status" className="block text-sm font-medium text-white mb-1">Status</label>
-                <select
-                  id="status"
-                  value={watchlistStatus}
-                  onChange={(e) => setWatchlistStatus(e.target.value)}
-                  className="w-full p-2 rounded bg-zinc-800 text-white border border-zinc-600"
-                >
-                  {!isInList && <option value="">Add to List</option>}
-                  <option value="Watching">Watching</option>
-                  <option value="Completed">Completed</option>
-                  <option value="On-Hold">On-Hold</option>
-                  <option value="Dropped">Dropped</option>
-                  <option value="Planning">Planning</option>
-                </select>
-              </div>
+              {isInList ? (
+                <>
+                  {/* Status Dropdown */}
+                  <div>
+                    <label htmlFor="status" className="block text-sm font-medium text-white mb-1">Status</label>
+                    <select
+                      id="status"
+                      value={watchlistStatus}
+                      onChange={(e) => setWatchlistStatus(e.target.value)}
+                      className="w-full p-2 rounded bg-zinc-800 text-white border border-zinc-600"
+                    >
+                      <option value="Watching">Watching</option>
+                      <option value="Completed">Completed</option>
+                      <option value="On-Hold">On-Hold</option>
+                      <option value="Dropped">Dropped</option>
+                      <option value="Planning">Planning</option>
+                    </select>
+                  </div>
 
-              {/* Score Dropdown - only show if anime is in list */}
-              {isInList && (
-                <div>
-                  <label htmlFor="score" className="block text-sm font-medium text-white mb-1">Score</label>
-                  <select
-                    id="score"
-                    value={score}
-                    onChange={(e) => setScore(parseInt(e.target.value))}
-                    className="w-full p-2 rounded bg-zinc-800 text-white border border-zinc-600"
-                  >
-                    <option value="">Select Score</option>
-                    {[...Array(10)].map((_, i) => (
-                      <option key={i + 1} value={i + 1}>{i + 1}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+                  {/* Score Dropdown - only show if anime is in list */}
+
+                  <div>
+                    <label htmlFor="score" className="block text-sm font-medium text-white mb-1">Score</label>
+                    <select
+                      id="score"
+                      value={score}
+                      onChange={(e) => setScore(parseInt(e.target.value))}
+                      className="w-full p-2 rounded bg-zinc-800 text-white border border-zinc-600"
+                    >
+                      <option value="">Select Score</option>
+                      {[...Array(10)].map((_, i) => (
+                        <option key={i + 1} value={i + 1}>{i + 1}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              ) : (
+                <Button onClick={() => { setIsInList(true) }} className="bg-blue-700 hover:bg-blue-800 text-white transition-colors w-full">+ Add to List</Button>
+              )
+              }
 
               {/* Update & Delete Buttons */}
               {isInList && (
@@ -276,9 +305,7 @@ export default function AnimeDetail() {
             {/* Anime Details */}
             <div className="bg-[#1f1f1f] text-white p-4 rounded space-y-2">
               <h3 className="font-bold mb-6">Anime Details</h3>
-              <p>Type: {anime.type || "-"}</p>
               <p>Premiered: {anime.season || "-"}</p>
-              <p>Episodes: {anime.episodes || "-"}</p>
               <p>Aired: {formatDate(anime.aired_from) || "-"} to {formatDate(anime.aired_to) || "-"}</p>
               <p>Genres: {anime.genres?.join(", ") || "-"}</p>
               <p>Studio: {anime.studio?.join(", ") || "-"}</p>
@@ -293,7 +320,24 @@ export default function AnimeDetail() {
             </div>
 
             <div className="bg-[#1f1f1f] text-white p-6">
-
+              <div className="grid grid-cols-4 text-center py-4">
+                <div>
+                  <p className="text-lg text-gray-300 tracking-wide">SCORE</p>
+                  <p className="text-4xl font-semibold mt-1">{anime.score || "N/A"}</p>
+                </div>
+                <div>
+                  <p className="text-lg text-gray-300 tracking-wide">RANK</p>
+                  <p className="text-4xl font-semibold mt-1">{anime.rank || "N/A"}</p>
+                </div>
+                <div>
+                  <p className="text-lg text-gray-300 tracking-wide">MEMBERS</p>
+                  <p className="text-4xl font-semibold mt-1">{anime.members || "N/A"}</p>
+                </div>
+                <div>
+                  <p className="text-lg text-gray-300 tracking-wide">POPULARITY</p>
+                  <p className="text-4xl font-semibold mt-1">{anime.popularity || "N/A"}</p>
+                </div>
+              </div>
             </div>
 
             <div className="bg-[#1f1f1f] text-white p-6">
@@ -301,12 +345,6 @@ export default function AnimeDetail() {
               <p className="text-white mt-2 whitespace-pre-line">{anime.synopsis || "No synopsis available."}</p>
             </div>
 
-
-
-            {/* Watch Now Button */}
-            <Button className="bg-[#B624FF] hover:bg-[#B624FF]/80 text-white px-6 py-3 text-lg w-full">
-              Watch Now
-            </Button>
           </div>
         </div>
       </main>

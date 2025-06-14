@@ -150,7 +150,7 @@ const AnimeCard = ({ anime, favourites, selectedStatus, score, onViewDetails, on
         <Popover open={openStatus} onOpenChange={setOpenStatus}>
           <PopoverTrigger asChild>
             <button className="w-full text-left p-1 rounded-md transition-all duration-200 ease-in-out hover:bg-zinc-700 hover:shadow-md
-                     flex items-center justify-between ml-[-10px]"> 
+                     flex items-center justify-between ml-[-10px]">
               <Badge
                 className={`px-3 py-1 text-sm font-medium rounded-lg text-white 
                   ${statusColors?.[selectedStatus] || 'bg-zinc-700'}`}
@@ -410,9 +410,25 @@ const AnimeBrowser: React.FC = () => {
       if (!userId) {
         return;
       }
+      const statusOrder = ["Watching", "Completed", "On-Hold", "Dropped", "Planning"];
       const fetchedAnimeList = await fetchAnimeList();
       const { enrichedAnimeList, statusMap, scoreMap } = await fetchUserAnimeData(userId, fetchedAnimeList);
-      setAnimeList(enrichedAnimeList);
+      const sortedAnimeList = enrichedAnimeList.sort((a, b) => {
+        const aStatusIndex = statusOrder.indexOf(a.status);
+        const bStatusIndex = statusOrder.indexOf(b.status);
+
+        // Move undefined or unlisted statuses to the end
+        const aRank = aStatusIndex === -1 ? Infinity : aStatusIndex;
+        const bRank = bStatusIndex === -1 ? Infinity : bStatusIndex;
+
+        if (aRank !== bRank) {
+          return aRank - bRank; // sort by status order
+        }
+
+        // If same status, sort by descending score
+        return (b.score || 0) - (a.score || 0);
+      });
+      setAnimeList(sortedAnimeList);
       setStatusMap(statusMap);
       setScoreMap(scoreMap);
     }
