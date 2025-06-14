@@ -31,46 +31,50 @@ interface Post {
 
 export function RecentPosts({ recentPosts }: { recentPosts: Post[] }) {
   return (
-    <div className="w-[300px] border-l border-zinc-800 flex flex-col">
+    <div className="w-full bg-[#1f1f1f] border-l border-zinc-800 flex flex-col">
       <div className="h-[calc(100vh-104px)] pt-4 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-zinc-800">
         <div className="px-4 pb-4">
           <h2 className="text-lg font-semibold text-white mb-4">Recent Posts</h2>
           <div className="space-y-4">
-            {recentPosts.map((post) => (
-              <Link
-                key={post.id}
-                href={`/post/${post.id}`}
-                className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50"
-              >
-                {post.image_url && (<div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md">
-                  <Image
-                    src={post.image_url || "/placeholder.svg"}
-                    alt={post.title}
-                    fill
-                    className="object-cover"
-                  />
-                </div>)}
-                <div className="overflow-hidden">
-                  <h3 className="text-sm font-medium text-white truncate max-w-xs">
-                    {post.title}
-                  </h3>
-                  <div className="mt-1 flex items-center gap-3 text-xs text-zinc-400">
-                    <span className="flex items-center gap-1">
-                      <FiHeart className="h-3 w-3" />
-                      {post.likes_count}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <FiMessageCircle className="h-3 w-3" />
-                      {post.comments_count}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Eye className="h-3 w-3" />
-                      {post.views}
-                    </span>
+            {recentPosts.length === 0 ? (
+              <p className="text-zinc-400 text-sm">No recent posts</p>
+            ) : (
+              recentPosts.map((post) => (
+                <Link
+                  key={post.id}
+                  href={`/post/${post.id}`}
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50 transition-colors"
+                >
+                  {post.image_url && (<div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md">
+                    <Image
+                      src={post.image_url || "/placeholder.svg"}
+                      alt={post.title}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>)}
+                  <div className="overflow-hidden">
+                    <h3 className="text-sm font-medium text-white truncate max-w-xs">
+                      {post.title}
+                    </h3>
+                    <div className="mt-1 flex items-center gap-3 text-xs text-zinc-400">
+                      <span className="flex items-center gap-1">
+                        <FiHeart className="h-3 w-3" />
+                        {post.likes_count}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <FiMessageCircle className="h-3 w-3" />
+                        {post.comments_count}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Eye className="h-3 w-3" />
+                        {post.views}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))
+            )}
           </div>
         </div>
       </div>

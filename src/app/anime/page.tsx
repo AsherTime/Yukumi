@@ -493,6 +493,7 @@ const AnimeBrowser: React.FC = () => {
   // Handle score change
   const handleScoreChange = async (animeId: string, newScore: number, selectedStatus: string) => {
     setScoreMap((prev) => ({ ...prev, [animeId]: newScore }));
+    setScoreMap((prev) => ({ ...prev, [animeId]: newScore }));
     setLoading(true);
     const { error } = await supabase
       .from("UserAnime")

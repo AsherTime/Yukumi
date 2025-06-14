@@ -219,7 +219,7 @@ export default function HomePage() {
           </div>
 
           {/* Right Sidebar - Feature Panel */}
-          <div className="w-1/4 hidden lg:block">
+          <div className="w-[25%] hidden lg:block">
             <RecentPosts recentPosts={recentPosts} />
           </div>
         </div>
