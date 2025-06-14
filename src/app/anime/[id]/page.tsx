@@ -161,7 +161,16 @@ export default function AnimeDetail() {
 
       setShouldUpdate(false);
     } catch (error) {
-      console.error('Error updating watchlist:', error);
+      if (error && typeof error === 'object') {
+        const errObj = error as { message?: string; details?: string };
+        console.error('Error updating watchlist:', {
+          message: errObj?.message,
+          details: errObj?.details,
+          error
+        });
+      } else {
+        console.error('Error updating watchlist:', error);
+      }
       toast.error('Failed to update watchlist. Please try again.');
     }
   };

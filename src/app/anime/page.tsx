@@ -14,6 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Command, CommandItem } from "@/components/ui/command";
+import { toast } from "sonner";
+import { handleQuickReviewer } from "@/utils/dailyTasks";
+import { awardPoints } from "@/utils/awardPoints";
 
 
 interface Anime {
@@ -102,31 +105,30 @@ const AnimeCard = ({ anime, favourites, selectedStatus,  score, onViewDetails, o
       </CardContent>
        <div className="flex flex-col gap-1 text-sm text-zinc-300 pb-2 ml-[30px]">
       {/* ─────────── Score dropdown ─────────── */}
-      {isInList && (
-        <Popover open={openScore} onOpenChange={setOpenScore}>
-          <PopoverTrigger asChild>
-            <button className="text-left w-full">
-              Your Score:&nbsp;
-              <span className="font-semibold text-white">{score ?? "-"}</span>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="p-0 w-32 bg-zinc-800 border-zinc-700">
-            <Command>
-              {scoreOptions.map((n) => (
-                <CommandItem
-                  key={n}
-                  onSelect={() => {
-                    setOpenScore(false);
-                    handleScoreChange(anime.id, n, selectedStatus);
-                  }}
-                >
-                  {n}
-                </CommandItem>
-              ))}
-            </Command>
-          </PopoverContent>
-        </Popover>
-      )}
+      <Popover open={openScore} onOpenChange={setOpenScore}>
+        <PopoverTrigger asChild>
+          <button className="text-left w-full">
+            Your Score:&nbsp;
+            <span className="font-semibold text-white">{score ?? "-"}</span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="p-0 w-32 bg-zinc-800 border-zinc-700">
+          <Command>
+            {scoreOptions.map((n) => (
+              <CommandItem
+                key={n}
+                onSelect={() => {
+                  setOpenScore(false);
+                  // If not in list, add with status 'Completed'
+                  handleScoreChange(anime.id, n, isInList ? selectedStatus : 'Completed');
+                }}
+              >
+                {n}
+              </CommandItem>
+            ))}
+          </Command>
+        </PopoverContent>
+      </Popover>
 
       {/* ─────────── Status Dropdown ─────────── */}
       <Popover open={openStatus} onOpenChange={setOpenStatus}>
@@ -451,39 +453,69 @@ const handleStatusChange = async (animeId: string, newStatus: string) => {
 
   // Handle score change
   const handleScoreChange = async (animeId: string, newScore: number, selectedStatus: string) => {
-  setScoreMap((prev) => ({ ...prev, [animeId]: newScore }));
+    setScoreMap((prev) => ({ ...prev, [animeId]: newScore }));
     setLoading(true);
     const { error } = await supabase
-  .from("UserAnime")
-  .upsert(
-    {
-      user_id: userId,
-      anime_id: animeId,
-      score: newScore,
-      status: selectedStatus,
-    },
-    {
-      onConflict: "user_id,anime_id",
-    }
-  );
-  // Update local animeList state immediately
-  setAnimeList((prevList) =>
-    prevList.map((anime) =>
-      anime.id === animeId
-        ? { ...anime, score: newScore, status: selectedStatus }
-        : anime
-    )
-  );
+      .from("UserAnime")
+      .upsert(
+        {
+          user_id: userId,
+          anime_id: animeId,
+          score: newScore,
+          status: selectedStatus,
+        },
+        {
+          onConflict: "user_id,anime_id",
+        }
+      );
 
-  // If you have separate score or status maps, update them too
-setScoreMap(prev => ({
-  ...prev,
-  [animeId]: newScore,
-}));
-setStatusMap(prev => ({
-  ...prev,
-  [animeId]: selectedStatus,
-}));
+    // Update local animeList state immediately
+    setAnimeList((prevList) =>
+      prevList.map((anime) =>
+        anime.id === animeId
+          ? { ...anime, score: newScore, status: selectedStatus }
+          : anime
+      )
+    );
+
+    // If you have separate score or status maps, update them too
+    setScoreMap(prev => ({
+      ...prev,
+      [animeId]: newScore,
+    }));
+    setStatusMap(prev => ({
+      ...prev,
+      [animeId]: selectedStatus,
+    }));
+
+    // Try to award points for the Quick Reviewer task
+    if (newScore > 0) {
+      try {
+        const wasAwarded = await handleQuickReviewer(
+          userId,
+          animeId,
+          'anime'
+        );
+
+        if (wasAwarded) {
+          toast.success('Review submitted and daily task completed! +25 XP');
+        } else {
+          // Award points for review submission even if daily task is already completed
+          await awardPoints(
+            userId,
+            'review_submitted',
+            5,
+            animeId,
+            'anime'
+          );
+          toast.success('Review submitted successfully! +5 XP');
+        }
+      } catch (pointsError) {
+        console.error('Failed to award points for review:', pointsError);
+        toast.error('Review submitted, but points system is temporarily unavailable');
+      }
+    }
+
     setLoading(false);
     if (error) console.error("Error updating score:", error.message);
   };
