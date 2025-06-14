@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { FeaturePanel } from "@/components/feature-panel";
 import { TopNav } from "@/components/top-nav";
 import useSavedPosts from "@/utils/use-saved-posts";
+import { MangaFeed } from "@/components/manga/manga-feed";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -41,7 +42,6 @@ export default function HomePage() {
   const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
-  const [selectedSidebarFilter, setSelectedSidebarFilter] = useState<string>("Recommended");
   const [followedIds, setFollowedIds] = useState<string[]>([]);
   const categories = [
     { label: "All", value: "All" },
@@ -50,7 +50,7 @@ export default function HomePage() {
     { label: "Discussion", value: "Discussion" },
     { label: "News", value: "News" },
     { label: "Following", value: "Following" },
-    { label: "Events", value: "Events" },
+    { label: "Manga", value: "Manga" },
   ];
   const [, setPage] = useState(1);
   const [hasMore,] = useState(true);
@@ -132,15 +132,6 @@ export default function HomePage() {
       </div>
     );
   }
-  const targetId = "50dc1bbd-d2cb-48c7-bd8c-494f05a4e2b0"; // replace with the actual id you're looking for
-
-  const postIMP = uniquePosts.find(p => p.id === targetId);
-
-  if (postIMP) {
-    console.log("Post:", postIMP);
-  } else {
-    console.log("Post not found");
-  }
 
   return (
     <>
@@ -164,9 +155,14 @@ export default function HomePage() {
                       key={cat.value}
                       onClick={() => { setSelectedCategory(cat.value); setPage(1); fetchPosts(true); }}
                       className={`px-5 py-2 rounded-full font-semibold transition-all duration-200 whitespace-nowrap focus:outline-none
-                        ${selectedCategory === cat.value
-                          ? "bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold shadow scale-105"
-                          : "bg-[#232232] text-zinc-300 hover:bg-gradient-to-r hover:from-pink-500 hover:to-purple-600 hover:text-white"}
+                      ${selectedCategory === cat.value
+                          ? cat.value === "Manga"
+                            ? "bg-gradient-to-r from-orange-400 to-orange-700 text-white font-bold shadow scale-105"
+                            : "bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold shadow scale-105"
+                          : cat.value === "Manga"
+                            ? "bg-[#232232] text-zinc-300 hover:bg-gradient-to-r hover:from-orange-400 hover:to-orange-700 hover:text-white"
+                            : "bg-[#232232] text-zinc-300 hover:bg-gradient-to-r hover:from-pink-500 hover:to-purple-600 hover:text-white"
+                          }
                       `}
                       style={{ boxShadow: selectedCategory === cat.value ? '0 2px 16px 0 rgba(236,72,153,0.2)' : undefined }}
                     >
@@ -177,7 +173,9 @@ export default function HomePage() {
               </div>
               {/* Posts List */}
               <AnimatePresence>
-                {uniquePosts.length === 0 ? (
+                {selectedCategory === "Manga" ? (
+                  <MangaFeed />
+                ) : uniquePosts.length === 0 ? (
                   <motion.div
                     key="no-posts"
                     initial={{ opacity: 0, y: 20 }}
@@ -190,7 +188,7 @@ export default function HomePage() {
                 ) : (
                   uniquePosts.map((post, idx) => (
                     <PostCardContainer
-                      key={post.id || idx}  // Use post.id if available, fallback to index
+                      key={post.id || idx}
                       post={post}
                       idx={idx}
                       total={uniquePosts.length}
@@ -200,8 +198,8 @@ export default function HomePage() {
                       saved={saved}
                       onToggleSave={() => toggleSave(post.id)}
                       onPostOpen={(post: Post) => {
-                        setRecentPosts(prev => {
-                          const filtered = prev.filter(p => p.id !== post.id);
+                        setRecentPosts((prev) => {
+                          const filtered = prev.filter((p) => p.id !== post.id);
                           const updated = [post, ...filtered].slice(0, 10);
                           localStorage.setItem("recentPosts", JSON.stringify(updated));
                           return updated;
@@ -209,9 +207,9 @@ export default function HomePage() {
                       }}
                     />
                   ))
-
                 )}
               </AnimatePresence>
+
               {loadingMore && (
                 <div className="text-center text-zinc-400 py-4 animate-pulse">Loading more...</div>
               )}

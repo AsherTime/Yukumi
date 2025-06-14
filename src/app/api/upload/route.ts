@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
-import { writeFile } from 'fs/promises';
-import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import ImageKit from 'imagekit';
+
+const imagekit = new ImageKit({
+  publicKey: process.env.IMAGEKIT_PUBLIC_KEY!,
+  privateKey: process.env.IMAGEKIT_PRIVATE_KEY!,
+  urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT!,
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,42 +19,32 @@ export async function POST(request: NextRequest) {
     const height = parseInt(formData.get('height') as string) || 1080;
 
     if (!file) {
-      return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
     // Process image with sharp
-    const processedImageBuffer = await sharp(buffer)
+    const processedImage = await sharp(buffer)
       .resize(width, height, {
         fit: 'inside',
-        withoutEnlargement: true
+        withoutEnlargement: true,
       })
       .webp({ quality })
       .toBuffer();
 
-    // Generate unique filename
+    // Upload to ImageKit
     const filename = `${uuidv4()}.webp`;
-    const uploadDir = join(process.cwd(), 'public', 'uploads', folder);
-    const filePath = join(uploadDir, filename);
-    
-    // Ensure upload directory exists
-    await writeFile(filePath, processedImageBuffer);
+    const result = await imagekit.upload({
+      file: processedImage,
+      fileName: filename,
+      folder: `/uploads/${folder}`,
+    });
 
-    // Return the URL path that can be used to access the image
-    const imageUrl = `/uploads/${folder}/${filename}`;
-    
-    return NextResponse.json({ url: imageUrl });
+    return NextResponse.json({ url: result.url });
   } catch (error) {
     console.error('Image upload error:', error);
-    return NextResponse.json(
-      { error: 'Failed to process image' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 });
   }
-} 
+}
