@@ -393,7 +393,7 @@ export default function CommunityIdPage() {
               <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
                 <h3 className="text-lg font-semibold mb-4">Categories</h3>
                 <div className="flex flex-wrap gap-2">
-                  {["Fanart", "Memes", "Discussion", "News", "Following", "Events"].map((category) => (
+                  {["Fanart", "Memes", "Discussion", "News", "Following"].map((category) => (
                     <button
                       key={category}
                       onClick={() => handleCategorySelect(category)}

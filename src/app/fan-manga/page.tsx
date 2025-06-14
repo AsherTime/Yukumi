@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from 'react';
 import { ArrowLeftCircle, ArrowRightCircle, BookOpenText, ChevronDown } from 'lucide-react';
 

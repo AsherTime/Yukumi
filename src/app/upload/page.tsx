@@ -427,6 +427,7 @@ export default function CoverUpload() {
             )}
           </div>
 
+
           <div className="space-y-2">
             <Label>Content</Label>
             <div className="bg-[#2A2A2A] p-2 flex gap-2 border-b border-[#3A3A3A]">
@@ -456,9 +457,9 @@ export default function CoverUpload() {
               id="editor"
               ref={editorRef}
               contentEditable
-              tabIndex={0} 
-              role="textbox" 
-              aria-multiline="true" 
+              tabIndex={0}
+              role="textbox"
+              aria-multiline="true"
               className="w-full h-64 p-4 bg-[#2A2A2A] text-white resize-none focus:outline-none border border-[#3A3A3A] rounded-lg mt-2 overflow-auto"
               onSelect={updateActiveStyles}
               onInput={(e) => {
@@ -466,7 +467,7 @@ export default function CoverUpload() {
                 setContent(safeContent);
               }}
             />
-            
+
           </div>
 
           <div className="space-y-2">
