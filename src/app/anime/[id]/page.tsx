@@ -13,26 +13,63 @@ import { supabase } from "@/lib/supabase";
 import { handleQuickReviewer } from "@/utils/dailyTasks";
 import { toast } from "sonner";
 import { awardPoints } from "@/utils/awardPoints";
+import { se } from "date-fns/locale";
+import { set } from "date-fns";
+
+type Anime = {
+  image_url: string;
+  title: string;
+  synopsis: string;
+  type: string;
+  episodes: number;
+  season: string;
+  aired_from: string;
+  aired_to: string;
+  genres: string[];
+  score: number;
+  rank: number;
+  popularity: number;
+  members: number;
+  tags: string[];
+  studio: string[]
+};
+
+type UserAnime = {
+  user_id: string;
+  anime_id: string;
+  status: string;
+  progress: number;
+  score: number;
+};
+
+function formatDate(dateStr?: string) {
+  if (!dateStr) return "-";
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 
 export default function AnimeDetail() {
-  type Anime = {
-    image_url: string;
-    title: string;
-    synopsis: string;
-  };
 
   const params = useParams();
   const id = params?.id ? String(params.id) : undefined;
   const { user } = useAuth();
   const router = useRouter();
-
+  const [isInList, setIsInList] = useState(false);
   const [, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [anime, setAnime] = useState<Anime | null>(null);
-  const [watchlistStatus, setWatchlistStatus] = useState<string | null>(null);
+  const [animeList, setAnimeList] = useState<UserAnime>();
+  const [watchlistStatus, setWatchlistStatus] = useState<string>("");
   const [progress, setProgress] = useState(1);
   const [score, setScore] = useState(1);
   const [shouldUpdate, setShouldUpdate] = useState(false);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+
 
   useEffect(() => {
     const fetchAnimeDetails = async () => {
@@ -41,7 +78,7 @@ export default function AnimeDetail() {
       try {
         const data = await supabase
           .from("Anime")
-          .select("image_url, title, synopsis")
+          .select("*")
           .eq("id", id)
           .single();
         setAnime(data.data);
@@ -52,65 +89,32 @@ export default function AnimeDetail() {
         setLoading(false);
       }
     };
-
+    const inList = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("UserAnime")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("anime_id", id)
+        .maybeSingle();
+      if (error) throw error;
+      setIsInList(!!data);
+      setAnimeList(data || null);
+      setWatchlistStatus(data?.status || "");
+      setProgress(data?.progress || 1);
+      setScore(data?.score || 1);
+    }
     if (id) {
       fetchAnimeDetails();
+      inList();
     }
-  }, [id]);
+  }, [id, user]);
 
   useEffect(() => {
-    const upsertUserAnime = async () => {
-      if (!user?.id || !shouldUpdate || !watchlistStatus || watchlistStatus === "Add to My List") return;
+    console.log("Anime? :", isInList);
+    console.log("Anime List:", animeList);
+  }, [animeList]);
 
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-
-      if (sessionError || !session) {
-        console.error("Error retrieving session:", sessionError);
-        setError("Please sign in to update your anime list.");
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          "https://rhspkjpeyewjugifcvil.supabase.co/functions/v1/upsert-user-anime",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({
-              user_id: user.id,
-              anime_id: id,
-              status: watchlistStatus,
-              progress,
-              score,
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error("Failed to call edge function:", errorText);
-          setError("Failed to update your anime list. Please try again later.");
-          return;
-        }
-
-        const result = await response.json();
-        console.log("Edge function result:", result);
-      } catch (error) {
-        console.error("Error calling edge function:", error);
-        setError("An unexpected error occurred. Please try again later.");
-      } finally {
-        setShouldUpdate(false);
-      }
-    };
-
-    upsertUserAnime();
-  }, [shouldUpdate, user, id, watchlistStatus, progress, score]);
 
   const handleUpdate = async () => {
     if (!user || !id) return;
@@ -119,63 +123,51 @@ export default function AnimeDetail() {
       // Update watchlist status and progress
       const { error } = await supabase
         .from("UserAnime")
-        .upsert({
-          user_id: user.id,
-          anime_id: id,
-          status: watchlistStatus,
-          progress: progress,
-          score: score,
-        });
+        .upsert(
+          {
+            user_id: user.id,
+            anime_id: id,
+            status: watchlistStatus,
+            score: score,
+          },
+          {
+            onConflict: 'user_id,anime_id'
+          }
+        )
 
       if (error) throw error;
 
-      // If a score was provided, try to award points for the Quick Reviewer task
-      if (score > 0) {
-        try {
-          const wasAwarded = await handleQuickReviewer(
-            user.id,
-            id,
-            'anime'
-          );
-
-          if (wasAwarded) {
-            toast.success('Review submitted and daily task completed! +25 XP');
-          } else {
-            // Award points for review submission even if daily task is already completed
-            await awardPoints(
-              user.id,
-              'review_submitted',
-              15,
-              id,
-              'anime'
-            );
-            toast.success('Review submitted successfully! +15 XP');
-          }
-        } catch (pointsError) {
-          console.error('Failed to award points for review:', pointsError);
-          toast.warning('Review submitted, but points system is temporarily unavailable');
-        }
-      } else {
-        toast.success('Watchlist updated successfully!');
-      }
-
       setShouldUpdate(false);
-    } catch (error) {
-      if (error && typeof error === 'object') {
-        const errObj = error as { message?: string; details?: string };
-        console.error('Error updating watchlist:', {
-          message: errObj?.message,
-          details: errObj?.details,
-          error
-        });
-      } else {
-        console.error('Error updating watchlist:', error);
-      }
+      setUpdateSuccess(true);
+    } catch (error: any) {
+      console.error('Error updating watchlist:', error?.message || error);
+      console.log('Full error object:', error);
       toast.error('Failed to update watchlist. Please try again.');
     }
   };
 
-  const handleJoinCommunity = async () => {
+  const handleDelete = async () => {
+    if (!user || !id) return;
+
+    try {
+      const { error } = await supabase
+        .from("UserAnime")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("anime_id", id);
+      if (error) throw error;
+      setIsInList(false);
+      setWatchlistStatus("");
+      setProgress(1);
+      setScore(1);
+      toast.success('Anime removed from your list successfully!');
+    } catch (error) {
+      console.error('Error deleting anime from list:', error);
+      toast.error('Failed to remove anime from your list. Please try again.');
+    }
+  };
+
+  const handleVisitCommunity = async () => {
     if (!id) return;
     // Fetch the community for this anime
     const { data: community, error } = await supabase
@@ -191,7 +183,7 @@ export default function AnimeDetail() {
   };
 
   if (error) return <p className="text-center text-red-500">{error}</p>;
-  if (!anime) return <p className="text-center text-gray-400">Anime not found</p>;
+  if (!anime) return <p className="text-center text-gray-400">Loading anime...</p>;
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-12">
@@ -202,108 +194,114 @@ export default function AnimeDetail() {
           {/* Left Column - Image & Community */}
           <div className="space-y-4">
             {/* Anime Image */}
-            <div className="bg-white p-4 flex justify-center items-center h-[400px] relative">
+            <div className="p-4 flex justify-center items-center relative" style={{ maxHeight: '400px' }}>
               <Image
                 src={anime.image_url || "/placeholder.svg"}
                 alt={anime.title || "Anime image"}
-                fill
-                className="rounded-lg object-contain"
+                width={500}
+                height={400}
+                className="rounded-lg object-contain w-full h-full"
               />
             </div>
 
+
             {/* Join Community Button */}
             <button
-              className="w-full py-3 bg-[#4f74c8] text-white font-medium rounded hover:bg-[#1c439b] transition-colors"
-              onClick={handleJoinCommunity}
+              className="w-full py-3  text-white font-medium rounded bg-[#B624FF] hover:bg-[#B624FF]/80 transition-colors"
+              onClick={handleVisitCommunity}
             >
-              JOIN COMMUNITY
+              VISIT COMMUNITY
             </button>
 
-            {/* Streaming Platforms */}
-            <div className="bg-[#f8f8f8] text-black p-4 rounded">
-              <h3 className="font-bold mb-3">Streaming Platforms</h3>
-              <div className="space-y-3">
-                <Link href="https://www.crunchyroll.com" className="flex items-center space-x-2 hover:bg-gray-200 p-1 rounded">
-                  <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center">
-                    <span className="text-white text-xs">CR</span>
-                  </div>
-                  <span>Crunchyroll</span>
-                </Link>
-
-                <Link href="https://www.netflix.com" className="flex items-center space-x-2 hover:bg-gray-200 p-1 rounded">
-                  <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center">
-                    <span className="text-white text-xs">N</span>
-                  </div>
-                  <span>Netflix</span>
-                </Link>
-
-                <button className="flex items-center text-[#1c439b] hover:underline">
-                  <ChevronDown className="h-4 w-4 mr-1" />
-                  <span>More services</span>
-                </button>
-
-                <p className="text-xs text-gray-500 mt-2">May be unavailable in your region.</p>
+            <div className="bg-[#1f1f1f] text-white p-4 rounded space-y-4 mt-4">
+              {/* Status Dropdown */}
+              <div>
+                <label htmlFor="status" className="block text-sm font-medium text-white mb-1">Status</label>
+                <select
+                  id="status"
+                  value={watchlistStatus}
+                  onChange={(e) => setWatchlistStatus(e.target.value)}
+                  className="w-full p-2 rounded bg-zinc-800 text-white border border-zinc-600"
+                >
+                  {!isInList && <option value="">Add to List</option>}
+                  <option value="Watching">Watching</option>
+                  <option value="Completed">Completed</option>
+                  <option value="On-Hold">On-Hold</option>
+                  <option value="Dropped">Dropped</option>
+                  <option value="Planning">Planning</option>
+                </select>
               </div>
+
+              {/* Score Dropdown - only show if anime is in list */}
+              {isInList && (
+                <div>
+                  <label htmlFor="score" className="block text-sm font-medium text-white mb-1">Score</label>
+                  <select
+                    id="score"
+                    value={score}
+                    onChange={(e) => setScore(parseInt(e.target.value))}
+                    className="w-full p-2 rounded bg-zinc-800 text-white border border-zinc-600"
+                  >
+                    <option value="">Select Score</option>
+                    {[...Array(10)].map((_, i) => (
+                      <option key={i + 1} value={i + 1}>{i + 1}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Update & Delete Buttons */}
+              {isInList && (
+                <div className="flex space-x-4">
+                  <button
+                    onClick={handleUpdate}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                  >
+                    Update
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
+                  >
+                    Delete
+                  </button>
+                  {updateSuccess && (
+                    <span className="text-green-400 text-lg pt-1">Updated!</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+
+            {/* Anime Details */}
+            <div className="bg-[#1f1f1f] text-white p-4 rounded space-y-2">
+              <h3 className="font-bold mb-6">Anime Details</h3>
+              <p>Type: {anime.type || "-"}</p>
+              <p>Premiered: {anime.season || "-"}</p>
+              <p>Episodes: {anime.episodes || "-"}</p>
+              <p>Aired: {formatDate(anime.aired_from) || "-"} to {formatDate(anime.aired_to) || "-"}</p>
+              <p>Genres: {anime.genres?.join(", ") || "-"}</p>
+              <p>Studio: {anime.studio?.join(", ") || "-"}</p>
             </div>
           </div>
 
           {/* Right Column - Anime Details */}
           <div className="md:col-span-3 space-y-4">
             {/* Title & Synopsis */}
-            <div className="bg-white text-black p-6">
+            <div className="bg-[#1f1f1f] text-white p-6">
               <h1 className="text-3xl font-bold">{anime.title}</h1>
-              <p className="text-gray-700 mt-2">{anime.synopsis || "No synopsis available."}</p>
             </div>
 
-            {/* Watchlist Actions */}
-            <div className="bg-white p-4 rounded shadow">
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { label: "Add to My List", icon: <ListPlus className="h-4 w-4 mr-2" />, status: "Add to My List" },
-                  { label: "CURRENTLY WATCHING", icon: <Play className="h-4 w-4 mr-2" />, status: "Currently Watching" },
-                  { label: "PLAN TO WATCH", icon: <Calendar className="h-4 w-4 mr-2" />, status: "Plan to Watch" },
-                  { label: "ON-HOLD", icon: <Pause className="h-4 w-4 mr-2" />, status: "On-Hold" },
-                  { label: "DROPPED", icon: <X className="h-4 w-4 mr-2" />, status: "Dropped" },
-                  { label: "COMPLETED", icon: <Check className="h-4 w-4 mr-2" />, status: "Completed" },
-                ].map(({ label, icon, status }) => (
-                  <button
-                    key={status}
-                    onClick={() => setWatchlistStatus(status)}
-                    className={`flex items-center px-3 py-1.5 rounded text-sm 
-                    ${watchlistStatus === status ? "bg-[#1c439b] text-white" : "bg-[#f8f8f8] text-[#323232] hover:bg-gray-300"}`}
-                  >
-                    {icon}
-                    {label}
-                  </button>
-                ))}
-              </div>
+            <div className="bg-[#1f1f1f] text-white p-6">
 
-              {/* Progress & Score Inputs */}
-              <div className="mt-4 flex items-center space-x-4">
-                {/* Progress Control */}
-                <div className="flex items-center space-x-2">
-                  <button onClick={() => setProgress((prev) => Math.max(prev - 1, 0))} className="px-2 py-1 bg-gray-300 rounded">➖</button>
-                  <span className="text-gray-800 font-medium">{progress} Episodes</span>
-                  <button onClick={() => setProgress((prev) => prev + 1)} className="px-2 py-1 bg-gray-300 rounded">➕</button>
-                </div>
-
-                {/* Score Selection */}
-                <select value={score} onChange={(e) => setScore(Number(e.target.value))} className="text-gray-800 font-medium">
-                  <option value={0}>Select Score</option>
-                  {[...Array(10)].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      {i + 1}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button
-                onClick={handleUpdate}
-                className="mt-4 w-full bg-[#1c439b] text-white py-2 rounded font-medium hover:bg-[#162e6a] transition"
-              >
-                Update
-              </button>
             </div>
+
+            <div className="bg-[#1f1f1f] text-white p-6">
+              <h3 className="text-lg font-semibold mb-4">Synopsis</h3>
+              <p className="text-white mt-2 whitespace-pre-line">{anime.synopsis || "No synopsis available."}</p>
+            </div>
+
+
 
             {/* Watch Now Button */}
             <Button className="bg-[#B624FF] hover:bg-[#B624FF]/80 text-white px-6 py-3 text-lg w-full">
