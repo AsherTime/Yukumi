@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.170.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-serve(async (req) => {
+serve(async (req: Request) => {
   console.log("Function started - Request received");
   
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -23,7 +23,7 @@ serve(async (req) => {
     const requestBody = await req.json();
     console.log("Request body:", JSON.stringify(requestBody));
     
-    const { user_id } = requestBody;
+    const { user_id, mood } = requestBody as { user_id: string; mood?: string };
     console.log("Extracted user_id:", user_id);
 
     if (!user_id) {
@@ -95,6 +95,7 @@ serve(async (req) => {
       tags,
       watch_type,
       length_preference,
+      country_preference,
     } = latestQuiz;
 
     // Step 2: Query Anime table for matches
@@ -115,8 +116,27 @@ serve(async (req) => {
       query = query.eq("type", watch_type);
     }
     if (length_preference && typeof length_preference === 'string') {
-      const maxEpisodes = length_preference === 'short' ? 12 : 999;
+      const maxEpisodes = length_preference === 'Short' ? 12 : 999;
       query = query.lte("episodes", maxEpisodes);
+    }
+    if (country_preference && country_preference !== "any") {
+      query = query.eq("country", country_preference);
+    }
+
+    // Mood mapping to tags
+    if (mood) {
+      const moodMap: Record<string, string[]> = {
+        "Happy": ["Comedy", "Slice of Life"],
+        "Sad": ["Tragedy", "Emotional"],
+        "Hype": ["Action", "Shounen"],
+        "Relaxed": ["Slice of Life", "Slow-Paced"],
+        "Romantic": ["Romance", "Drama"]
+      };
+
+      const moodTags = moodMap[mood];
+      if (moodTags) {
+        query = query.or(moodTags.map((tag: string) => `tags.cs.{${tag}}`).join(","));
+      }
     }
 
     const { data: animeList, error: animeError } = await query;
@@ -186,11 +206,11 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.log("Unexpected error:", error);
     return new Response(JSON.stringify({ 
       error: "Internal server error",
-      details: error.message,
+      details: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
