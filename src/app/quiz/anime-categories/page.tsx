@@ -7,6 +7,8 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Button } from "@/components/ui/button"
 import { ChevronsLeft, ChevronsRight } from "lucide-react"
 import Link from "next/link"
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useRouter } from 'next/navigation'
 
 interface Category {
   id: string
@@ -39,6 +41,9 @@ const categories: Category[] = [
 export default function AnimeCategories() {
   const [selectedCategories, setSelectedCategories] = React.useState<Set<string>>(new Set())
   const [selectedOptions, setSelectedOptions] = React.useState<{ [key: string]: Set<string> }>({})
+  const [isSaving, setIsSaving] = React.useState(false)
+  const supabase = createClientComponentClient()
+  const router = useRouter()
 
   const toggleCategory = (categoryId: string) => {
     const newSelected = new Set(selectedCategories)
@@ -69,6 +74,57 @@ export default function AnimeCategories() {
       ...selectedOptions,
       [categoryId]: newOptions,
     })
+  }
+
+  const handleNext = async () => {
+    try {
+      setIsSaving(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        throw new Error('No session found')
+      }
+
+      // Save selected categories
+      for (const categoryId of selectedCategories) {
+        await supabase.from('user_preferences').insert({
+          user_id: session.user.id,
+          preference_type: 'category',
+          preference_key: categoryId,
+          preference_value: {
+            name: categories.find(c => c.id === categoryId)?.name,
+            selected: true
+          }
+        })
+      }
+
+      // Save selected options
+      for (const [categoryId, options] of Object.entries(selectedOptions)) {
+        for (const option of options) {
+          await supabase.from('user_preferences').insert({
+            user_id: session.user.id,
+            preference_type: 'category_option',
+            preference_key: `${categoryId}_${option}`,
+            preference_value: {
+              category_id: categoryId,
+              option: option
+            }
+          })
+        }
+      }
+
+      // Update quiz progress
+      await supabase
+        .from('user_quiz_progress')
+        .update({ current_step: 3 }) // Assuming this is step 2
+        .eq('user_id', session.user.id)
+
+      router.push('/quiz/find-anime')
+    } catch (error) {
+      console.error('Error saving preferences:', error)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -131,12 +187,14 @@ export default function AnimeCategories() {
               Previous
             </Button>
           </Link>
-          <Link href="/quiz/last-quiz">
-            <Button className="bg-[#B624FF] hover:bg-[#B624FF]/80 text-white">
-              Next
-              <ChevronsRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
+          <Button 
+            onClick={handleNext}
+            disabled={isSaving || selectedCategories.size === 0}
+            className="bg-[#B624FF] hover:bg-[#B624FF]/80 text-white"
+          >
+            {isSaving ? 'Saving...' : 'Next'}
+            <ChevronsRight className="ml-2 h-5 w-5" />
+          </Button>
         </div>
       </div>
     </div>

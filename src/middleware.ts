@@ -2,11 +2,6 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-interface QuizProgress {
-  status: 'not_started' | 'in_progress' | 'completed'
-  current_step: number
-}
-
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const supabase = createMiddlewareClient({ req, res });
@@ -15,67 +10,31 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  // If user is not logged in, allow access to auth pages
+  // If user is not logged in, let them access the page
   if (!session) {
-    if (req.nextUrl.pathname.startsWith('/auth')) {
-      return res;
-    }
-    // Redirect to login if trying to access protected routes
-    return NextResponse.redirect(new URL('/auth/login', req.url));
+    return res;
   }
 
-  // Check if user has completed profile setup
-  const { data: profileProgress } = await supabase
+  // Check if user has completed the quiz
+  const { data: quizProgress } = await supabase
     .from('user_quiz_progress')
     .select('status, current_step')
     .eq('user_id', session.user.id)
-    .single() as { data: QuizProgress | null };
+    .single();
 
-  // If profile setup not started, redirect to profile setup
-  if (!profileProgress) {
-    if (req.nextUrl.pathname.startsWith('/profile-setup')) {
-      return res;
-    }
-    return NextResponse.redirect(new URL('/profile-setup', req.url));
+  // If no quiz progress exists, create one
+  if (!quizProgress) {
+    await supabase.from('user_quiz_progress').insert({
+      user_id: session.user.id,
+      status: 'not_started',
+      current_step: 1
+    });
   }
 
-  // If profile setup in progress but not completed
-  if (profileProgress.status === 'in_progress') {
-    if (req.nextUrl.pathname.startsWith('/profile-setup') || req.nextUrl.pathname.startsWith('/quiz')) {
-      return res;
-    }
-    return NextResponse.redirect(new URL('/profile-setup', req.url));
-  }
-
-  // If profile setup completed but quiz not started
-  if (profileProgress.status === 'completed' && profileProgress.current_step === 1) {
-    if (req.nextUrl.pathname.startsWith('/quiz')) {
-      return res;
-    }
+  // If quiz is not completed and user is not on a quiz page, redirect to quiz
+  const isQuizPage = req.nextUrl.pathname.startsWith('/quiz');
+  if (quizProgress?.status !== 'completed' && !isQuizPage) {
     return NextResponse.redirect(new URL('/quiz/join-communities', req.url));
-  }
-
-  // If quiz in progress
-  if (profileProgress.status === 'in_progress') {
-    const quizSteps = [
-      '/quiz/join-communities',
-      '/quiz/anime-categories',
-      '/quiz/find-anime',
-      '/quiz/anime-database',
-      '/quiz/last-quiz'
-    ];
-    
-    const currentStep = quizSteps[profileProgress.current_step - 1];
-    
-    if (req.nextUrl.pathname.startsWith('/quiz')) {
-      // Allow access to current step and previous steps
-      const requestedStep = quizSteps.findIndex(step => req.nextUrl.pathname.startsWith(step));
-      if (requestedStep <= profileProgress.current_step - 1) {
-        return res;
-      }
-      return NextResponse.redirect(new URL(currentStep, req.url));
-    }
-    return NextResponse.redirect(new URL(currentStep, req.url));
   }
 
   return res;
@@ -84,12 +43,13 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
+     * Match all request paths except:
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
+     * - auth routes
      */
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|auth).*)',
   ],
 };
