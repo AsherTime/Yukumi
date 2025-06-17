@@ -6,6 +6,8 @@ import { TopNav } from "@/components/top-nav"
 import { awardPoints } from '@/utils/awardPoints'
 import { wasTaskCompletedToday } from '@/utils/dailyTasks'
 import { supabase } from '@/lib/supabase'
+import WeeklyStatsSidebar from "@/components/weekly-stats-sidebar"
+import Footer from "@/components/footer"
 
 // Minimal Card component for self-containment
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -274,7 +276,7 @@ function BackgroundElements() {
       ))}
       {/* Forming stars at the top */}
       {formingStars.map((star) => (
-        <FormingStar key={star.id} left={star.left} onEnd={() => {}} />
+        <FormingStar key={star.id} left={star.left} onEnd={() => { }} />
       ))}
       {/* Looping falling stars */}
       {fallingStars.map((star) => (
@@ -415,6 +417,7 @@ export default function TrackerPage() {
     quickReviewer: false,
   });
 
+
   // Get the current user (adjust for your auth setup)
   const [userId, setUserId] = useState<string | null>(null)
   useEffect(() => {
@@ -490,36 +493,44 @@ export default function TrackerPage() {
   }
 
   const fetchCozyReflection = async () => {
-    setIsLoadingReflection(true)
-    setReflection("")
-    setIsModalOpen(true)
+    setIsLoadingReflection(true);
+    setReflection("");
+    setIsModalOpen(true);
     try {
-      let chatHistory = []
-      const prompt = `Generate a short, comforting, and reflective thought or a gentle affirmation, similar in style to calming anime narration or a peaceful journal entry. It should evoke a sense of quiet contemplation and personal journey. Do not include any character names or specific anime titles. Keep it concise, around 1-3 sentences.`
-      chatHistory.push({ role: "user", parts: [{ text: prompt }] })
-      const payload = { contents: chatHistory }
-      const apiKey = ""
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
+      const prompt = `Generate a short, comforting, and reflective thought or a gentle affirmation, similar in style to calming anime narration or a peaceful journal entry. It should evoke a sense of quiet contemplation and personal journey. Do not include any character names or specific anime titles. Keep it concise, around 1-3 sentences.`;
+
+      const chatHistory = [
+        { role: "user", parts: [{ text: prompt }] }
+      ];
+
+      const payload = { contents: chatHistory };
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
       const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      const result = await response.json()
-      if (result.candidates && result.candidates.length > 0 &&
-        result.candidates[0].content && result.candidates[0].content.parts &&
-        result.candidates[0].content.parts.length > 0) {
-        const text = result.candidates[0].content.parts[0].text
-        setReflection(text)
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (
+        result.candidates?.[0]?.content?.parts?.[0]?.text
+      ) {
+        setReflection(result.candidates[0].content.parts[0].text);
       } else {
-        setReflection("Failed to generate a reflection. Please try again.")
+        console.warn("Unexpected response:", result);
+        setReflection("Failed to generate a reflection. Please try again.");
       }
     } catch (error) {
-      setReflection("Error generating reflection. Please check your connection.")
+      console.error("Error generating reflection:", error);
+      setReflection("Error generating reflection. Please check your connection.");
     } finally {
-      setIsLoadingReflection(false)
+      setIsLoadingReflection(false);
     }
-  }
+  };
+
 
   const closeModal = () => {
     setIsModalOpen(false)
@@ -568,92 +579,74 @@ export default function TrackerPage() {
       status: dailyTasks.quickReviewer ? "Completed" : "Available",
       color: "from-amber-500 to-orange-600",
     },
-    {
-      id: 4,
-      title: "Badge Display",
-      icon: Trophy,
-      value: "12",
-      status: "Earned",
-      color: "from-purple-500 to-violet-600",
-    },
-    {
-      id: 5,
-      title: "Weekly Stats",
-      icon: BarChart3,
-      value: "94%",
-      status: "Progress",
-      color: "from-pink-500 to-rose-600",
-    },
-    {
-      id: 6,
-      title: "Daily Login",
-      icon: Flame,
-      value: "15",
-      status: "Day Streak",
-      color: "from-red-500 to-orange-600",
-    },
   ];
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden"
-      style={{
-        fontFamily: "'Inter', sans-serif",
-        backgroundColor: customColors['cozy-bg-dark'],
-      }}
+      className="min-h-screen flex flex-col relative"
+      style={{ fontFamily: "'Inter', sans-serif" }}
     >
-      {/* Top Navigation Bar */}
-      <TopNav />
-      {/* Background Image */}
-      <img
-        src="https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Leonardo_Anime_XL_Generate_a_wide_horizontal_image_for_a_websi_1.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hMDVhOTMwNi0zYmRiLTQ5YjQtYWRkNi0xYzIxMzY4YmM3MDEiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9MZW9uYXJkb19BbmltZV9YTF9HZW5lcmF0ZV9hX3dpZGVfaG9yaXpvbnRhbF9pbWFnZV9mb3JfYV93ZWJzaV8xLmpwZyIsImlhdCI6MTc0ODk1Mjc3MSwiZXhwIjoxNzgwNDg4NzcxfQ.IO6-n-02I5PJ846RBHG3l3X0VRmOR_Ri2SPsAHP33lc"
-        alt="Cozy Anime Background"
-        className="object-cover w-full h-full fixed inset-0 z-0 blur-[2.25px] brightness-70 grayscale-[0.07]"
-        style={{ pointerEvents: 'none', filter: 'blur(2.25px) brightness(0.7) grayscale(0.07)' }}
-      />
-      {/* Overlay for extra darkness and readability */}
-      <div className="absolute inset-0 bg-black/70 z-0" />
-      {/* Floating and falling stars, hexagons */}
-      <BackgroundElements />
-      {/* Main content */}
-      <div className="relative z-10 flex flex-col items-center w-full max-w-4xl mx-auto pt-24">
-        {/* Tracker Score Orb */}
-        <div className="flex flex-col items-center mt-8 mb-6">
-          <TrackerScore score={score} />
-        </div>
-        {/* Level Bar */}
-        <LevelBar level={level} levelName={levelName} progress={levelProgress} />
-        {/* View Details Button */}
-        <button
-          className="mt-6 mb-4 px-6 py-2 rounded-full bg-gray-800 text-gray-200 font-semibold shadow hover:bg-gray-700 transition"
-          style={{ fontSize: '1.1rem' }}
-        >
-          View Details
-        </button>
-        {/* Cozy Reflection Button */}
-        <button
-          onClick={fetchCozyReflection}
-          className="mb-10 px-8 py-3 rounded-full text-lg font-semibold transition-all duration-300 ease-in-out"
-          style={{
-            backgroundColor: customColors['cozy-button-bg'],
-            color: customColors['cozy-text-light'],
-            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-            textShadow: '0 0 5px rgba(0,0,0,0.3)',
-          }}
-          onMouseEnter={e => e.currentTarget.style.backgroundColor = customColors['cozy-button-hover']}
-          onMouseLeave={e => e.currentTarget.style.backgroundColor = customColors['cozy-button-bg']}
-          disabled={isLoadingReflection}
-        >
-          {isLoadingReflection ? 'Reflecting...' : 'Get a Cozy Reflection'}
-        </button>
-        {/* Feature Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full mb-12">
-          {features.map((feature) => (
-            <FeatureCard key={feature.id} feature={feature} />
-          ))}
-        </div>
+      {/* Background Layer */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <img
+          src="https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Leonardo_Anime_XL_Generate_a_wide_horizontal_image_for_a_websi_1.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hMDVhOTMwNi0zYmRiLTQ5YjQtYWRkNi0xYzIxMzY4YmM3MDEiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9MZW9uYXJkb19BbmltZV9YTF9HZW5lcmF0ZV9hX3dpZGVfaG9yaXpvbnRhbF9pbWFnZV9mb3JfYV93ZWJzaV8xLmpwZyIsImlhdCI6MTc1MDA5MDEwOSwiZXhwIjoxNzgxNjI2MTA5fQ.fWu7BWc3R8PgN7n8Q8XrSS0sK3m8jC5Rub8EVZP6LUk"
+          className="object-cover w-full h-full blur-[2.25px] brightness-70 grayscale-[0.07]"
+          style={{ pointerEvents: 'none' }}
+          alt="Background"
+        />
+        <div className="absolute inset-0 bg-black/50" />
       </div>
-      {/* Reflection Modal */}
+
+      {/* Content Layer */}
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <TopNav />
+        <BackgroundElements />
+
+        {/* Main Row Layout */}
+        <div className="flex-grow pt-24 w-full flex justify-center">
+          <div className="flex w-full max-w-[1280px] gap-8">
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col items-center">
+              <div className="flex flex-col items-center mt-8 mb-6">
+                <TrackerScore score={score} />
+              </div>
+              <LevelBar level={level} levelName={levelName} progress={levelProgress} />
+              <button
+                onClick={fetchCozyReflection}
+                disabled={isLoadingReflection}
+                className="mb-10 mt-10 px-8 py-3 rounded-full text-lg font-semibold transition-all duration-300 ease-in-out"
+                style={{
+                  backgroundColor: customColors['cozy-button-bg'],
+                  color: customColors['cozy-text-light'],
+                  boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+                  textShadow: '0 0 5px rgba(0,0,0,0.3)',
+                }}
+              >
+                {isLoadingReflection ? 'Reflecting...' : 'Get a Cozy Reflection'}
+              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full mb-12">
+                {features.map((feature) => (
+                  <FeatureCard key={feature.id} feature={feature} />
+                ))}
+              </div>
+            </div>
+
+            {/* Right Sidebar */}
+            <div
+              className="hidden lg:block w-[260px] rounded-xl p-6"
+              style={{
+                backgroundColor: customColors['cozy-bg-dark'],
+              }}
+            >
+              <WeeklyStatsSidebar />
+            </div>
+          </div>
+        </div>
+
+        <Footer />
+      </div>
+
+      {/* Modal */}
       {isModalOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50"
@@ -666,7 +659,7 @@ export default function TrackerPage() {
               backdropFilter: 'blur(10px)',
               border: `1px solid ${customColors['cozy-star-glow-light']}`,
             }}
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <button
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-200 text-2xl"
@@ -688,5 +681,8 @@ export default function TrackerPage() {
         </div>
       )}
     </div>
+
+
+
   )
 } 

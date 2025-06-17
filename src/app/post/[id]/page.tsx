@@ -63,6 +63,7 @@ interface Post {
   likes_count: number;
   comments_count: number;
   liked_by_user: boolean;
+  saved_by_user: boolean; 
   image_url: string;
   animetitle_post: string | null;
   post_collections: string | null;
@@ -272,33 +273,7 @@ const PostPage = () => {
         setComments((prev) => [commentData, ...prev]);
         setNewComment('');
 
-        // Try to award points for both regular comment and daily task
-        try {
-          // Award regular comment points
-          await awardPoints(
-            user.id,
-            'comment_post',
-            POINTS.comment_post,
-            String(id),
-            'post'
-          );
-
-          // Try to award daily task points
-          const wasAwarded = await handleCommentComrade(
-            user.id,
-            String(id),
-            'post'
-          );
-
-          if (wasAwarded) {
-            toast.success('Comment added and daily task completed! +15 XP');
-          } else {
-            toast.success('Comment added and points awarded!');
-          }
-        } catch (pointsError) {
-          console.error('Failed to award points for comment:', pointsError);
-          toast.warning('Comment added, but points system is temporarily unavailable');
-        }
+        
       }
     } catch (error) {
       console.error('Error adding comment:', error);

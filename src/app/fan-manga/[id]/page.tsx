@@ -13,6 +13,19 @@ export default function FanMangaReadPage() {
 
   useEffect(() => {
     if (!mangaId) return;
+    const incrementViews = async () => {
+      const { error } = await supabase.rpc("increment_fan_story_views", {
+        story_id: mangaId,
+      });
+      if (error) console.error("Failed to increment views:", error.message);
+    };
+
+    incrementViews();
+  }, [params]);
+
+
+  useEffect(() => {
+    if (!mangaId) return;
     const fetchManga = async () => {
       setLoading(true);
       const { data, error } = await supabase

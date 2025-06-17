@@ -50,7 +50,7 @@ export default function HomePage() {
     { label: "Discussion", value: "Discussion" },
     { label: "News", value: "News" },
     { label: "Following", value: "Following" },
-    { label: "Manga", value: "Manga" },
+    { label: "Fanfic", value: "Fanfic" },
   ];
   const [, setPage] = useState(1);
   const [hasMore,] = useState(true);
@@ -156,10 +156,10 @@ export default function HomePage() {
                       onClick={() => { setSelectedCategory(cat.value); setPage(1); fetchPosts(true); }}
                       className={`px-5 py-2 rounded-full font-semibold transition-all duration-200 whitespace-nowrap focus:outline-none
                       ${selectedCategory === cat.value
-                          ? cat.value === "Manga"
+                          ? cat.value === "Fanfic"
                             ? "bg-gradient-to-r from-orange-400 to-orange-700 text-white font-bold shadow scale-105"
                             : "bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold shadow scale-105"
-                          : cat.value === "Manga"
+                          : cat.value === "Fanfic"
                             ? "bg-[#232232] text-zinc-300 hover:bg-gradient-to-r hover:from-orange-400 hover:to-orange-700 hover:text-white"
                             : "bg-[#232232] text-zinc-300 hover:bg-gradient-to-r hover:from-pink-500 hover:to-purple-600 hover:text-white"
                           }
@@ -173,7 +173,7 @@ export default function HomePage() {
               </div>
               {/* Posts List */}
               <AnimatePresence>
-                {selectedCategory === "Manga" ? (
+                {selectedCategory === "Fanfic" ? (
                   <MangaFeed />
                 ) : uniquePosts.length === 0 ? (
                   <motion.div

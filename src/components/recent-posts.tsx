@@ -31,10 +31,10 @@ interface Post {
 
 export function RecentPosts({ recentPosts }: { recentPosts: Post[] }) {
   return (
-    <div className="w-full bg-[#1f1f1f] border-l border-zinc-800 flex flex-col">
+    <div className="w-full bg-zinc-900/80 border-l border-zinc-800/60 rounded-2xl flex flex-col">
       <div className="h-[calc(100vh-104px)] pt-4 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-zinc-800">
         <div className="px-4 pb-4">
-          <h2 className="text-lg font-semibold text-white mb-4">Recent Posts</h2>
+          <h2 className="text-lg font-semibold  text-white mb-4">Recent Posts</h2>
           <div className="space-y-4">
             {recentPosts.length === 0 ? (
               <p className="text-zinc-400 text-sm">No recent posts</p>
