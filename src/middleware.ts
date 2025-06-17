@@ -2,21 +2,39 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
+export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req: request, res });
+  const supabase = createMiddlewareClient({ req, res });
 
-  // Refresh session if expired
-  await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  // Allow access to public uploads
-  if (request.nextUrl.pathname.startsWith('/uploads/')) {
-    return NextResponse.next();
+  // If user is not logged in, let them access the page
+  if (!session) {
+    return res;
   }
 
-  // Allow access to the upload API endpoint
-  if (request.nextUrl.pathname === '/api/upload') {
-    return NextResponse.next();
+  // Check if user has completed the quiz
+  const { data: quizProgress } = await supabase
+    .from('user_quiz_progress')
+    .select('status, current_step')
+    .eq('user_id', session.user.id)
+    .single();
+
+  // If no quiz progress exists, create one
+  if (!quizProgress) {
+    await supabase.from('user_quiz_progress').insert({
+      user_id: session.user.id,
+      status: 'not_started',
+      current_step: 1
+    });
+  }
+
+  // If quiz is not completed and user is not on a quiz page, redirect to quiz
+  const isQuizPage = req.nextUrl.pathname.startsWith('/quiz');
+  if (quizProgress?.status !== 'completed' && !isQuizPage) {
+    return NextResponse.redirect(new URL('/quiz/join-communities', req.url));
   }
 
   return res;
@@ -24,6 +42,14 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     * - auth routes
+     */
+    '/((?!_next/static|_next/image|favicon.ico|public|auth).*)',
   ],
 };

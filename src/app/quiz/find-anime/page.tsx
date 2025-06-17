@@ -17,7 +17,7 @@ import { toast } from "sonner"
 import Image from "next/image"
 import { ChevronsLeft, ChevronsRight, Heart, RefreshCw, Play } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 interface QuizAnswer {
   watchType: string
@@ -50,28 +50,41 @@ interface Question {
 export default function FindAnimeQuiz() {
   const { user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [currentStep, setCurrentStep] = useState(0)
-  const [answers, setAnswers] = useState<QuizAnswer>({
-    watchType: "",
-    companion: "",
-    genres: [],
-    mood: "",
-    tags: [],
-    lengthPreference: "",
-    ageGroup: "",
-    streamingOnly: false,
-    countryPreference: "",
+  const [answers, setAnswers] = useState<QuizAnswer>(() => {
+    // Try to get previous answers from URL
+    const previousAnswersStr = searchParams.get('previousAnswers')
+    if (previousAnswersStr) {
+      try {
+        return JSON.parse(previousAnswersStr)
+      } catch (e) {
+        console.error('Error parsing previous answers:', e)
+      }
+    }
+    // Default state if no previous answers
+    return {
+      watchType: "",
+      companion: "",
+      genres: [],
+      mood: "",
+      tags: [],
+      lengthPreference: "",
+      ageGroup: "",
+      streamingOnly: false,
+      countryPreference: "",
+    }
   })
   const [loading, setLoading] = useState(false)
 
   const questions: Question[] = [
     {
       id: "watchType",
-      question: "Do you prefer reading manga 📖 or watching anime 🎥?",
+      question: "Do you prefer watching or reading?",
       type: "radio",
       options: [
-        { value: "anime", label: "Anime" },
-        { value: "manga", label: "Manga" },
+        { value: "anime", label: "🎥 Anime" },
+        { value: "manga", label: "📖 Manga" },
       ],
     },
     {
@@ -79,10 +92,10 @@ export default function FindAnimeQuiz() {
       question: "Who are you watching with?",
       type: "radio",
       options: [
-        { value: "solo", label: "Solo 😎" },
-        { value: "friends", label: "Friends 🧑‍🤝‍🧑" },
-        { value: "partner", label: "Partner ❤️" },
-        { value: "family", label: "Family 👨‍👩‍👧" },
+        { value: "solo", label: "🧍 Solo" },
+        { value: "friends", label: "👥 Friends" },
+        { value: "partner", label: "💞 Partner" },
+        { value: "family", label: "👪 Family" },
       ],
     },
     {
@@ -99,20 +112,20 @@ export default function FindAnimeQuiz() {
       question: "What's your current mood?",
       type: "select",
       options: [
-        { value: "happy", label: "Happy 😊" },
-        { value: "sad", label: "Sad 😢" },
-        { value: "hyped", label: "Hyped 💥" },
-        { value: "relaxed", label: "Relaxed 🧘‍♂️" },
-        { value: "romantic", label: "Romantic 💕" },
+        { value: "Happy", label: "🙂 Happy" },
+        { value: "Sad", label: "😔 Sad" },
+        { value: "Hype", label: "🔥 Hype" },
+        { value: "Relaxed", label: "😌 Relaxed" },
+        { value: "Romantic", label: "💖 Romantic" },
       ],
     },
     {
       id: "tags",
-      question: "Pick some tags that describe your taste:",
+      question: "Pick tags that describe your taste:",
       type: "multiCheckbox",
       options: [
-        "Action", "Slice of Life", "Fantasy", "Thriller", "Comedy",
-        "Dark", "Psychological", "Romance", "Mystery", "Sports"
+        "Dark", "Psychological", "Emotional", "Supernatural", "Isekai",
+        "Game", "Gore", "Time Travel", "School", "Strategy"
       ],
     },
     {
@@ -120,10 +133,8 @@ export default function FindAnimeQuiz() {
       question: "Preferred episode length?",
       type: "select",
       options: [
-        { value: "short", label: "< 12 min" },
-        { value: "medium", label: "12–24 min" },
-        { value: "long", label: "25–50 min" },
-        { value: "movie", label: "Movies only" },
+        { value: "Short", label: "📘 Short (≤12 episodes)" },
+        { value: "Long", label: "📗 Long (>12 episodes)" },
       ],
     },
     {
@@ -131,28 +142,28 @@ export default function FindAnimeQuiz() {
       question: "What's your age group?",
       type: "radio",
       options: [
-        { value: "kid", label: "Kid 👶" },
-        { value: "teen", label: "Teen 👦" },
-        { value: "adult", label: "Adult 🧑" },
-        { value: "senior", label: "Senior 👴" },
+        { value: "kid", label: "👶 Kid" },
+        { value: "teen", label: "🧒 Teen" },
+        { value: "adult", label: "🧑 Adult" },
+        { value: "senior", label: "👴 Senior" },
+      ],
+    },
+    {
+      id: "countryPreference",
+      question: "Preferred country of origin?",
+      type: "select",
+      options: [
+        { value: "japan", label: "🇯🇵 Japan" },
+        { value: "korea", label: "🇰🇷 Korea" },
+        { value: "china", label: "🇨🇳 China" },
+        { value: "any", label: "🌍 No preference" },
       ],
     },
     {
       id: "streamingOnly",
-      question: "Streaming only or any format?",
+      question: "Preferred format?",
       type: "switch",
-      label: "Streaming Only ✅",
-    },
-    {
-      id: "countryPreference",
-      question: "Do you prefer anime from a specific country?",
-      type: "select",
-      options: [
-        { value: "japan", label: "Japan 🇯🇵" },
-        { value: "korea", label: "Korea 🇰🇷" },
-        { value: "china", label: "China 🇨🇳" },
-        { value: "any", label: "No Preference 🌍" },
-      ],
+      label: "💻 Streaming only",
     },
   ]
 
@@ -204,7 +215,6 @@ export default function FindAnimeQuiz() {
 
       if (quizError) throw quizError
 
-      // No need to fetch or set suggestions here, just redirect
       toast.success("Quiz completed! Redirecting to your recommendations...")
       router.push("/recommended-anime")
     } catch (error: any) {
