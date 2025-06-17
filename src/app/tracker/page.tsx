@@ -341,7 +341,7 @@ function LevelBar({ level, levelName, progress }: { level: number; levelName: st
         />
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent rounded-full animate-pulse" />
       </div>
-      <div className="text-right text-xs text-gray-400 mt-1">{progress}% to next level</div>
+      <div className="text-right text-xs text-gray-400 mt-1">{progress.toFixed(1)}% to next level</div>
     </div>
   )
 }

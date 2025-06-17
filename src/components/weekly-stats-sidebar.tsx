@@ -2,49 +2,123 @@ import React from 'react';
 import { ClockIcon, ChatBubbleOvalLeftEllipsisIcon, HandThumbUpIcon, StarIcon } from '@heroicons/react/24/solid';
 import { supabase } from '../lib/supabase';
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
-
-const WeeklyStatsSidebar = ({
-    timeSpent = '1hr 25 min',
-    postsViewed = 56,
-    interactions = 28,
-}) => {
+const WeeklyStatsSidebar = () => {
     const { user } = useAuth();
-    const userId = user?.id;
-    const [points, setPoints] = React.useState(0);
+    const userId = user?.id
+    const [streak, setStreak] = useState('0 days');
+    const [totalInteractions, setTotalInteractions] = useState(0);
+    const [countActivities, setCountActivities] = useState(0);
+    const [points, setPoints] = useState(0);
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
     useEffect(() => {
-        if (!userId) {
-            return;
+        if (userId) {
+            loginStreak();
+            countInteractions();
+            pointsGained();
         }
-        const fetchWeeklyStats = async () => {
-            const pointsGained = await getWeeklyPoints();
-            setPoints(pointsGained);
-        };
-        fetchWeeklyStats();
     }, [userId]);
 
-    const getWeeklyPoints = async () => {
-        const fromDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        const toDate = new Date().toISOString(); 
+    async function loginStreak() {
+        try {
+            const { data, error } = await supabase
+                .from('user_activities_log')
+                .select('created_at')
+                .eq('user_id', userId)
+                .eq('activity_type', 'daily_login')
+                .lte('created_at', new Date().toISOString())
+                .order('created_at', { ascending: false });
 
-        const { data, error } = await supabase
-            .from('user_tracker')
-            .select('xp')
-            .eq('user_id', userId)
-            .gte('updated_at', fromDate)
-            .lte('updated_at', toDate);
+            if (error) throw error;
 
-        if (error) {
-            console.error('Error fetching weekly points:', error.message);
+            if (!data || data.length === 0) {
+                return 0;
+            }
+            // Extract unique login dates from created_at timestamps
+            const uniqueLoginDates = Array.from(
+                new Set(data.map(entry =>
+                    new Date(entry.created_at).toISOString().split('T')[0]
+                ))
+            ).sort((a, b) => (a < b ? 1 : -1)); // Sort descending (most recent first)
+
+            let streak = 0;
+            const today = new Date();
+
+            for (let i = 0; i < uniqueLoginDates.length; i++) {
+                const expectedDate = new Date();
+                expectedDate.setDate(today.getDate() - i);
+
+                const expectedDateStr = expectedDate.toISOString().split('T')[0];
+
+                if (uniqueLoginDates[i] === expectedDateStr) {
+                    streak++;
+                } else {
+                    break;
+                }
+            }
+            setStreak(`${streak} day${streak !== 1 ? 's' : ''}`);
+        } catch (error: any) {
+            console.error('Error fetching login data:', error.message);
             return 0;
         }
+    }
 
-        // Sum all the points
-        const totalPoints = data?.reduce((sum, row) => sum + row.xp, 0) || 0;
-        return totalPoints;
-    };
+
+    async function countInteractions() {
+
+        const { count: likeCount, error: likesError } = await supabase
+            .from('likes')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .gte('created_at', oneWeekAgo);
+
+        const { count: commentCount, error: commentsError } = await supabase
+            .from('comments')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .gte('created_at', oneWeekAgo);
+
+        console.log('Likes :', likeCount);
+        console.log('Comments :', commentCount);
+        setTotalInteractions((likeCount || 0) + (commentCount || 0));
+
+    }
+
+    async function pointsGained() {
+
+        const activityWeights: Record<string, number> = {
+            'daily_login': 5,
+            'post_liked': 5,
+            'quick_reviewer_task': 25,
+            'comment_made': 15,
+            'comment_post': 10,
+            'post_created': 25,
+        };
+
+        const { data, error } = await supabase
+            .from('user_activities_log')
+            .select('activity_type')
+            .eq('user_id', userId)
+            .gte('created_at', oneWeekAgo);
+
+        if (error) {
+            console.error('Error fetching activity types:', error);
+            return {};
+        }
+
+        let totalScore = 0;
+        data?.forEach(({ activity_type }) => {
+            const weight = activityWeights[activity_type] || 0;
+            totalScore += weight;
+        });
+
+        setCountActivities(data?.length || 0);
+        setPoints(totalScore);
+
+    }
+
 
     return (
         <div className=" text-white rounded-xl p-6 w-full max-w-xs shadow-md">
@@ -55,29 +129,29 @@ const WeeklyStatsSidebar = ({
             <div className="flex flex-col gap-14">
                 <div className="text-center px-2 py-2 rounded-full bg-[#111]">
                     <p className="text-sm text-gray-300 mb-2 flex items-center justify-center">
-                        <ClockIcon className="h-5 w-5 mr-1" />
-                        TIME SPENT
+                        <ClockIcon className="h-4 w-4 mr-1" />
+                        CHECK-IN STREAK
                     </p>
-                    <p className="text-lg font-medium">{timeSpent}</p>
-                </div>
-                <div className="text-center px-2 py-2 rounded-full bg-[#111]">
-                    <p className="text-sm text-gray-300 mb-2 flex items-center justify-center">
-                        <ChatBubbleOvalLeftEllipsisIcon className="h-5 w-5 mr-1" />
-                        POSTS VIEWED
-                    </p>
-                    <p className="text-lg font-medium">{postsViewed}</p>
+                    <p className="text-lg font-medium">{streak}</p>
                 </div>
                 <div className="text-center px-2 py-2 rounded-full bg-[#111]">
                     <p className="text-sm text-gray-300 mb-2 flex items-center justify-center">
                         <HandThumbUpIcon className="h-5 w-5 mr-1" />
-                        INTERACTIONS
+                        POST REACTIONS
                     </p>
-                    <p className="text-lg font-medium">{interactions}</p>
+                    <p className="text-lg font-medium">{totalInteractions}</p>
+                </div>
+                <div className="text-center px-2 py-2 rounded-full bg-[#111]">
+                    <p className="text-sm text-gray-300 mb-2 flex items-center justify-center">
+                        <ChatBubbleOvalLeftEllipsisIcon className="h-5 w-5 mr-1" />
+                        NET ACTIVITIES
+                    </p>
+                    <p className="text-lg font-medium">{countActivities}</p>
                 </div>
                 <div className="text-center px-2 py-2 rounded-full bg-[#111]">
                     <p className="text-sm text-gray-300 mb-2 flex items-center justify-center">
                         <StarIcon className="h-5 w-5 mr-1" />
-                        POINTS GAINED
+                        XP GAINED
                     </p>
                     <p className="text-lg font-medium">{points}</p>
                 </div>

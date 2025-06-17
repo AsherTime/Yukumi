@@ -2,6 +2,7 @@
 
 
 import { useState, useEffect, useRef, use } from "react";
+import { RecentPosts } from "@/components/recent-posts";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -97,7 +98,7 @@ export default function ProfilePage() {
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const { user } = useAuth();
-  const [, setRecentPosts] = useState<Post[]>(() => {
+  const [recentPosts, setRecentPosts] = useState<Post[]>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("recentPosts");
       return stored ? JSON.parse(stored) : [];
@@ -515,7 +516,7 @@ export default function ProfilePage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mt-8 pl-48">
-          {['Posts', ...(userId === user?.id ? ['Saved'] : []), 'Favourites', 'About'].map(tab => (
+          {['Posts', ...(userId === user?.id ? ['Saved'] : []), ...(userId === user?.id ? ['Recent Posts'] : []), 'Favourites', 'About'].map(tab => (
             <button
               key={tab}
               className={`px-6 py-2 font-medium rounded-t-lg ${tab === activeTab ? 'bg-pink-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}
@@ -621,6 +622,9 @@ export default function ProfilePage() {
                 </AnimatePresence>
               </div>
             )}
+            {activeTab === 'Recent Posts' && (
+              <RecentPosts recentPosts={recentPosts} />
+              )}
             {activeTab === 'Favourites' && (
               <>
                 {favourites.length === 0 ? (
