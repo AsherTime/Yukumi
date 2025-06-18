@@ -47,6 +47,20 @@ interface Post {
   views: number;
 }
 
+interface UserAnime {
+  id: string;
+  user_id: string;
+  anime_id: string;
+  status: string;
+  progress: number;
+  score: number;
+  Anime?: {
+    image_url: string;
+    title: string;
+    id: string;
+  }
+}
+
 interface Anime {
   id: string
   title: string
@@ -114,13 +128,12 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState('Posts');
   const [username, setUsername] = useState<string | null>(null);
   const [posts, setPosts] = useState<any[]>([]);
-
-
+  const [userAnime, setUserAnime] = useState<UserAnime[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState('');
   let profileId = userId || user?.id;
   const { setPostsData, fetchPosts } = fetchPost();
   const { saved, savedLoading, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
   const { following, handleFollowToggle } = handleFollow(user);
-
   const { data: savedPosts } = useSWR(
     () => (saved.length ? ['savedPosts', saved] : null),
     async () => {
@@ -133,6 +146,39 @@ export default function ProfilePage() {
       return data;
     }
   );
+
+  const statusOrder: Record<string, number> = {
+    Watching: 0,
+    Completed: 1,
+    'On-Hold': 2,
+    Dropped: 3,
+    Planning: 4,
+  };
+
+  const statusButtonColors: Record<
+    string,
+    { base: string; hover: string }
+  > = {
+    Watching: { base: "bg-green-500", hover: "hover:bg-green-600" },
+    Completed: { base: "bg-purple-500", hover: "hover:bg-purple-600" },
+    "On-Hold": { base: "bg-yellow-500", hover: "hover:bg-yellow-600" },
+    Dropped: { base: "bg-red-500", hover: "hover:bg-red-600" },
+    Planning: { base: "bg-blue-500", hover: "hover:bg-blue-600" },
+  };
+
+  const statusBgColors: Record<string, string> = {
+    Watching: "bg-green-500",
+    Completed: "bg-purple-500",
+    "On-Hold": "bg-yellow-500",
+    Dropped: "bg-red-500",
+    Planning: "bg-blue-500",
+  };
+
+
+
+  const filteredUserAnime = selectedStatus
+    ? userAnime.filter((anime) => anime.status === selectedStatus)
+    : userAnime;
 
   const uniqueSavedPosts = Array.isArray(savedPosts)
     ? savedPosts.filter(
@@ -173,7 +219,9 @@ export default function ProfilePage() {
   }, [userId, user?.id]);
 
   useEffect(() => {
+
     const fetchUserPosts = async () => {
+
       const id = userId || user?.id;
       if (!id) return;
       setLoading(true);
@@ -188,8 +236,32 @@ export default function ProfilePage() {
         setPosts(data || []);
       }
       setLoading(false);
+
     };
+
+    const fetchUserAnime = async () => {
+
+      const id = userId || user?.id;
+      if (!id) return;
+      
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("UserAnime")
+        .select("*, Anime(image_url, title, id)")
+        .eq("user_id", id);
+
+      if (error) {
+        setUserAnime([]);
+      } else {
+        setUserAnime(data.sort(
+          (a, b) => (statusOrder[a.status] ?? 5) - (statusOrder[b.status] ?? 5)) || []);
+      }
+      setLoading(false);
+
+    }
+
     fetchUserPosts();
+    fetchUserAnime();
   }, [userId, user]);
 
   useEffect(() => {
@@ -516,7 +588,7 @@ export default function ProfilePage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mt-8 pl-48">
-          {['Posts', ...(userId === user?.id ? ['Saved'] : []), ...(userId === user?.id ? ['Recent Posts'] : []), 'Favourites', 'About'].map(tab => (
+          {['Posts', 'Anime List', ...(userId === user?.id ? ['Saved Posts'] : []), ...(userId === user?.id ? ['Recent Posts'] : []), 'Favourites', 'About'].map(tab => (
             <button
               key={tab}
               className={`px-6 py-2 font-medium rounded-t-lg ${tab === activeTab ? 'bg-pink-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}
@@ -572,7 +644,83 @@ export default function ProfilePage() {
                 </AnimatePresence>
               </div>
             )}
-            {activeTab === 'Saved' && (
+            {activeTab === 'Anime List' && (
+              <div className="bg-white/5 rounded-lg overflow-hidden">
+                {/* Filter Buttons */}
+                <div className="flex gap-2 p-4">
+                  <button
+                    onClick={() => setSelectedStatus('')}
+                    className={`px-4 py-2 rounded-lg border font-medium ${selectedStatus === '' ? 'text-white border-white bg-white/10' : 'text-gray-300 border-transparent hover:text-white'} `}
+                  >
+                    All
+                  </button>
+                  {['Watching', 'Completed', 'On-Hold', 'Dropped', 'Planning'].map((status) => {
+                    const isActive = selectedStatus === status;
+                    const color = statusButtonColors[status];
+
+                    return (
+                      <button
+                        key={status}
+                        onClick={() => setSelectedStatus(status)}
+                        className={`
+        px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200
+        ${isActive ? color.base : `bg-white/5 ${color.hover}`}
+      `}
+                      >
+                        {status}
+                      </button>
+                    );
+                  })}
+
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-white/10">
+                      <tr>
+                        <th></th>
+                        <th className=" py-3 px-4 text-left">#</th>
+                        <th className="py-3 px-4 text-left">Anime Title</th>
+                        <th className="py-3 px-4 text-right">Score</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {filteredUserAnime.map((anime, index) => (
+                        <tr key={anime.Anime?.id} className="hover:bg-white/5">
+                          {/* Status Color Band */}
+                          <td className="w-1 p-0">
+                            <div
+                              className={`w-1 h-full min-h-[64px] ${statusBgColors[anime.status] || 'bg-gray-500'}`}
+                            />
+                          </td>
+
+                          {/* Index */}
+                          <td className="py-3 px-4">{index + 1}</td>
+
+                          {/* Title & Image */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <Image
+                                src={anime.Anime?.image_url.trimEnd() || "/placeholder.svg"}
+                                alt={anime.Anime?.title || `Anime ${anime.Anime?.id}`}
+                                width={40}
+                                height={60}
+                                className="rounded"
+                              />
+                              <span>{anime.Anime?.title}</span>
+                            </div>
+                          </td>
+
+                          {/* Score */}
+                          <td className="py-3 px-4 text-right">{anime.score || "-"}</td>
+                        </tr>
+
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {activeTab === 'Saved Posts' && (
               <div className="w-full max-w-2xl relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[90vh] overflow-y-auto">
                 <AnimatePresence>
                   {savedLoading ? (
@@ -624,7 +772,7 @@ export default function ProfilePage() {
             )}
             {activeTab === 'Recent Posts' && (
               <RecentPosts recentPosts={recentPosts} />
-              )}
+            )}
             {activeTab === 'Favourites' && (
               <>
                 {favourites.length === 0 ? (
