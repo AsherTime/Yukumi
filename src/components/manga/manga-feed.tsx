@@ -73,7 +73,7 @@ export function MangaFeed() {
 
   return (
     <div className="max-w-2xl mx-auto py-8 px-4">
-      <h2 className="text-2xl font-bold text-white mb-6">Latest Manga Stories</h2>
+      <h2 className="text-2xl font-bold text-white mb-6">Latest Fanfic</h2>
       <div className="space-y-6">
         {mangas.map((manga) => (
           <Link
@@ -98,19 +98,19 @@ export function MangaFeed() {
                   )}
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-white mb-2">{manga.title}</h3>
+                  <h3 className="text-xl font-semibold text-white mb-6">{manga.title}</h3>
                   {manga.synopsis ?
                   (<div
-                    className="text-gray-300 text-sm prose"
+                    className="text-gray-300 text-sm mb-8 -ml-10"
                     dangerouslySetInnerHTML={{ __html: manga.synopsis }}
-                  />) : <div className='text-gray-300 text-sm prose'>No synopsis available</div>
+                  />) : <div className='text-gray-300 text-sm mb-8'>No synopsis available</div>
                   }
-                  <div className="flex items-center gap-4 mt-4 text-sm text-gray-400">
+                  <div className="flex items-center gap-4 text-sm text-gray-400">
                     <span>👁️ {manga.views || 0} views</span>
                     <span>📅 {new Date(manga.created_at).toLocaleDateString()}</span>
                     <span className="ml-auto text-xs bg-gray-700/50 px-2 py-1 rounded-full capitalize">{manga.status}</span>
                   </div>
-                  {Array.isArray(manga.tags) && (
+                  {/***Array.isArray(manga.tags) && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {manga.tags.map((tag, index) => (
                         <span key={index} className="text-xs bg-gray-800/50 px-2 py-1 rounded-full text-gray-300">
@@ -118,7 +118,7 @@ export function MangaFeed() {
                         </span>
                       ))}
                     </div>
-                  )}
+                  )**/}
 
                 </div>
               </div>

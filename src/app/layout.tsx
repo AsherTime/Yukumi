@@ -3,7 +3,6 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import type React from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
-import ClientQueryProvider from "@/components/ClientQueryProvider"; // Import your ClientQueryProvider
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/utils/queryClient'
 
