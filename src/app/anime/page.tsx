@@ -14,8 +14,10 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { handleQuickReviewer } from "@/utils/dailyTasks";
 import { Command, CommandItem } from "@/components/ui/command";
-import { number } from "framer-motion"
+import { toast } from "sonner";
+import { awardPoints } from "@/utils/awardPoints";
 
 
 interface Anime {
@@ -542,6 +544,32 @@ const AnimeBrowser: React.FC = () => {
       ...prev,
       [animeId]: selectedStatus,
     }));
+
+    try {
+          const wasAwarded = await handleQuickReviewer(
+            userId,
+            animeId,
+            'anime'
+          );
+
+          if (wasAwarded) {
+            toast.success('Review submitted and daily task completed! +25 XP');
+          } else {
+            // Award points for review submission even if daily task is already completed
+            await awardPoints(
+              userId,
+              'review_submitted',
+              15,
+              animeId,
+              'anime'
+            );
+            toast.success('Review submitted successfully! +15 XP');
+          }
+        } catch (pointsError) {
+          console.error('Failed to award points for review:', pointsError);
+          toast.warning('Review submitted, but points system is temporarily unavailable');
+        }
+
     setLoading(false);
     if (error) console.error("Error updating score:", error.message);
   };
