@@ -1,37 +1,79 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { Check, ChevronsRight, Search, ChevronsLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
-
+import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/contexts/AuthContext"
+import { useRouter } from "next/navigation";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 
-const communities = [
-  "Jujutsu Kaisen",
-  "Attack On Titan",
-  "Solo Leveling",
-  "Chainsaw Man",
-  "One Piece",
-  "Demon Slayer",
-  "My Hero Academia",
-  "Black Clover",
-  "Naruto",
-  "Dragon Ball",
-]
+interface Community {
+  id: string;
+  title: string;
+  banner_url: string;
+}
 
 export default function JoinCommunities() {
   const [open, setOpen] = useState(false)
-  const [value, setValue] = useState("")
+  const [value, setValue] = useState<string>()
+  const [communities, setCommunities] = useState<Community[]>([])
+  const [joinedCommunities, setJoinedCommunities] = useState<Community[]>([]);
+  const { user } = useAuth();
+  const userId = user?.id;
+  const router = useRouter();
+
+
+  async function fetchCommunities() {
+
+    try {
+      const { data: communities, error } = await supabase
+        .from("community").
+        select("id, title, banner_url");
+
+      if (error)
+        throw error;
+      else
+        setCommunities(communities);
+    } catch (error: any) {
+      console.log(error.message);
+    }
+
+  }
+
+  const handleNext = async () => {
+    const { error } = await supabase
+      .from("members")
+      .upsert(
+        joinedCommunities.map((community) => ({
+          user_id: userId,
+          community_id: community.id,
+        })),
+        { onConflict: 'user_id, community_id' }
+      );
+
+    if (error) {
+      console.error("Failed to update joined communities:", error.message);
+      // Optionally show toast or error UI
+      return;
+    }
+
+    router.push("/quiz/anime-categories");
+  };
+
+  useEffect(() => {
+    fetchCommunities();
+  }, []);
 
   return (
     <div className="min-h-screen bg-black overflow-y-auto relative px-4 py-8">
       <div className="max-w-2xl mx-auto space-y-6 relative z-10">
         <h1 className="text-4xl font-bold text-white text-center mb-8">Join Communities</h1>
-        
+
         {/* Animated orbs */}
         <motion.div
           className="absolute top-20 left-20 w-64 h-64 rounded-full bg-purple-500/20 blur-3xl"
@@ -66,11 +108,14 @@ export default function JoinCommunities() {
               aria-expanded={open}
               className="w-[300px] justify-between hover:scale-105 transition-transform duration-200"
             >
-              {value ? communities.find((community) => community === value) : "Select community..."}
+              {value
+                ? communities.find((community) => community.title === value)?.title
+                : "Select community..."}
+
               <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[300px] p-0">
+          <PopoverContent className="w-[300px] p-0 bg-zinc-800">
             <Command>
               <CommandInput placeholder="Search communities..." />
               <CommandList>
@@ -78,16 +123,29 @@ export default function JoinCommunities() {
                 <CommandGroup className="max-h-64 overflow-auto">
                   {communities.map((community) => (
                     <CommandItem
-                      key={community}
-                      value={community}
-                      onSelect={(currentValue) => {
-                        setValue(currentValue === value ? "" : currentValue)
-                        setOpen(false)
+                      key={community.id}
+                      value={community.title}
+                      onSelect={() => {
+                        const alreadySelected = joinedCommunities.find((c) => c.id === community.id);
+                        if (alreadySelected) {
+                          setJoinedCommunities((prev) => prev.filter((c) => c.id !== community.id));
+                        } else {
+                          setJoinedCommunities((prev) => [...prev, community]);
+                        }
                       }}
+
+
                       className="cursor-pointer hover:bg-accent"
                     >
-                      <Check className={cn("mr-2 h-4 w-4", value === community ? "opacity-100" : "opacity-0")} />
-                      {community}
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          joinedCommunities.some((c) => c.id === community.id) ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+
+
+                      {community.title}
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -96,19 +154,41 @@ export default function JoinCommunities() {
           </PopoverContent>
         </Popover>
 
-        <div className="flex justify-between mt-8">
-          <Link href="/quiz/anime-database">
-            <Button className="bg-[#2c2c2c] hover:bg-[#3c3c3c] text-white">
-              <ChevronsLeft className="mr-2 h-5 w-5" />
-              Previous
-            </Button>
-          </Link>
-          <Link href="/quiz/anime-categories">
-            <Button className="bg-[#B624FF] hover:bg-[#B624FF]/80 text-white">
-              Next
-              <ChevronsRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
+        <div className="text-sm text-white">
+          {joinedCommunities.length > 0 ? (
+            <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {joinedCommunities.map((c) => (
+                <li key={c.id}>
+                  <button
+                    className={`
+              w-full px-6 py-4 text-white font-medium rounded-full
+              bg-gradient-to-r from-pink-400 to-purple-600
+              hover:opacity-90 transition-all duration-200
+              ${c.banner_url ? 'bg-cover bg-center text-white' : ''}
+            `}
+                    style={c.banner_url ? { backgroundImage: `url(${c.banner_url})` } : {}}
+                  >
+                    <span className={`${c.banner_url ? 'bg-black/70' : ''} rounded-md`}>
+                      {c.title}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            "No communities selected."
+          )}
+        </div>
+
+
+        <div className="flex gap-4 mt-8">
+          <Button
+            onClick={handleNext}
+            className="bg-[#B624FF] hover:bg-[#B624FF]/80 text-white"
+          >
+            Next
+            <ChevronsRight className="ml-2 h-5 w-5" />
+          </Button>
         </div>
       </div>
     </div>

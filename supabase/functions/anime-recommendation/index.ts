@@ -85,7 +85,6 @@ serve(async (req: Request) => {
       preferences: {
         genres: latestQuiz.genre_preferences,
         tags: latestQuiz.tags,
-        watchType: latestQuiz.watch_type,
         lengthPref: latestQuiz.length_preference
       }
     });
@@ -93,7 +92,6 @@ serve(async (req: Request) => {
     const {
       genre_preferences,
       tags,
-      watch_type,
       length_preference,
       country_preference,
     } = latestQuiz;
@@ -111,9 +109,6 @@ serve(async (req: Request) => {
     }
     if (tags && Array.isArray(tags) && tags.length > 0) {
       query = query.contains("tags", tags);
-    }
-    if (watch_type && typeof watch_type === 'string') {
-      query = query.eq("type", watch_type);
     }
     if (length_preference && typeof length_preference === 'string') {
       const maxEpisodes = length_preference === 'Short' ? 12 : 999;
