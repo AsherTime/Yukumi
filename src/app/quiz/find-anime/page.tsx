@@ -20,29 +20,20 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 
 interface QuizAnswer {
-  watchType: string
   companion: string
   genres: string[]
   mood: string
   tags: string[]
   lengthPreference: string
   ageGroup: string
-  streamingOnly: boolean
   countryPreference: string
 }
 
-interface Anime {
-  id: string
-  title: string
-  image_url: string
-  synopsis: string
-  genres: string[]
-}
 
 interface Question {
   id: string
   question: string
-  type: "radio" | "select" | "multiSelect" | "multiCheckbox" | "switch"
+  type: "radio" | "select" | "multiSelect" | "multiCheckbox"
   options?: Array<{ value: string; label: string }> | string[]
   label?: string
 }
@@ -64,29 +55,18 @@ export default function FindAnimeQuiz() {
     }
     // Default state if no previous answers
     return {
-      watchType: "",
       companion: "",
       genres: [],
       mood: "",
       tags: [],
       lengthPreference: "",
       ageGroup: "",
-      streamingOnly: false,
       countryPreference: "",
     }
   })
   const [loading, setLoading] = useState(false)
 
   const questions: Question[] = [
-    {
-      id: "watchType",
-      question: "Do you prefer watching or reading?",
-      type: "radio",
-      options: [
-        { value: "anime", label: "🎥 Anime" },
-        { value: "manga", label: "📖 Manga" },
-      ],
-    },
     {
       id: "companion",
       question: "Who are you watching with?",
@@ -159,12 +139,6 @@ export default function FindAnimeQuiz() {
         { value: "any", label: "🌍 No preference" },
       ],
     },
-    {
-      id: "streamingOnly",
-      question: "Preferred format?",
-      type: "switch",
-      label: "💻 Streaming only",
-    },
   ]
 
   const handleAnswer = (questionId: string, value: any) => {
@@ -202,12 +176,10 @@ export default function FindAnimeQuiz() {
           taken_at: new Date().toISOString(),
           genre_preferences: answers.genres,
           age_group: answers.ageGroup,
-          watch_type: answers.watchType,
           companion: answers.companion,
           mood: answers.mood,
           tags: answers.tags,
           length_preference: answers.lengthPreference,
-          streaming_preference: answers.streamingOnly,
           country_preference: answers.countryPreference,
         })
         .select()
@@ -302,19 +274,6 @@ export default function FindAnimeQuiz() {
           </div>
         )
 
-      case "switch":
-        return (
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="flex items-center space-x-4 p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-          >
-            <Switch
-              checked={answers[question.id as keyof QuizAnswer] as boolean}
-              onCheckedChange={(checked) => handleAnswer(question.id, checked)}
-            />
-            <Label className="text-lg">{question.label}</Label>
-          </motion.div>
-        )
 
       default:
         return null
@@ -326,7 +285,7 @@ export default function FindAnimeQuiz() {
       {/* Animated background */}
       <div className="fixed inset-0 bg-gradient-to-br from-purple-900/20 via-black to-blue-900/20" />
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent" />
-      
+
       {/* Content */}
       <div className="relative z-10 p-8">
         <div className="max-w-4xl mx-auto">
@@ -344,10 +303,12 @@ export default function FindAnimeQuiz() {
                   <span>Question {currentStep + 1} of {questions.length}</span>
                   <span>{Math.round(((currentStep + 1) / questions.length) * 100)}%</span>
                 </div>
-                <Progress
-                  value={((currentStep + 1) / questions.length) * 100}
-                  className="h-2 bg-white/10"
-                />
+                <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-purple-600 transition-all duration-300"
+                    style={{ width: `${((currentStep + 1) / questions.length) * 100}%` }}
+                  />
+                </div>
               </div>
 
               {/* Question card */}

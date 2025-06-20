@@ -20,7 +20,6 @@ const RecommendedAnimePage = () => {
   const [recommendations, setRecommendations] = useState<Anime[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showRetryQuiz, setShowRetryQuiz] = useState(false);
   const [previousAnswers, setPreviousAnswers] = useState<any>(null);
   const { user } = useUser();
   const router = useRouter();
@@ -54,14 +53,12 @@ const RecommendedAnimePage = () => {
         // Store the previous answers for retry
         if (latestQuiz) {
           setPreviousAnswers({
-            watchType: latestQuiz.watch_type,
             companion: latestQuiz.companion,
             genres: latestQuiz.genre_preferences,
             mood: latestQuiz.mood,
             tags: latestQuiz.tags,
             lengthPreference: latestQuiz.length_preference,
             ageGroup: latestQuiz.age_group,
-            streamingOnly: latestQuiz.streaming_preference,
             countryPreference: latestQuiz.country_preference,
           });
         }
