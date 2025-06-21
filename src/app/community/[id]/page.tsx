@@ -136,7 +136,7 @@ export default function CommunityIdPage() {
           .from("Anime")
           .select("*")
           .eq("id", communityData.anime_id)
-          .single();
+          .maybeSingle();
 
         if (animeError || !animeData) {
           setError(animeError?.message || "Anime not found");
@@ -166,7 +166,7 @@ export default function CommunityIdPage() {
         .select('id')
         .eq('user_id', user.id)
         .eq('community_id', community.id)
-        .single();
+        .maybeSingle();
 
       if (!error && data) {
         setJoined(true);

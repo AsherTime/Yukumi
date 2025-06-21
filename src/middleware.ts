@@ -20,7 +20,7 @@ export async function middleware(req: NextRequest) {
     .from('user_quiz_progress')
     .select('status, current_step')
     .eq('user_id', session.user.id)
-    .single();
+    .maybeSingle();
 
   // If no quiz progress exists, create one
   if (!quizProgress) {

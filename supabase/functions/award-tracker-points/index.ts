@@ -79,7 +79,7 @@ serve(async (req) => {
               ? "Quick Reviewer"
               : "",
           )
-          .single();
+          .maybeSingle();
           console.log("Task Definition Data:", taskDef?.id);
           console.log("Task Definition Data ID:", taskDefinitionId);
         if (taskDefError) {
@@ -104,7 +104,7 @@ serve(async (req) => {
             .eq("user_id", user_id)
             .eq("task_definition_id", taskDefinitionId)
             .eq("completed_date", new Date().toISOString().split("T")[0]) // Check for today's date
-            .single();
+            .maybeSingle();
 
         if (checkCompletionError && checkCompletionError.code !== "PGRST116") { // PGRST116 is 'No rows found'
           console.error(

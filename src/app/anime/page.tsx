@@ -76,7 +76,7 @@ const AnimeCard = ({ anime, favourites, selectedStatus, score, onViewDetails, on
   }, [anime.id]);
 
   async function fetchCommunity() {
-    const { data, error } = await supabase.from("community").select("id").eq("anime_id", anime.id).single();
+    const { data, error } = await supabase.from("community").select("id").eq("anime_id", anime.id).maybeSingle();
     if (error) {
       console.error("Failed to fetch community data:", error.message);
       return false;
@@ -315,7 +315,7 @@ const AnimeBrowser: React.FC = () => {
         .from("Profiles")
         .select("favourites")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error("Failed to fetch favourites:", error.message);

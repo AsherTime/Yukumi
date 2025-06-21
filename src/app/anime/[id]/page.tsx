@@ -80,7 +80,7 @@ export default function AnimeDetail() {
           .from("Anime")
           .select("*")
           .eq("id", id)
-          .single();
+          .maybeSingle();
         setAnime(data.data);
       } catch (error) {
         console.error("Error fetching anime details:", error);

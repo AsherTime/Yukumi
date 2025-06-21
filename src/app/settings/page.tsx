@@ -23,14 +23,14 @@ export default function SettingsPage() {
             .from("Profiles")
             .select("notif_all, notif_likes, notif_replies, notif_follows")
             .eq("id", user.id)
-            .single();
+            .maybeSingle();
 
         if (error) console.error(error);
         else {
-            setNotifAll(data.notif_all);
-            setNotifLikes(data.notif_likes);
-            setNotifReplies(data.notif_replies);
-            setNotifFollows(data.notif_follows);
+            setNotifAll(data?.notif_all || true);
+            setNotifLikes(data?.notif_likes || true);
+            setNotifReplies(data?.notif_replies || true);
+            setNotifFollows(data?.notif_follows || true);
         }
     };
 

@@ -83,7 +83,7 @@ export default function PostCardContainer({
             .from("community")
             .select("id")
             .eq("anime_id", animeId)
-            .single(); 
+            .maybeSingle(); 
 
         if (error) {
             console.error("Error fetching community ID:", error.message);
@@ -118,7 +118,7 @@ export default function PostCardContainer({
             .from('posts')
             .select('user_id')
             .eq('id', postId)
-            .single();
+            .maybeSingle();
 
         if (fetchError) {
             return { success: false, error: fetchError };

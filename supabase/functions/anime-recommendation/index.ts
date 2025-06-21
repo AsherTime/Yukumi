@@ -49,7 +49,7 @@ serve(async (req: Request) => {
       .eq("user_id", user_id)
       .order("taken_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     console.log("Latest quiz query result:", {
       success: !!latestQuiz,

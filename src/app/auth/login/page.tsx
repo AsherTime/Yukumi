@@ -5,8 +5,7 @@ import { motion } from "framer-motion"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
-import { setCookie } from "cookies-next"
-import { FaGoogle, FaFacebook } from "react-icons/fa"
+import { FaGoogle, FaDiscord } from "react-icons/fa"
 
 interface FormData {
   email: string
@@ -157,35 +156,19 @@ export default function LoginPage() {
   }
 
   // Social login with Google
-  const handleGoogleSignIn = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-
-      if (error) throw error;
-    } catch (error: any) {
-      toast.error(error.message || "Google sign-in failed.");
-    }
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+    });
+    if (error) console.error('Google login error:', error.message);
   };
 
-  // Social login with Facebook
-  const handleFacebookSignIn = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'facebook',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-
-      if (error) throw error;
-    } catch (error: any) {
-      toast.error(error.message || "Facebook sign-in failed.");
-    }
+  // Social login with Discord
+  const signInWithDiscord = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'discord',
+    });
+    if (error) console.error('Discord login error:', error.message);
   };
 
   return (
@@ -269,13 +252,13 @@ export default function LoginPage() {
           <div className="flex space-x-4">
             <SocialButton
               icon={<FaGoogle className="h-5 w-5" />}
-              onClick={handleGoogleSignIn}
+              onClick={signInWithGoogle}
               label="Google"
             />
             <SocialButton
-              icon={<FaFacebook className="h-5 w-5" />}
-              onClick={handleFacebookSignIn}
-              label="Facebook"
+              icon={<FaDiscord className="h-5 w-5" />}
+              onClick={signInWithDiscord}
+              label="Discord"
             />
           </div>
         </motion.div>

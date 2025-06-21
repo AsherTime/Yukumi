@@ -42,7 +42,7 @@ const RecommendedAnimePage = () => {
           .eq('user_id', user?.id)
           .order('taken_at', { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (quizError) {
           console.error("Error fetching quiz results:", quizError);
