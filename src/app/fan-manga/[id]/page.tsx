@@ -32,7 +32,7 @@ export default function FanMangaReadPage() {
         .from("fan_stories")
         .select("*")
         .eq("id", mangaId)
-        .single();
+        .maybeSingle();
       if (error) {
         setMangaData(null);
       } else {

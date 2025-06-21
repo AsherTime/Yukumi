@@ -67,7 +67,7 @@ export default function fetchPost() {
                 .from("Profiles")
                 .select("saved_posts")
                 .eq("id", user?.id)
-                .single();
+                .maybeSingle();
 
             if (profileError) {
                 console.error("Failed to fetch saved posts:", profileError);

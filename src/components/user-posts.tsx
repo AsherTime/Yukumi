@@ -43,7 +43,7 @@ export function UserPosts({ userId }: { userId?: string }) {
     .from('posts')
     .select('user_id')
     .eq('id', postId)
-    .single();
+    .maybeSingle();
 
   if (fetchError) {
     return { success: false, error: fetchError };

@@ -440,7 +440,7 @@ export default function TrackerPage() {
         .from('user_tracker')
         .select('xp, level')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
       console.log('Fetched tracker:', { data, error, userId })
       if (error) {
         console.error('Supabase error:', error)

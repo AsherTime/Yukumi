@@ -142,7 +142,7 @@ const PostPage = () => {
         .from("Profiles")
         .select("username, avatar_url")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (data) setProfile(data);
     };
@@ -173,7 +173,7 @@ const PostPage = () => {
             )
           `)
           .eq('id', id)
-          .single();
+          .maybeSingle();
 
         if (postError) throw postError;
 
@@ -261,7 +261,7 @@ const PostPage = () => {
           },
         ])
         .select()
-        .single();
+        .maybeSingle();
 
       console.log('Insert response error:', insertError);
       console.log('Insert response data:', commentData);
@@ -313,7 +313,7 @@ const PostPage = () => {
           avatar_url
         )
       `)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       console.log("Supabase returned newCommentData:", newCommentData); // <--- ADD THIS
@@ -442,7 +442,7 @@ const PostPage = () => {
             avatar_url
           )
         `)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 

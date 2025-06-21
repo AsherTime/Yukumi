@@ -29,7 +29,7 @@ serve(async (req) => {
     .from("Profiles")
     .select("favourites")
     .eq("id", user_id)
-    .single();
+    .maybeSingle();
 
   if (profileError || !profile?.favourites || profile.favourites.length === 0) {
     return new Response(JSON.stringify([]), { status: 200 });

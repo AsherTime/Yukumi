@@ -197,7 +197,7 @@ export default function ProfilePage() {
           .from('Profiles')
           .select('*')
           .eq('id', profileId)
-          .single();
+          .maybeSingle();
         if (profileError) {
           setDisplayName("Anonymous");
           setAvatarUrl("/placeholder.svg");
@@ -301,7 +301,7 @@ export default function ProfilePage() {
         .from('Profiles')
         .select('favourites')
         .eq('id', userId)
-        .single(); // Assuming one row per user
+        .maybeSingle(); // Assuming one row per user
 
       if (error) {
         console.error("Error fetching favourites:", error);

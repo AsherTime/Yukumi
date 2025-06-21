@@ -183,7 +183,7 @@ export default function FindAnimeQuiz() {
           country_preference: answers.countryPreference,
         })
         .select()
-        .single()
+        .maybeSingle()
 
       if (quizError) throw quizError
 

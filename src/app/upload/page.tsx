@@ -249,7 +249,7 @@ export default function CoverUpload() {
         .from("posts")
         .insert(postData)
         .select()
-        .single();
+        .maybeSingle();
 
       if (postError) {
         console.error("Post creation error:", postError)
@@ -298,7 +298,7 @@ export default function CoverUpload() {
             .from("tags")
             .insert({ name: tag })
             .select()
-            .single();
+            .maybeSingle();
           if (tagInsertError) {
             throw new Error("Error inserting tag: " + tag);
           }

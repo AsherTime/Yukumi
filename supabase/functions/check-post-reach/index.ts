@@ -116,7 +116,7 @@ const handleAddComment = async () => {
         },
       ])
       .select()
-      .single();
+      .maybeSingle();
 
     if (insertError) throw insertError;
 

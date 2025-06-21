@@ -77,7 +77,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
         .eq("user_id", userId)
         .order("created_at", { ascending: true }) // assuming joined_at column exists
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (data?.community_id) {
         setNavLinks((prev) =>
@@ -101,7 +101,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
           .from('Profiles')
           .select('*')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
         if (!error && profile) {
           setUserProfile(profile);
@@ -192,12 +192,14 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
         .from('Profiles')
         .select('notif_all, notif_likes, notif_replies, notif_follows')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (prefsError) {
         console.error('Error fetching preferences:', prefsError.message);
         return;
       }
+
+      if(profilePrefs){
 
       const { notif_all, notif_likes, notif_replies, notif_follows } = profilePrefs;
 
@@ -230,6 +232,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
       } else if (error) {
         console.error('Error fetching notifications:', error.message);
       }
+    }
     };
 
     fetchNotifications();

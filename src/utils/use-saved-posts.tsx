@@ -41,7 +41,7 @@ export default function useSavedPosts(
         .from("Profiles")
         .select("saved_posts")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error("Error fetching saved posts:", error);
