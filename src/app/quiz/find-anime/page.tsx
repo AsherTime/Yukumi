@@ -205,6 +205,7 @@ export default function FindAnimeQuiz() {
       case "radio":
         return (
           <RadioGroup
+            name="radio"
             value={answers[question.id as keyof QuizAnswer] as string}
             onValueChange={(value) => handleAnswer(question.id, value)}
             className="space-y-4"
