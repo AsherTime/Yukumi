@@ -78,7 +78,7 @@ export default function AnimeSurvey() {
             <CardTitle>How many animes have you watched?</CardTitle>
           </CardHeader>
           <CardContent>
-            <RadioGroup value={count} onValueChange={(value) => setCount(value)} className="space-y-2">
+            <RadioGroup name="count" value={count} onValueChange={(value) => setCount(value)} className="space-y-2">
               {["Less than 50", "50-200", "200-500", "More than 500"].map((option) => (
                 <div
                   key={option}
@@ -102,7 +102,7 @@ export default function AnimeSurvey() {
             <CardTitle>How many hours do you watch weekly?</CardTitle>
           </CardHeader>
           <CardContent>
-            <RadioGroup value={hours} onValueChange={(value) => setHours(value)} className="space-y-2">
+            <RadioGroup name="hours" value={hours} onValueChange={(value) => setHours(value)} className="space-y-2">
               {["Less than 2", "2-7", "8-14", "More than 14"].map((option) => (
                 <div
                   key={option}
@@ -146,6 +146,7 @@ export default function AnimeSurvey() {
           </CardHeader>
           <CardContent>
             <RadioGroup
+              name="read-manga"
               value={readManga === true ? "Yes" : readManga === false ? "No" : ""}
               onValueChange={(value) => setReadManga(value === "Yes")}
               className="space-y-2"
