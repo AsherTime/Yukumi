@@ -127,6 +127,7 @@ export default function AnimeSurvey() {
           </CardHeader>
           <CardContent>
             <Input
+              id="last-anime"
               placeholder="Enter anime names"
               className="w-full hover:scale-105 bg-zinc-800 transition-transform"
               onChange={(e) => {

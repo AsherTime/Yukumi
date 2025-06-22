@@ -201,6 +201,7 @@ export default function LoginPage() {
               type="email"
               name="email"
               placeholder="Enter Email"
+              autoComplete="email"
               value={formData.email}
               onChange={handleInputChange}
               disabled={isLoading}

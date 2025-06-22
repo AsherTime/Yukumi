@@ -139,6 +139,7 @@ const AnimeCard = ({ anime, favourites, selectedStatus, score, onViewDetails, on
                       setOpenScore(false);
                       handleScoreChange(anime.id, n, selectedStatus);
                     }}
+                    className="cursor-pointer hover:bg-zinc-700 hover:text-white transition-colors"
                   >
                     {n}
                   </CommandItem>
