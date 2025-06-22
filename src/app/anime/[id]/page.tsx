@@ -223,8 +223,9 @@ export default function AnimeDetail() {
               <Image
                 src={anime.image_url || "/placeholder.svg"}
                 alt={anime.title || "Anime image"}
-                fill // this makes it fill the parent absolutely
+                fill 
                 className="rounded-lg object-cover"
+                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
               />
             </div>
 

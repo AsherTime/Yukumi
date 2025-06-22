@@ -6,6 +6,7 @@ import { awardPoints } from '@/utils/awardPoints';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 interface Particle {
   id: number;
@@ -413,6 +414,7 @@ function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveC
           <div className="mt-3 text-gray-400 text-sm space-y-2 pt-3 border-t border-gray-700/30">
             <div className="flex space-x-2 mb-2">
               <input
+                id="newChapterName"
                 type="text"
                 placeholder="New Chapter Name"
                 className="flex-1 p-2 rounded-md bg-gray-900 border border-gray-700 focus:ring-1 focus:ring-indigo-500 outline-none text-cozy-text-light"
@@ -572,7 +574,6 @@ function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveC
       {/* Progress / Status (Placeholder) */}
       <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700/50 text-gray-400 text-sm text-center">
         <h3 className="text-xl font-semibold text-gray-300 mb-2">Total Pages: <span className="font-bold text-cozy-text-light">{chapters.reduce((acc: any, ch: any) => acc + ch.pages.length, 0)}</span></h3>
-        <h3 className="text-xl font-semibold text-gray-300">Last Saved: <span className="font-bold text-cozy-text-light">5 mins ago</span></h3>
       </div>
     </div>
   );
@@ -580,7 +581,9 @@ function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveC
 
 
 // --- Fan Story Creation Page Component (Main Layout for Manga Writing) ---
-export default function FanStoryCreationPage({ onBack, userId, awardPoints }: any) {
+export default function FanStoryCreationPage({ userId, awardPoints }: any) {
+
+  const router = useRouter();
   // State for the entire manga project
   const [mangaTitle, setMangaTitle] = useState('');
   const [coverImage, setCoverImage] = useState<File | null>(null);
@@ -666,7 +669,6 @@ export default function FanStoryCreationPage({ onBack, userId, awardPoints }: an
     setChapters([{ id: 'ch1', name: 'Prologue', pages: [{ id: 'ch1_p1', content: '' }] }]);
     setActiveChapterIndex(0);
     setActivePageIndex(0);
-    onBack();
   };
 
   const handleSaveDraft = () => {
@@ -726,7 +728,7 @@ export default function FanStoryCreationPage({ onBack, userId, awardPoints }: an
             }}
         >
             {/* Back button */}
-            <button onClick={onBack} className="absolute top-4 left-4 text-gray-400 hover:text-gray-200 text-lg flex items-center gap-1 z-40">
+            <button onClick={() => router.back()} className="absolute top-4 left-4 text-gray-400 hover:text-gray-200 text-lg flex items-center gap-1 z-40">
                 &larr; Back
             </button>
             

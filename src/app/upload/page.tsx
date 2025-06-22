@@ -429,7 +429,7 @@ export default function CoverUpload() {
 
 
           <div className="space-y-2">
-            <Label>Content</Label>
+            <Label htmlFor="title">Content</Label>
             <div className="bg-[#2A2A2A] p-2 flex gap-2 border-b border-[#3A3A3A]">
               <button
                 type="button"
@@ -469,7 +469,6 @@ export default function CoverUpload() {
             />
 
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="select-collection">Select Collection</Label>
             <Select name="select-collection-container" onValueChange={setSelectedCollection}>

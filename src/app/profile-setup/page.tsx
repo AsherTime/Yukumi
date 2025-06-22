@@ -206,6 +206,7 @@ export default function ProfileSetup() {
               <Input
                 id="display-name"
                 value={displayName}
+                
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Enter your display name"
               />
@@ -216,6 +217,7 @@ export default function ProfileSetup() {
               <Input
                 id="username"
                 value={username}
+                autoComplete="on"
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter your username"
               />
@@ -234,8 +236,8 @@ export default function ProfileSetup() {
 
             <div>
               <Label htmlFor="gender">Gender</Label>
-              <Select value={gender} onValueChange={setGender}>
-                <SelectTrigger>
+              <Select name="gender" value={gender} onValueChange={setGender}>
+                <SelectTrigger id="gender">
                   <SelectValue placeholder="Select gender" />
                 </SelectTrigger>
                 <SelectContent>
@@ -253,6 +255,7 @@ export default function ProfileSetup() {
                 id="country"
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
+                autoComplete="on"
                 placeholder="Enter your country"
               />
             </div>

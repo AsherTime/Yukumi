@@ -79,6 +79,7 @@ export default function MangaReaderPage({ mangaData, onBack }: { mangaData: any,
           <h1 className="text-3xl font-bold text-indigo-300 text-center flex-1">{mangaData.title}</h1>
           <div className="relative">
             <select
+              name="chapter-select"
               value={activeChapterIndex}
               onChange={(e) => {
                 setActiveChapterIndex(parseInt(e.target.value));

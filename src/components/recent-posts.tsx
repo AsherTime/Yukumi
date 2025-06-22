@@ -51,6 +51,7 @@ export function RecentPosts({ recentPosts }: { recentPosts: Post[] }) {
                       alt={post.title}
                       fill
                       className="object-cover"
+                      sizes="64px"
                     />
                   </div>)}
                   <div className="overflow-hidden">
