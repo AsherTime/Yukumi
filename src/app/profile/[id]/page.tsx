@@ -243,7 +243,7 @@ export default function ProfilePage() {
 
       const id = userId || user?.id;
       if (!id) return;
-      
+
       setLoading(true);
       const { data, error } = await supabase
         .from("UserAnime")
@@ -560,7 +560,7 @@ export default function ProfilePage() {
                   {followedIds.includes(userId) ? 'Following' : 'Follow'}
                 </button>
               )}
-              {!userId && (
+              {userId === user?.id && (
                 <button
                   className="ml-4 bg-zinc-800 text-white px-4 py-2 rounded"
                   onClick={() => setShowEditModal(true)}
@@ -588,7 +588,7 @@ export default function ProfilePage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mt-8 pl-48">
-          {['Posts', 'Anime List', ...(userId === user?.id ? ['Saved Posts'] : []), ...(userId === user?.id ? ['Recent Posts'] : []), 'Favourites', 'About'].map(tab => (
+          {['Posts', 'Anime List', 'Favourites', ...(userId === user?.id ? ['Saved Posts'] : []), ...(userId === user?.id ? ['Recent Posts'] : []), 'About'].map(tab => (
             <button
               key={tab}
               className={`px-6 py-2 font-medium rounded-t-lg ${tab === activeTab ? 'bg-pink-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}
@@ -606,7 +606,7 @@ export default function ProfilePage() {
           </div>
           <div className="flex-1">
             {activeTab === 'Posts' && (
-              <div className="w-full max-w-2xl relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[90vh] overflow-y-auto">
+              <div className="w-full relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[110vh] overflow-y-auto">
                 <AnimatePresence>
                   {enrichedPosts.length === 0 ? (
                     <motion.div
@@ -644,6 +644,7 @@ export default function ProfilePage() {
                 </AnimatePresence>
               </div>
             )}
+            {/* Anime List */}
             {activeTab === 'Anime List' && (
               <div className="bg-white/5 rounded-lg overflow-hidden">
                 {/* Filter Buttons */}
@@ -720,8 +721,31 @@ export default function ProfilePage() {
                 </div>
               </div>
             )}
+            {activeTab === 'Favourites' && (
+              <>
+                {favourites.length === 0 ? (
+                  <motion.div
+                    key="no-posts"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="text-center text-zinc-400 py-12"
+                  >
+                    This user has no favourites.
+                  </motion.div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    {favourites.map((fav) => (
+                      <AnimeCard anime={fav} key={fav.id} />
+                    ))}
+                  </div>
+                )}
+
+              </>
+            )}
+            {/* Saved Posts */}
             {activeTab === 'Saved Posts' && (
-              <div className="w-full max-w-2xl relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[90vh] overflow-y-auto">
+              <div className="w-full relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[110vh] overflow-y-auto">
                 <AnimatePresence>
                   {savedLoading ? (
                     <motion.div
@@ -772,28 +796,6 @@ export default function ProfilePage() {
             )}
             {activeTab === 'Recent Posts' && (
               <RecentPosts recentPosts={recentPosts} />
-            )}
-            {activeTab === 'Favourites' && (
-              <>
-                {favourites.length === 0 ? (
-                  <motion.div
-                    key="no-posts"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="text-center text-zinc-400 py-12"
-                  >
-                    This user has no favourites.
-                  </motion.div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                    {favourites.map((fav) => (
-                      <AnimeCard anime={fav} key={fav.id} />
-                    ))}
-                  </div>
-                )}
-
-              </>
             )}
             {activeTab === 'About' && (
               <div className="relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md p-6">

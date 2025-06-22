@@ -1,7 +1,7 @@
 "use client";
 
 import { FiEdit2, FiTrash2 } from "react-icons/fi"; // Importing icons
-import { ThumbsUpIcon, Flag, Eye } from 'lucide-react';
+import { ThumbsUpIcon, Flag, PlusCircle, MinusCircle } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -63,7 +63,7 @@ interface Post {
   likes_count: number;
   comments_count: number;
   liked_by_user: boolean;
-  saved_by_user: boolean; 
+  saved_by_user: boolean;
   image_url: string;
   animetitle_post: string | null;
   post_collections: string | null;
@@ -648,13 +648,12 @@ const PostPage = () => {
     const avatarUrl = comment.Profiles?.avatar_url || "/placeholder.svg"; // No fallback here if Image component handles null/undefined
 
     return (
-      <div className="mb-6 bg-slate-600/20 p-4 rounded-lg shadow-md">
-        <div className="flex items-center space-x-2">
+      <div className="space-y-4 shadow-md p-4 rounded-lg">
+        <div className="flex items-center space-x-6">
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="text-sm text-gray-500 hover:underline"
           >
-            [{collapsed ? '+' : '-'}]
+            {collapsed ? <PlusCircle size={18} /> : <MinusCircle size={18} />}
           </button>
           {comment.Profiles?.avatar_url && (
             <Image
@@ -662,15 +661,15 @@ const PostPage = () => {
               alt="Avatar"
               width={32}
               height={32}
-              className="rounded-full"
+              className="rounded-full object-cover w-10 h-10"
             />
           )}
           <p className="font-semibold">{username}</p>
         </div>
         {!collapsed &&
-          <>
+          <div className="ml-10">
             <p className="mt-2 pt-2">{comment.content}</p>
-            <div className="flex space-x-4 mt-1 items-center pt-2 pb-2">
+            <div className="flex space-x-6 mt-3 items-center pt-2 pb-2">
               <button
                 onClick={() => onToggleLike(comment.id, isLiked)}
                 className={`flex items-center space-x-1 text-sm ${isLiked ? 'text-blue-500 font-bold' : 'text-gray-500'} hover:underline`}
@@ -688,7 +687,7 @@ const PostPage = () => {
                 className="text-blue-500 hover:text-blue-400 text-sm flex items-center"
                 aria-label="Reply"
               >
-                <FiCornerUpLeft size={20} />
+                <FiCornerUpLeft size={20} />&nbsp;&nbsp;Reply
               </button>
 
               {comment.user_id === user?.id && canEdit && (
@@ -697,7 +696,7 @@ const PostPage = () => {
                   className="text-green-500 hover:text-green-400 text-sm flex items-center"
                   aria-label="Edit"
                 >
-                  <FiEdit2 size={18} />
+                  <FiEdit2 size={18} />&nbsp;&nbsp;Edit
                 </button>
               )}
 
@@ -707,7 +706,7 @@ const PostPage = () => {
                   className="text-red-500 hover:text-red-400 text-sm flex items-center"
                   aria-label="Delete"
                 >
-                  <FiTrash2 size={18} />
+                  <FiTrash2 size={18} />&nbsp;&nbsp;Delete
                 </button>
               )}
 
@@ -717,7 +716,7 @@ const PostPage = () => {
                   className="flex items-center text-xs text-red-500 hover:underline"
                   aria-label="Report comment"
                 >
-                  <Flag className="w-5 h-5" />
+                  <Flag className="w-5 h-5" />&nbsp;&nbsp;Report
                 </button>
               )}
 
@@ -750,7 +749,7 @@ const PostPage = () => {
                 </div>
               </div>
             )}
-          </>
+          </div>
         }
         {!collapsed && comment.replies?.length > 0 && (
           <div className="ml-4 mt-4 border-l-2 border-gray-300 pl-4">
@@ -829,7 +828,7 @@ const PostPage = () => {
           </div>
 
           {/* Comments List */}
-          <div className="mt-6 space-y-4 bg-black p-4 rounded-lg">
+          <div className="mt-6 space-y-4 bg-slate-900 shadow-md p-4 rounded-lg">
             {nestedComments.length > 0 ? (
               nestedComments.map((comment) => (
                 <CommentItem
