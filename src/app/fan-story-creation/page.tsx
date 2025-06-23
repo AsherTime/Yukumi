@@ -136,6 +136,13 @@ const StoryContentEditor: React.FC<StoryContentEditorProps> = ({
     setParticles(newParticles);
   }, []);
 
+  // Sync editor content when currentContent prop changes (e.g., when switching pages)
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.innerHTML !== currentContent) {
+      editorRef.current.innerHTML = currentContent;
+    }
+  }, [currentContent]);
+
   const handleEditorInput = () => {
     if (editorRef.current) {
       setCurrentContent(editorRef.current.innerHTML);
