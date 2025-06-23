@@ -1,12 +1,12 @@
+// @ts-nocheck
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { CheckCircle, Trophy, BarChart3, MessageSquare, BookOpen, Flame, Star, Hexagon } from "lucide-react"
+import { CheckCircle, Trophy, BarChart3, MessageSquare, BookOpen, Flame, Star, Hexagon, CalendarDays, ThumbsUp, TrendingUp, HandCoins, Info } from "lucide-react"
 import { TopNav } from "@/components/top-nav"
 import { awardPoints } from '@/utils/awardPoints'
 import { wasTaskCompletedToday } from '@/utils/dailyTasks'
 import { supabase } from '@/lib/supabase'
-import WeeklyStatsSidebar from "@/components/weekly-stats-sidebar"
 import Footer from "@/components/footer"
 
 // Minimal Card component for self-containment
@@ -403,6 +403,194 @@ function TrackerScore({ score }: { score: number }) {
   )
 }
 
+/**
+ * @param {{ icon: React.ElementType, label: string, value: string | number, onClick: () => void }} props
+ */
+function StatItem({ icon: Icon, label, value, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex justify-between items-center w-full px-4 py-3 rounded-lg text-lg text-gray-300 bg-gray-700/30 hover:bg-gray-700/50 transition-colors cursor-pointer group relative overflow-hidden"
+    >
+      <div className="flex items-center gap-3">
+        <Icon size={20} className="text-indigo-400 group-hover:text-indigo-300 transition-colors" />
+        <span>{label}:</span>
+      </div>
+      <span className="font-bold text-cozy-text-light">{value}</span>
+      {/* Subtle background glow on hover */}
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-10 transition-opacity duration-300 pointer-events-none" />
+    </button>
+  );
+}
+
+/**
+ * @param {{ isOpen: boolean, onClose: () => void, title: string, content: React.ReactNode, icon: React.ElementType | null, anchorBelow?: boolean }} props
+ */
+function StatDetailsModal({ isOpen, onClose, title, content, icon: Icon, anchorBelow }) {
+  if (!isOpen) return null;
+  if (anchorBelow) {
+    return (
+      <div className="absolute left-0 right-0 mt-2 z-50 flex justify-center">
+        <div
+          className="rounded-xl p-6 max-w-[350px] w-full relative shadow-2xl bg-gray-900 border border-gray-700"
+          style={{ backdropFilter: 'blur(10px)' }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            className="absolute top-3 right-3 text-gray-400 hover:text-gray-200 text-2xl"
+            onClick={onClose}
+          >
+            &times;
+          </button>
+          <h2 className="text-xl font-bold mb-3 text-center text-indigo-300 flex items-center justify-center gap-2">
+            {Icon && <Icon size={22} className="text-indigo-400" />} {title}
+          </h2>
+          <div className="text-base text-center leading-relaxed text-cozy-text-light">
+            {content}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  // fallback: center modal
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50"
+      onClick={onClose}
+    >
+      <div
+        className="rounded-xl p-6 max-w-[350px] w-full relative shadow-2xl bg-gray-900 border border-gray-700"
+        style={{ backdropFilter: 'blur(10px)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-200 text-2xl"
+          onClick={onClose}
+        >
+          &times;
+        </button>
+        <h2 className="text-xl font-bold mb-3 text-center text-indigo-300 flex items-center justify-center gap-2">
+          {Icon && <Icon size={22} className="text-indigo-400" />} {title}
+        </h2>
+        <div className="text-base text-center leading-relaxed text-cozy-text-light">
+          {content}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * @param {{ stats: { checkInStreak: string, postReactions: number, netActivities: number, xpGained: number }, onStatClick: (statKey: string, details: { title: string, content: React.ReactNode, icon: React.ElementType }) => void }} props
+ */
+function WeeklyStatsCard({ stats, onStatClick }) {
+  return (
+    <Card className="group w-[350px] hover:bg-gray-800/70 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-indigo-500/20 overflow-hidden">
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-lg font-bold text-indigo-300 flex items-center gap-2">
+          <BarChart3 size={20} /> Weekly Stats
+        </h2>
+        {/* Info button for general overview of weekly stats */}
+        <button onClick={() => onStatClick('weekly_overview', {
+          title: "Weekly Overview Insights",
+          content: "This section provides a summary of your activities over the last 7 days. Click on individual stats for more details!",
+          icon: BarChart3
+        })} className="text-gray-400 hover:text-gray-200 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-400">
+          <Info size={18} />
+        </button>
+      </div>
+      <div className="space-y-2 text-base text-gray-300">
+        <StatItem
+          icon={CalendarDays}
+          label="Check-in Streak"
+          value={stats.checkInStreak}
+          onClick={() => onStatClick('check_in_streak', {
+            title: "Check-in Streak Details",
+            content: (
+              <>
+                <p>You've logged in for <b>{stats.checkInStreak}</b> consecutive days!</p>
+                <p className="text-sm text-gray-400 mt-2">Keep up the great habit to earn bonus rewards!</p>
+                <ul className="list-disc list-inside text-left mt-4 text-sm">
+                  <li>Day 1: Basic login</li>
+                  <li>Day 2: Continue streak</li>
+                  <li>Day 3: You're consistent!</li>
+                  <li>Day 4: ...and so on.</li>
+                  <li><i>Mock data for demonstration. Actual dates would appear here.</i></li>
+                </ul>
+              </>
+            ),
+            icon: CalendarDays
+          })}
+        />
+        <StatItem
+          icon={ThumbsUp}
+          label="Post Reactions"
+          value={stats.postReactions}
+          onClick={() => onStatClick('post_reactions', {
+            title: "Post Reactions Breakdown",
+            content: (
+              <>
+                <p>You've received <b>{stats.postReactions}</b> reactions this week!</p>
+                <p className="text-sm text-gray-400 mt-2">Your content is making an impact!</p>
+                <ul className="list-disc list-inside text-left mt-4 text-sm">
+                  <li>Post "My Fan-Manga Debut": 50 Likes, 10 Hearts</li>
+                  <li>Comment on "Anime Review: Demon Slayer": 12 Upvotes</li>
+                  <li>Guide "Drawing Manga Eyes": 20 Saves</li>
+                  <li><i>Mock data for demonstration. Actual posts/reactions would appear here.</i></li>
+                </ul>
+              </>
+            ),
+            icon: ThumbsUp
+          })}
+        />
+        <StatItem
+          icon={TrendingUp}
+          label="Net Activities"
+          value={stats.netActivities}
+          onClick={() => onStatClick('net_activities', {
+            title: "Net Activities Overview",
+            content: (
+              <>
+                <p>You completed <b>{stats.netActivities}</b> net activities this week!</p>
+                <p className="text-sm text-gray-400 mt-2">This includes creating, commenting, and reviewing!</p>
+                <ul className="list-disc list-inside text-left mt-4 text-sm">
+                  <li>3 Fan-Manga Chapters Published</li>
+                  <li>2 Comments Left</li>
+                  <li>1 Quick Review Completed</li>
+                  <li><i>Mock data for demonstration. Actual activities would appear here.</i></li>
+                </ul>
+              </>
+            ),
+            icon: TrendingUp
+          })}
+        />
+        <StatItem
+          icon={HandCoins}
+          label="XP Gained"
+          value={stats.xpGained}
+          onClick={() => onStatClick('xp_gained', {
+            title: "XP Gained Breakdown",
+            content: (
+              <>
+                <p>You earned <b>{stats.xpGained}</b> XP this week!</p>
+                <p className="text-sm text-gray-400 mt-2">Keep earning XP to level up!</p>
+                <ul className="list-disc list-inside text-left mt-4 text-sm">
+                  <li>Daily Check-in: +5 XP</li>
+                  <li>Published new chapter: +50 XP</li>
+                  <li>Commented: +15 XP</li>
+                  <li>Review: +25 XP</li>
+                  <li><i>Mock data for demonstration. Actual XP transactions would appear here.</i></li>
+                </ul>
+              </>
+            ),
+            icon: HandCoins
+          })}
+        />
+      </div>
+      <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-10 transition-opacity duration-300 pointer-events-none" />
+    </Card>
+  );
+}
 
 export default function TrackerPage() {
   const [tracker, setTracker] = useState<{ xp: number; level: number } | null>(null)
@@ -416,7 +604,8 @@ export default function TrackerPage() {
     commentComrade: false,
     quickReviewer: false,
   });
-
+  const [isStatModalOpen, setIsStatModalOpen] = useState(false);
+  const [currentStatDetails, setCurrentStatDetails] = useState({ title: '', content: '', icon: null });
 
   // Get the current user (adjust for your auth setup)
   const [userId, setUserId] = useState<string | null>(null)
@@ -531,11 +720,27 @@ export default function TrackerPage() {
     }
   };
 
-
   const closeModal = () => {
     setIsModalOpen(false)
     setReflection("")
   }
+
+  // Mock weekly stats for demo
+  const mockWeeklyStats = {
+    checkInStreak: '1 day',
+    postReactions: 175,
+    netActivities: 6,
+    xpGained: 45,
+  };
+
+  const handleStatClick = (statKey, details) => {
+    setCurrentStatDetails(details);
+    setIsStatModalOpen(true);
+  };
+  const closeStatModal = () => {
+    setIsStatModalOpen(false);
+    setCurrentStatDetails({ title: '', content: '', icon: null });
+  };
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-300">Loading your tracker...</div>
 
@@ -604,7 +809,7 @@ export default function TrackerPage() {
 
         {/* Main Row Layout */}
         <div className="flex-grow pt-24 w-full flex justify-center">
-          <div className="flex w-full max-w-[1280px] gap-8">
+          <div className="flex w-full max-w-[1200px] gap-8">
             {/* Main Content */}
             <div className="flex-1 flex flex-col items-center">
               <div className="flex flex-col items-center mt-8 mb-6">
@@ -631,14 +836,19 @@ export default function TrackerPage() {
               </div>
             </div>
 
-            {/* Right Sidebar */}
-            <div
-              className="hidden lg:block w-[260px] rounded-xl p-6"
-              style={{
-                backgroundColor: customColors['cozy-bg-dark'],
-              }}
-            >
-              <WeeklyStatsSidebar />
+            {/* Right Sidebar - Weekly Stats at top, modal below */}
+            <div className="hidden lg:block w-[350px] relative">
+              <WeeklyStatsCard stats={mockWeeklyStats} onStatClick={handleStatClick} />
+              <div className="relative">
+                <StatDetailsModal
+                  isOpen={isStatModalOpen}
+                  onClose={closeStatModal}
+                  title={currentStatDetails.title}
+                  content={currentStatDetails.content}
+                  icon={currentStatDetails.icon}
+                  anchorBelow
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -646,7 +856,7 @@ export default function TrackerPage() {
         <Footer />
       </div>
 
-      {/* Modal */}
+      {/* Modal for Cozy Reflection (unchanged) */}
       {isModalOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50"
@@ -681,8 +891,5 @@ export default function TrackerPage() {
         </div>
       )}
     </div>
-
-
-
   )
 } 

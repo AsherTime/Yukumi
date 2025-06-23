@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { FeaturePanel } from "@/components/feature-panel";
 import { TopNav } from "@/components/top-nav";
 import useSavedPosts from "@/utils/use-saved-posts";
@@ -14,7 +14,61 @@ import PostCardContainer from "@/components/post-card-container";
 import fetchPost from "@/utils/fetch-post";
 import handleLike from "@/utils/handleLike";
 import handleFollow from "@/utils/handleFollow";
-import { RecentPosts } from "@/components/recent-posts";
+
+// Ad Placeholder Components
+const AdPlaceholder = ({ 
+  size, 
+  className = "", 
+  label, 
+  variant = "default" 
+}: { 
+  size: string; 
+  className?: string; 
+  label: string; 
+  variant?: "default" | "sponsored" | "sticky";
+}) => {
+  const baseClasses = "flex items-center justify-center border-2 border-dashed border-zinc-700 bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 rounded-lg relative overflow-hidden";
+  
+  const variantClasses = {
+    default: "text-zinc-400 hover:border-zinc-600 transition-colors duration-200",
+    sponsored: "text-zinc-400 border-zinc-600 bg-gradient-to-br from-zinc-800/30 to-zinc-900/30",
+    sticky: "text-zinc-400 border-zinc-600 bg-gradient-to-br from-zinc-800/80 to-zinc-900/80 shadow-lg"
+  };
+
+  return (
+    <div className={`${baseClasses} ${variantClasses[variant]} ${className}`}>
+      <div className="text-center">
+        <div className="text-xs font-medium text-zinc-500 mb-1">ADVERTISEMENT</div>
+        <div className="text-sm font-semibold">{label}</div>
+        <div className="text-xs text-zinc-600 mt-1">{size}</div>
+      </div>
+      {variant === "sponsored" && (
+        <div className="absolute top-2 right-2">
+          <span className="bg-zinc-700 text-zinc-300 text-xs px-2 py-1 rounded-full font-medium">
+            Sponsored
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// In-Feed Ad Component
+const InFeedAd = () => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -10 }}
+    className="my-4"
+  >
+    <AdPlaceholder 
+      size="468x60" 
+      label="In-Feed Advertisement" 
+      variant="sponsored"
+      className="w-full h-[60px]"
+    />
+  </motion.div>
+);
 
 interface Post {
   id: string;
@@ -55,19 +109,11 @@ export default function HomePage() {
   const [, setPage] = useState(1);
   const [hasMore,] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [recentPosts, setRecentPosts] = useState<Post[]>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("recentPosts");
-      return stored ? JSON.parse(stored) : [];
-    }
-    return [];
-  });
 
   const { postsData, setPostsData, fetchPosts } = fetchPost();
   const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
   const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
   const { following, handleFollowToggle } = handleFollow(user);
-
 
   // Ensuring content is only rendered after hydration
   useEffect(() => {
@@ -116,6 +162,38 @@ export default function HomePage() {
   // Deduplicate posts by id to avoid duplicate React keys
   const uniquePosts = Array.from(new Map(filteredPosts.map(p => [p.id, p])).values());
 
+  // Function to render posts with in-feed ads
+  const renderPostsWithAds = () => {
+    const postsWithAds: React.ReactElement[] = [];
+    
+    uniquePosts.forEach((post, idx) => {
+      // Add post
+      postsWithAds.push(
+        <PostCardContainer
+          key={post.id || idx}
+          post={post}
+          idx={idx}
+          total={uniquePosts.length}
+          onLikeToggle={handleLikeClick}
+          following={following}
+          handleFollowToggle={handleFollowToggle}
+          saved={saved}
+          onToggleSave={() => toggleSave(post.id)}
+          onPostOpen={(post: Post) => {
+            // Remove recent posts functionality
+          }}
+        />
+      );
+      
+      // Add in-feed ad after every 4th post
+      if ((idx + 1) % 4 === 0) {
+        postsWithAds.push(<InFeedAd key={`ad-${idx}`} />);
+      }
+    });
+    
+    return postsWithAds;
+  };
+
   if (!mounted) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -141,6 +219,14 @@ export default function HomePage() {
           {/* Left Sidebar */}
           <div className="w-[20%] hidden lg:block">
             <FeaturePanel />
+            {/* Left Sidebar Ad - 300x250 */}
+            <div className="mt-6">
+              <AdPlaceholder 
+                size="300x250" 
+                label="Sidebar Advertisement" 
+                className="w-full h-[250px]"
+              />
+            </div>
           </div>
 
           {/* Main Content */}
@@ -186,27 +272,18 @@ export default function HomePage() {
                     Loading posts...
                   </motion.div>
                 ) : (
-                  uniquePosts.map((post, idx) => (
-                    <PostCardContainer
-                      key={post.id || idx}
-                      post={post}
-                      idx={idx}
-                      total={uniquePosts.length}
-                      onLikeToggle={handleLikeClick}
-                      following={following}
-                      handleFollowToggle={handleFollowToggle}
-                      saved={saved}
-                      onToggleSave={() => toggleSave(post.id)}
-                      onPostOpen={(post: Post) => {
-                        setRecentPosts((prev) => {
-                          const filtered = prev.filter((p) => p.id !== post.id);
-                          const updated = [post, ...filtered].slice(0, 10);
-                          localStorage.setItem("recentPosts", JSON.stringify(updated));
-                          return updated;
-                        });
-                      }}
-                    />
-                  ))
+                  <>
+                    {renderPostsWithAds()}
+                    
+                    {/* Bottom Large Banner Ad - 728x90 */}
+                    <div className="mt-6 px-4 pb-4">
+                      <AdPlaceholder 
+                        size="728x90" 
+                        label="Banner Advertisement" 
+                        className="w-full h-[90px]"
+                      />
+                    </div>
+                  </>
                 )}
               </AnimatePresence>
 
@@ -218,12 +295,30 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right Sidebar - Feature Panel */}
+          {/* Right Sidebar - Vertical Ad */}
           <div className="w-[25%] hidden lg:block">
-            <RecentPosts recentPosts={recentPosts} />
+            {/* Right Side Vertical Ad - 160x600 */}
+            <div className="sticky top-20">
+              <AdPlaceholder 
+                size="160x600" 
+                label="Vertical Advertisement" 
+                className="w-full h-[600px]"
+              />
+            </div>
           </div>
         </div>
       </div>
+      
+      {/* Mobile Sticky Footer Ad - 320x50 */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-zinc-900 border-t border-zinc-800 p-2">
+        <AdPlaceholder 
+          size="320x50" 
+          label="Mobile Advertisement" 
+          variant="sticky"
+          className="w-full h-[50px]"
+        />
+      </div>
+      
       <Footer />
     </>
   );
