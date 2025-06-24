@@ -8,6 +8,8 @@ import { awardPoints } from '@/utils/awardPoints'
 import { wasTaskCompletedToday } from '@/utils/dailyTasks'
 import { supabase } from '@/lib/supabase'
 import Footer from "@/components/footer"
+import { useWeeklyStats } from "@/hooks/useWeeklyStats"
+import { useAuth } from "@/contexts/AuthContext"
 
 // Minimal Card component for self-containment
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -503,20 +505,13 @@ function WeeklyStatsCard({ stats, onStatClick }) {
         <StatItem
           icon={CalendarDays}
           label="Check-in Streak"
-          value={stats.checkInStreak}
+          value={stats.streak}
           onClick={() => onStatClick('check_in_streak', {
             title: "Check-in Streak Details",
             content: (
               <>
-                <p>You've logged in for <b>{stats.checkInStreak}</b> consecutive days!</p>
+                <p>You've logged in consecutively for <b>{stats.streak}</b> days!</p>
                 <p className="text-sm text-gray-400 mt-2">Keep up the great habit to earn bonus rewards!</p>
-                <ul className="list-disc list-inside text-left mt-4 text-sm">
-                  <li>Day 1: Basic login</li>
-                  <li>Day 2: Continue streak</li>
-                  <li>Day 3: You're consistent!</li>
-                  <li>Day 4: ...and so on.</li>
-                  <li><i>Mock data for demonstration. Actual dates would appear here.</i></li>
-                </ul>
               </>
             ),
             icon: CalendarDays
@@ -525,19 +520,13 @@ function WeeklyStatsCard({ stats, onStatClick }) {
         <StatItem
           icon={ThumbsUp}
           label="Post Reactions"
-          value={stats.postReactions}
+          value={stats.totalInteractions}
           onClick={() => onStatClick('post_reactions', {
             title: "Post Reactions Breakdown",
             content: (
               <>
-                <p>You've received <b>{stats.postReactions}</b> reactions this week!</p>
-                <p className="text-sm text-gray-400 mt-2">Your content is making an impact!</p>
-                <ul className="list-disc list-inside text-left mt-4 text-sm">
-                  <li>Post "My Fan-Manga Debut": 50 Likes, 10 Hearts</li>
-                  <li>Comment on "Anime Review: Demon Slayer": 12 Upvotes</li>
-                  <li>Guide "Drawing Manga Eyes": 20 Saves</li>
-                  <li><i>Mock data for demonstration. Actual posts/reactions would appear here.</i></li>
-                </ul>
+                <p>You've liked and commented <b>{stats.totalInteractions}</b> times across various posts this week!</p>
+                <p className="text-sm text-gray-400 mt-2">Your love is making an impact!</p>
               </>
             ),
             icon: ThumbsUp
@@ -546,19 +535,13 @@ function WeeklyStatsCard({ stats, onStatClick }) {
         <StatItem
           icon={TrendingUp}
           label="Net Activities"
-          value={stats.netActivities}
+          value={stats.countActivities}
           onClick={() => onStatClick('net_activities', {
             title: "Net Activities Overview",
             content: (
               <>
-                <p>You completed <b>{stats.netActivities}</b> net activities this week!</p>
+                <p>You completed <b>{stats.countActivities}</b> activities this week!</p>
                 <p className="text-sm text-gray-400 mt-2">This includes creating, commenting, and reviewing!</p>
-                <ul className="list-disc list-inside text-left mt-4 text-sm">
-                  <li>3 Fan-Manga Chapters Published</li>
-                  <li>2 Comments Left</li>
-                  <li>1 Quick Review Completed</li>
-                  <li><i>Mock data for demonstration. Actual activities would appear here.</i></li>
-                </ul>
               </>
             ),
             icon: TrendingUp
@@ -567,20 +550,13 @@ function WeeklyStatsCard({ stats, onStatClick }) {
         <StatItem
           icon={HandCoins}
           label="XP Gained"
-          value={stats.xpGained}
+          value={stats.points}
           onClick={() => onStatClick('xp_gained', {
             title: "XP Gained Breakdown",
             content: (
               <>
-                <p>You earned <b>{stats.xpGained}</b> XP this week!</p>
+                <p>You earned <b>{stats.points}</b> XP this week!</p>
                 <p className="text-sm text-gray-400 mt-2">Keep earning XP to level up!</p>
-                <ul className="list-disc list-inside text-left mt-4 text-sm">
-                  <li>Daily Check-in: +5 XP</li>
-                  <li>Published new chapter: +50 XP</li>
-                  <li>Commented: +15 XP</li>
-                  <li>Review: +25 XP</li>
-                  <li><i>Mock data for demonstration. Actual XP transactions would appear here.</i></li>
-                </ul>
               </>
             ),
             icon: HandCoins
@@ -606,18 +582,12 @@ export default function TrackerPage() {
   });
   const [isStatModalOpen, setIsStatModalOpen] = useState(false);
   const [currentStatDetails, setCurrentStatDetails] = useState({ title: '', content: '', icon: null });
-
+  const { user } = useAuth();
   // Get the current user (adjust for your auth setup)
   const [userId, setUserId] = useState<string | null>(null)
   useEffect(() => {
-    supabase.auth.getUser().then(({ data, error }) => {
-      if (error) {
-        console.error('Error getting user:', error)
-      }
-      console.log('Auth user:', data?.user)
-      setUserId(data?.user?.id || null)
-    })
-  }, [])
+    setUserId(user?.id || null)
+  }, [user])
 
   useEffect(() => {
     async function fetchTracker() {
@@ -726,12 +696,7 @@ export default function TrackerPage() {
   }
 
   // Mock weekly stats for demo
-  const mockWeeklyStats = {
-    checkInStreak: '1 day',
-    postReactions: 175,
-    netActivities: 6,
-    xpGained: 45,
-  };
+  const weeklyStats = useWeeklyStats();
 
   const handleStatClick = (statKey, details) => {
     setCurrentStatDetails(details);
@@ -838,7 +803,7 @@ export default function TrackerPage() {
 
             {/* Right Sidebar - Weekly Stats at top, modal below */}
             <div className="hidden lg:block w-[350px] relative">
-              <WeeklyStatsCard stats={mockWeeklyStats} onStatClick={handleStatClick} />
+              <WeeklyStatsCard stats={weeklyStats} onStatClick={handleStatClick} />
               <div className="relative">
                 <StatDetailsModal
                   isOpen={isStatModalOpen}

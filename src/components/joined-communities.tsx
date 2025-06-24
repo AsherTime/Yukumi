@@ -62,7 +62,7 @@ export default function JoinedCommunitiesSidebar({ userId }: Props) {
         <Input
           id="community-search"
           type="text"
-          placeholder="Search communities..."
+          placeholder="Search your communities..."
           className="pl-2 pr-4 py-3 bg-[#181828] border border-zinc-700 text-white rounded-lg shadow focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-zinc-400"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -90,7 +90,7 @@ export default function JoinedCommunitiesSidebar({ userId }: Props) {
 
         {communities.length === 0 && (
           <li className="text-sm text-gray-500">
-            You haven’t joined any communities yet.
+            You haven't joined any communities yet.
           </li>
         )}
       </ul>

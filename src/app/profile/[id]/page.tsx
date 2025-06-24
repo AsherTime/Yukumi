@@ -12,7 +12,6 @@ import { useParams } from "next/navigation";
 import useSWR from 'swr';
 import PostCardContainer from "@/components/post-card-container";
 import fetchPost from "@/utils/fetch-post";
-import handleLike from "@/utils/handleLike";
 import useSavedPosts from "@/utils/use-saved-posts";
 import { AnimatePresence, motion } from "framer-motion";
 import handleFollow from "@/utils/handleFollow";
@@ -23,6 +22,7 @@ import AnalyticsCard from "@/components/analytics-card";
 import Image from "next/image"
 import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
+import { useLoginGate } from '@/contexts/LoginGateContext';
 
 interface Post {
   id: string;
@@ -131,6 +131,7 @@ export default function ProfilePage() {
   const [userAnime, setUserAnime] = useState<UserAnime[]>([]);
   const [selectedStatus, setSelectedStatus] = useState('');
   let profileId = userId || user?.id;
+  const { requireLogin } = useLoginGate();
   const { setPostsData, fetchPosts } = fetchPost();
   const { saved, savedLoading, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
   const { following, handleFollowToggle } = handleFollow(user);
@@ -216,7 +217,7 @@ export default function ProfilePage() {
       }
     };
     fetchUserProfile();
-  }, [userId, user?.id]);
+  }, [userId, user]);
 
   useEffect(() => {
 
@@ -464,27 +465,33 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchEnriched = async () => {
-      if (!user?.id || posts.length === 0 || uniqueSavedPosts.length === 0) return;
 
       const postIds = posts.map(p => p.id);
       const savedPostIds = uniqueSavedPosts.map(p => p.id);
       const allPostIds = [...new Set([...postIds, ...savedPostIds])];
 
-      const { data: userLikesPosts, error: error1 } = await supabase
-        .from("likes")
-        .select("post_id")
-        .in("post_id", postIds)
-        .eq("user_id", user.id);
+      let likedPostIds = new Set();
+      let likedSavedPostIds = new Set();
 
-      const { data: userLikesSaved, error: error2 } = await supabase
-        .from("likes")
-        .select("post_id")
-        .in("post_id", savedPostIds)
-        .eq("user_id", user.id);
+      if (user) {
+        const { data: userLikesPosts, error: error1 } = await supabase
+          .from("likes")
+          .select("post_id")
+          .in("post_id", postIds)
+          .eq("user_id", user.id);
 
-      if (error1 || error2) {
-        console.error("Error fetching likes", error1 || error2);
-        return;
+        const { data: userLikesSaved, error: error2 } = await supabase
+          .from("likes")
+          .select("post_id")
+          .in("post_id", savedPostIds)
+          .eq("user_id", user.id);
+
+        if (error1 || error2) {
+          console.error("Error fetching likes", error1 || error2);
+          return;
+        }
+        likedPostIds = new Set(userLikesPosts?.map(like => like.post_id) ?? []);
+        likedSavedPostIds = new Set(userLikesSaved?.map(like => like.post_id) ?? []);
       }
 
       const { data: latestPosts, error: postsError } = await supabase
@@ -492,8 +499,7 @@ export default function ProfilePage() {
         .select("id, likes_count")
         .in("id", allPostIds);
 
-      const likedPostIds = new Set(userLikesPosts?.map(like => like.post_id));
-      const likedSavedPostIds = new Set(userLikesSaved?.map(like => like.post_id));
+
       const postLikesMap = new Map(latestPosts?.map(p => [p.id, p.likes_count]));
 
 
@@ -516,6 +522,9 @@ export default function ProfilePage() {
     fetchEnriched();
   }, [posts, uniqueSavedPosts, user?.id]);
 
+  useEffect(() => {
+    console.log("Enriched Posts: ", enrichedPosts);
+  }, [enrichedPosts]);
 
 
 
@@ -549,8 +558,9 @@ export default function ProfilePage() {
                   className={`px-6 py-2 rounded font-semibold ${followedIds.includes(userId) ? 'bg-zinc-700 text-zinc-300 cursor-default' : 'bg-pink-500 hover:bg-pink-600 text-white'}`}
                   disabled={followedIds.includes(userId)}
                   onClick={async () => {
-                    if (!user) return;
-                    const { error } = await supabase.from('follows').insert({ follower_id: user.id, followed_id: userId });
+                    const allowed = requireLogin();
+                    if (!allowed) return;
+                    const { error } = await supabase.from('follows').insert({ follower_id: user?.id, followed_id: userId });
                     if (!error) {
                       setFollowedIds([...followedIds, userId]);
                       toast.success('Now following!');

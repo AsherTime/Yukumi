@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, MessageSquare, Star, Info, Sparkles, AlertCircle } from "lucide-react";
+import { CheckCircle, MessageSquare, Star, Sparkles, AlertCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { wasTaskCompletedToday } from "@/utils/dailyTasks";
@@ -78,11 +78,9 @@ export function DailyTasksPanel() {
             <span className="text-sm text-zinc-400">
               {completedTasksCount}/{tasks.length}
             </span>
-            {allTasksCompleted ? (
+            {allTasksCompleted &&
               <Sparkles className="w-5 h-5 text-yellow-400" />
-            ) : (
-              <Info className="w-5 h-5 text-blue-400" />
-            )}
+            }
           </div>
         </div>
       </CardHeader>

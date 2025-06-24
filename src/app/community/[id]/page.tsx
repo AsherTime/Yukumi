@@ -16,6 +16,8 @@ import fetchPost from "@/utils/fetch-post";
 import handleLike from "@/utils/handleLike";
 import useSavedPosts from "@/utils/use-saved-posts";
 import handleFollow from "@/utils/handleFollow";
+import { useLoginGate } from '@/contexts/LoginGateContext';
+
 
 // Types
 interface Community {
@@ -83,7 +85,7 @@ export default function CommunityIdPage() {
     }
     return [];
   });
-
+  const { requireLogin } = useLoginGate();
   const { postsData, setPostsData, fetchPosts } = fetchPost();
   const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
   const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
@@ -179,43 +181,79 @@ export default function CommunityIdPage() {
 
 
   const handleJoinCommunity = async () => {
-    if (!user || !community) return;
+  if (!community) return;
 
-    try {
-      // Add to follows table
+  const allowed = requireLogin();
+  if (!allowed) return;
+
+  try {
+    if (!joined) {
+      // ✅ Join community
       const { error: followError } = await supabase
         .from('members')
         .insert([
           {
-            user_id: user.id,
-            community_id: community.id
-          }
+            user_id: user?.id,
+            community_id: community.id,
+          },
         ]);
 
       if (followError) {
-        console.log('Follow error details:', followError?.message, followError?.code, followError?.details);
-        console.error('Error adding follow:', followError);
-        throw followError;
+        console.error('Error joining:', followError);
+        toast.error('Failed to join community');
+        return;
       }
 
-      // Update community members count
       const { error: updateError } = await supabase
         .from('community')
-        .update({ members: community.members + 1 })
+        .update({ members: (community.members ?? 0) + 1 })
         .eq('id', community.id);
 
       if (updateError) {
         console.error('Error updating member count:', updateError);
-        throw updateError;
+        toast.error('Failed to update community');
+        return;
       }
-      console.log('Successfully joined community!');
+
       setJoined(true);
       toast.success('Successfully joined community!');
-    } catch (error) {
-      console.error('Error joining community:', error);
-      toast.error('Failed to join community');
+      console.log('Successfully joined community!');
+    } else {
+      // ✅ Leave community
+      const { error: unfollowError } = await supabase
+        .from('members')
+        .delete()
+        .eq('user_id', user?.id)
+        .eq('community_id', community.id);
+
+      if (unfollowError) {
+        console.error('Error leaving community:', unfollowError);
+        toast.error('Failed to leave community');
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from('community')
+        .update({ members: Math.max((community.members ?? 1) - 1, 0) })
+        .eq('id', community.id);
+
+      if (updateError) {
+        console.error('Error updating member count:', updateError);
+        toast.error('Failed to update community');
+        return;
+      }
+
+      setJoined(false);
+      toast.success('Left the community');
+      console.log('Left the community');
     }
-  };
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    toast.error('An unexpected error occurred');
+  }
+};
+
+
 
 
 
@@ -327,17 +365,21 @@ export default function CommunityIdPage() {
               <div className="flex flex-wrap gap-2 md:gap-4">
                 <Button
                   className={`px-6 py-2 rounded-full text-lg font-semibold transition-colors ${joined
-                    ? "bg-zinc-700 text-zinc-300 cursor-default"
+                    ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-600"
                     : "bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700"
                     }`}
-                  disabled={joined}
                   onClick={handleJoinCommunity}
                 >
-                  {joined ? "Joined" : "+ Join Community"}
+                  {joined ? "- Exit Community" : "+ Join Community"}
                 </Button>
                 <Button
                   className="w-auto bg-black border border-white/10 hover:bg-white/5"
-                  onClick={() => router.push(`/upload?community_id=${community.id}`)}
+                  onClick={() => {
+                    const allowed = requireLogin();
+                    if (!allowed) return;
+
+                    router.push(`/upload?community_id=${community.id}`);
+                  }}
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   Create Post
@@ -410,23 +452,23 @@ export default function CommunityIdPage() {
 
               {/* Trending Tags */}
               {community.trending_tags && community.trending_tags.length > 0 && (
-              <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
-                <h3 className="text-lg font-semibold mb-4">Trending Topics</h3>
-                <div className="flex flex-wrap gap-2">
-                  {community.trending_tags?.map((tag, index) => (
-                    <button
-                      key={index}
-                      onClick={() => toggleTag(tag)}
-                      className={`px-3 py-1 rounded-full font-medium text-sm ${selectedTags.includes(tag)
-                        ? "bg-purple-700 text-white"
-                        : "bg-zinc-700 text-zinc-300"
-                        }`}
-                    >
-                      {tag}
-                    </button>
-                  ))}
+                <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
+                  <h3 className="text-lg font-semibold mb-4">Trending Topics</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {community.trending_tags?.map((tag, index) => (
+                      <button
+                        key={index}
+                        onClick={() => toggleTag(tag)}
+                        className={`px-3 py-1 rounded-full font-medium text-sm ${selectedTags.includes(tag)
+                          ? "bg-purple-700 text-white"
+                          : "bg-zinc-700 text-zinc-300"
+                          }`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
               )}
             </div>
           </div>

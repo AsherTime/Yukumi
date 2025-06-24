@@ -3,18 +3,15 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { TopNav } from "@/components/top-nav";
 import Footer from "@/components/footer";
-import { ListPlus, Pause, X, Play, Calendar, Check, ChevronDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { handleQuickReviewer } from "@/utils/dailyTasks";
 import { toast } from "sonner";
 import { awardPoints } from "@/utils/awardPoints";
-import { se } from "date-fns/locale";
-import { set } from "date-fns";
+import { useLoginGate } from '@/contexts/LoginGateContext';
 
 type Anime = {
   image_url: string;
@@ -69,6 +66,7 @@ export default function AnimeDetail() {
   const [score, setScore] = useState(10);
   const [shouldUpdate, setShouldUpdate] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
+  const {requireLogin} = useLoginGate();
 
 
   useEffect(() => {
@@ -276,7 +274,11 @@ export default function AnimeDetail() {
                   </div>
                 </>
               ) : (
-                <Button onClick={() => { setIsInList(true) }} className="bg-blue-700 hover:bg-blue-800 text-white transition-colors w-full">+ Add to List</Button>
+                <Button onClick={() => { 
+                  const allowed = requireLogin();
+                  if (!allowed) return;
+                  setIsInList(true) 
+                }} className="bg-blue-700 hover:bg-blue-800 text-white transition-colors w-full">+ Add to List</Button>
               )
               }
 

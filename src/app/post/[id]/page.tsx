@@ -17,7 +17,7 @@ import useSavedPosts from "@/utils/use-saved-posts";
 import fetchPost from "@/utils/fetch-post";
 import handleLike from "@/utils/handleLike";
 import handleFollow from "@/utils/handleFollow";
-
+import { useLoginGate } from '@/contexts/LoginGateContext';
 
 interface Profile {
   username: string;
@@ -133,6 +133,7 @@ const PostPage = () => {
   const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
   const { following, handleFollowToggle } = handleFollow(user);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const { requireLogin } = useLoginGate();
 
   useEffect(() => {
     if (!user) return;
@@ -549,7 +550,6 @@ const PostPage = () => {
   const [userLikedSet, setUserLikedSet] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!user) return;
 
     const fetchLikes = async () => {
       // 1. Fetch like counts
@@ -572,6 +572,7 @@ const PostPage = () => {
 
 
       // 2. Fetch likes by current user
+      if(user){
       const { data: likedData, error: likedError } = await supabase
         .from('comment_likes')
         .select('comment_id')
@@ -579,6 +580,7 @@ const PostPage = () => {
 
       if (likedError) console.error(likedError);
       setUserLikedSet(new Set(likedData?.map(d => d.comment_id)));
+      }
     };
 
     fetchLikes();
@@ -671,7 +673,11 @@ const PostPage = () => {
             <p className="mt-2 pt-2">{comment.content}</p>
             <div className="flex space-x-6 mt-3 items-center pt-2 pb-2">
               <button
-                onClick={() => onToggleLike(comment.id, isLiked)}
+                onClick={() => {
+                  const allowed = requireLogin();
+                  if (!allowed) return;
+                  onToggleLike(comment.id, isLiked)
+                }}
                 className={`flex items-center space-x-1 text-sm ${isLiked ? 'text-blue-500 font-bold' : 'text-gray-500'} hover:underline`}
               >
                 {isLiked ? (
@@ -683,7 +689,12 @@ const PostPage = () => {
               </button>
 
               <button
-                onClick={() => { setReplyTo(comment.id); setIsReplying(true); }}
+                onClick={() => {
+                  const allowed = requireLogin();
+                  if (!allowed) return;
+                  setReplyTo(comment.id);
+                  setIsReplying(true);
+                }}
                 className="text-blue-500 hover:text-blue-400 text-sm flex items-center"
                 aria-label="Reply"
               >
@@ -712,8 +723,12 @@ const PostPage = () => {
 
               {comment.user_id !== user?.id && (
                 <button
-                  onClick={() => reportComment(comment.id, user?.id || null)}
-                  className="flex items-center text-xs text-red-500 hover:underline"
+                  onClick={() => {
+                    const allowed = requireLogin();
+                    if (!allowed) return;
+                    reportComment(comment.id, user?.id || null)
+                  }}
+                  className="flex items-center text-xs text-red-500 hover:text-red-400"
                   aria-label="Report comment"
                 >
                   <Flag className="w-5 h-5" />&nbsp;&nbsp;Report
@@ -820,7 +835,11 @@ const PostPage = () => {
               placeholder="Write a comment..."
             />
             <button
-              onClick={() => handleAddComment(post.id, null, newComment)}
+              onClick={() => {
+                const allowed = requireLogin();
+                if (!allowed) return;
+                handleAddComment(post.id, null, newComment)
+              }}
               className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
             >
               Add Comment

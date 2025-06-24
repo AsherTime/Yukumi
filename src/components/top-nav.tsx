@@ -283,7 +283,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
       {/* Fixed Navbar - full width, flush with top, no extra block below */}
       <header className="fixed top-0 left-0 right-0 w-full z-50 bg-black border-b border-zinc-800 shadow-sm m-0 p-0">
         <nav className="flex items-center px-8 py-4 m-0 p-0 w-full">
-          <Link href="/" className="relative mr-8">
+          <div className="relative mr-8">
             <Image
               src={"https://res.cloudinary.com/difdc39kr/image/upload/v1740159528/Simplification_gho0s6.svg"}
               alt="YUKUMI"
@@ -292,7 +292,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
               className="object-contain"
               priority
             />
-          </Link>
+          </div>
           <div className="flex items-center gap-6">
             {navLinks.map((link) => (
               <Link

@@ -94,7 +94,6 @@ interface Post {
 
 export default function HomePage() {
   const { user } = useAuth();
-  const [mounted, setMounted] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [followedIds, setFollowedIds] = useState<string[]>([]);
   const categories = [
@@ -114,11 +113,6 @@ export default function HomePage() {
   const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
   const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
   const { following, handleFollowToggle } = handleFollow(user);
-
-  // Ensuring content is only rendered after hydration
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Fetch followed user IDs for 'Following' filter
   useEffect(() => {
@@ -193,23 +187,6 @@ export default function HomePage() {
     
     return postsWithAds;
   };
-
-  if (!mounted) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid gap-6">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="bg-[#2e2e2e] border-0 p-4 relative">
-              <div className="animate-pulse">
-                <div className="h-4 bg-gray-700 rounded w-3/4 mb-4"></div>
-                <div className="h-4 bg-gray-700 rounded w-1/2"></div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>
