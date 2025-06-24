@@ -7,6 +7,7 @@ import { FaBookmark } from 'react-icons/fa';
 import { FollowButton } from "@/components/FollowButton";
 import PostShareMenu from '@/components/post-share-menu';
 import useViewCountOnVisible from '@/hooks/use-view-count';
+import { useLoginGate } from '@/contexts/LoginGateContext';
 
 interface Post {
   id: string;
@@ -56,9 +57,10 @@ export default function PostCard({ post, idx, total, formatDate, navigatetoCommu
 }) {
   const viewRef = useViewCountOnVisible(post.id);
   const isSaved = saved.includes(post.id);
+  const { requireLogin } = useLoginGate();
   return (
     <div onClick={() => {
-      {onPostOpen && onPostOpen(post);}
+      { onPostOpen && onPostOpen(post); }
       handleCommentClick(post.id)
     }} className="cursor-pointer">
       <motion.section
@@ -102,7 +104,11 @@ export default function PostCard({ post, idx, total, formatDate, navigatetoCommu
                 className="rounded-full px-4 py-1 bg-blue-900 text-blue-400 font-semibold shadow hover:bg-blue-800 transition text-xs"
               />
               <button
-                onClick={() => handleSave(post.id)}
+                onClick={() => {
+                  const allowed = requireLogin();
+                  if (!allowed) return;
+                  handleSave(post.id)
+                }}
                 aria-label={isSaved ? 'Unsave' : 'Save'}
                 className="text-blue-400 hover:text-blue-300"
               >
@@ -133,6 +139,8 @@ export default function PostCard({ post, idx, total, formatDate, navigatetoCommu
                       <button
                         className="block w-full px-4 py-2 text-left text-yellow-600 hover:bg-gray-100"
                         onClick={() => {
+                          const allowed = requireLogin();
+                          if (!allowed) return;
                           setReportConfirmId(post.id);
                           setMenuOpenId(null);
                         }}
@@ -243,7 +251,11 @@ export default function PostCard({ post, idx, total, formatDate, navigatetoCommu
         {/* Bottom Row: Like, Comment, View */}
         <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-start gap-6 px-6 py-3">
           <button
-            onClick={(e) => handleLikeClick(e, post.id, post.liked_by_user)}
+            onClick={(e) => {
+              const allowed = requireLogin();
+              if (!allowed) return;
+              handleLikeClick(e, post.id, post.liked_by_user)
+            }}
             className={`flex items-center gap-1 text-white hover:text-pink-500 transition-colors group ${post.liked_by_user ? 'font-bold text-pink-500' : ''}`}
           >
             <Heart className="w-5 h-5 mr-1 group-hover:scale-110 transition-transform" fill={post.liked_by_user ? '#ec4899' : 'none'} />

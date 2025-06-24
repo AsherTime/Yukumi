@@ -18,6 +18,7 @@ import { handleQuickReviewer } from "@/utils/dailyTasks";
 import { Command, CommandItem } from "@/components/ui/command";
 import { toast } from "sonner";
 import { awardPoints } from "@/utils/awardPoints";
+import { useLoginGate } from '@/contexts/LoginGateContext';
 
 
 interface Anime {
@@ -70,6 +71,18 @@ const AnimeCard = ({ anime, favourites, selectedStatus, score, onViewDetails, on
   const [communityId, setCommunityId] = useState<number | null>(null);
   const isInList = !!selectedStatus && selectedStatus !== "";
   const router = useRouter();
+  const { requireLogin } = useLoginGate();
+
+  const handleOpenChange = (nextState: boolean) => {
+    if (nextState) {
+      // Only allow opening if logged in
+      const allowed = requireLogin();
+      if (allowed) setOpenStatus(true);
+    } else {
+      setOpenStatus(false);
+    }
+  };
+
 
   useEffect(() => {
     fetchCommunity();
@@ -91,7 +104,11 @@ const AnimeCard = ({ anime, favourites, selectedStatus, score, onViewDetails, on
     <Card className="bg-[#181828] border-zinc-800 shadow-lg hover:scale-[1.025] hover:shadow-xl transition-transform duration-200 relative flex flex-col">
       <button
         className="absolute top-3 left-3 z-10 bg-black/60 rounded-full p-1 hover:bg-pink-600 transition-colors"
-        onClick={() => toggleFavourite(anime.id)}
+        onClick={() => {
+          const allowed = requireLogin();
+          if (!allowed) return;
+          toggleFavourite(anime.id)
+        }}
       >
         {favourites.includes(anime.id) ? (
           <Heart className="w-5 h-5 text-pink-500 fill-pink-500" />
@@ -127,7 +144,7 @@ const AnimeCard = ({ anime, favourites, selectedStatus, score, onViewDetails, on
             <PopoverTrigger asChild>
               <button className="text-left w-full mb-2 ml-1">
                 Your Score:&nbsp;
-                <span className="font-semibold text-white">{score ?? "-"}</span>
+                <span className="font-semibold text-white">{score === 0 ? "-" : score}</span>
               </button>
             </PopoverTrigger>
             <PopoverContent className="p-0 w-32 bg-zinc-800 border-zinc-700">
@@ -150,7 +167,7 @@ const AnimeCard = ({ anime, favourites, selectedStatus, score, onViewDetails, on
         )}
 
         {/* ─────────── Status Dropdown ─────────── */}
-        <Popover open={openStatus} onOpenChange={setOpenStatus}>
+        <Popover open={openStatus} onOpenChange={handleOpenChange}>
           <PopoverTrigger asChild>
             <button className="w-full text-left p-1 rounded-md transition-all duration-200 ease-in-out hover:bg-zinc-700 hover:shadow-md
                      flex items-center justify-between ml-[-10px]">
@@ -261,34 +278,8 @@ const AnimeBrowser: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("All");
   const [favourites, setFavourites] = useState<string[]>([]);
-
-
-
   const { user } = useAuth()
   const userId = user?.id || "";
-
-  /*
-    useEffect(() => {
-      const start = (page - 1) * 50
-      const end = start + 50
-      let filtered = animeList
-      if (searchQuery.trim()) {
-        filtered = filtered.filter(anime =>
-          anime.title?.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      }
-      if (selectedTag) {
-        filtered = [
-          ...filtered.filter(anime =>
-            [...(anime.tags || []), ...(anime.genres || [])].includes(selectedTag)
-          ),
-          ...filtered.filter(anime =>
-            ![...(anime.tags || []), ...(anime.genres || [])].includes(selectedTag)
-          ),
-        ]
-      }
-      setDisplayedAnime(filtered.slice(start, end))
-    }, [animeList, searchQuery, page, selectedTag])*/
 
   const fetchAnimeList = async (): Promise<Anime[]> => {
     const { data, error } = await supabase.from("Anime").select("*, tags, genres").order("rank");
@@ -299,16 +290,6 @@ const AnimeBrowser: React.FC = () => {
       return data || [];
     }
   };
-
-  /*
-    const loadNextPage = () => {
-      setPage((prev) => prev + 1)
-    }
-  
-    const loadPreviousPage = () => {
-      setPage((prev) => Math.max(1, prev - 1))
-    }
-  */
 
   useEffect(() => {
     const fetchFavourites = async () => {
@@ -328,7 +309,6 @@ const AnimeBrowser: React.FC = () => {
     if (userId) fetchFavourites();
   }, [userId]);
 
-
   const toggleFavourite = async (animeId: string) => {
     const isFavourited = favourites.includes(animeId);
 
@@ -347,8 +327,6 @@ const AnimeBrowser: React.FC = () => {
       setFavourites(updatedFavourites); // Update local state
     }
   };
-
-
 
   // Fetch current status and score from Supabase if exists
   const fetchUserAnimeData = async (
@@ -405,38 +383,50 @@ const AnimeBrowser: React.FC = () => {
 
     return { enrichedAnimeList, statusMap, scoreMap };
   };
+
   const [statusMap, setStatusMap] = useState<Record<string, string>>({});
   const [scoreMap, setScoreMap] = useState<Record<string, number | null>>({});
 
   useEffect(() => {
     async function loadData() {
-      if (!userId) {
-        return;
-      }
       const statusOrder = ["Watching", "Completed", "On-Hold", "Dropped", "Planning"];
+
+      // This runs for everyone (even if not logged in)
       const fetchedAnimeList = await fetchAnimeList();
-      const { enrichedAnimeList, statusMap, scoreMap } = await fetchUserAnimeData(userId, fetchedAnimeList);
+      let enrichedAnimeList = fetchedAnimeList;
+      let statusMap = {};
+      let scoreMap = {};
+
+      // Only run this if user is logged in
+      if (userId) {
+        const userData = await fetchUserAnimeData(userId, fetchedAnimeList);
+        enrichedAnimeList = userData.enrichedAnimeList;
+        statusMap = userData.statusMap;
+        scoreMap = userData.scoreMap;
+      }
+
       const sortedAnimeList = enrichedAnimeList.sort((a, b) => {
         const aStatusIndex = statusOrder.indexOf(a.status);
         const bStatusIndex = statusOrder.indexOf(b.status);
 
-        // Move undefined or unlisted statuses to the end
         const aRank = aStatusIndex === -1 ? Infinity : aStatusIndex;
         const bRank = bStatusIndex === -1 ? Infinity : bStatusIndex;
 
         if (aRank !== bRank) {
-          return aRank - bRank; // sort by status order
+          return aRank - bRank;
         }
 
-        // If same status, sort by descending score
         return (b.score || 0) - (a.score || 0);
       });
+
       setAnimeList(sortedAnimeList);
       setStatusMap(statusMap);
       setScoreMap(scoreMap);
     }
+
     loadData();
   }, [userId]);
+
 
   const handleTagClick = (tag: string) => {
     setSelectedTags((prevTags) =>
@@ -445,8 +435,6 @@ const AnimeBrowser: React.FC = () => {
         : [...prevTags, tag]
     );
   };
-
-
 
 
   // Handle status change
@@ -547,29 +535,29 @@ const AnimeBrowser: React.FC = () => {
     }));
 
     try {
-          const wasAwarded = await handleQuickReviewer(
-            userId,
-            animeId,
-            'anime'
-          );
+      const wasAwarded = await handleQuickReviewer(
+        userId,
+        animeId,
+        'anime'
+      );
 
-          if (wasAwarded) {
-            toast.success('Review submitted and daily task completed! +25 XP');
-          } else {
-            // Award points for review submission even if daily task is already completed
-            await awardPoints(
-              userId,
-              'review_submitted',
-              15,
-              animeId,
-              'anime'
-            );
-            toast.success('Review submitted successfully! +15 XP');
-          }
-        } catch (pointsError) {
-          console.error('Failed to award points for review:', pointsError);
-          toast.warning('Review submitted, but points system is temporarily unavailable');
-        }
+      if (wasAwarded) {
+        toast.success('Review submitted and daily task completed! +25 XP');
+      } else {
+        // Award points for review submission even if daily task is already completed
+        await awardPoints(
+          userId,
+          'review_submitted',
+          15,
+          animeId,
+          'anime'
+        );
+        toast.success('Review submitted successfully! +15 XP');
+      }
+    } catch (pointsError) {
+      console.error('Failed to award points for review:', pointsError);
+      toast.warning('Review submitted, but points system is temporarily unavailable');
+    }
 
     setLoading(false);
     if (error) console.error("Error updating score:", error.message);
