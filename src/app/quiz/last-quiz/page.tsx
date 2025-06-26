@@ -1,6 +1,6 @@
 "use client"
 
-import { use, useState } from "react"
+import { use, useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { ChevronsRight, ChevronsLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -11,6 +11,7 @@ import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
+import { useNavigationContext } from '@/contexts/NavigationContext';
 
 export default function AnimeSurvey() {
   const [count, setCount] = useState("");
@@ -21,6 +22,14 @@ export default function AnimeSurvey() {
   const { user } = useAuth();
   const userId = user?.id;
 
+  const { fromPage } = useNavigationContext();
+
+  useEffect(() => {
+    if (fromPage !== 'anime-categories') {
+      router.replace('/unauthorized'); // or '/'
+    }
+  }, [fromPage]);
+
   const handleNext = async () => {
 
     if (!user) return;
@@ -30,7 +39,7 @@ export default function AnimeSurvey() {
       anime_count: count,
       anime_hours: hours,
       read_manga: readManga,
-      last_anime: lastAnime, 
+      last_anime: lastAnime,
     });
 
     if (error) {

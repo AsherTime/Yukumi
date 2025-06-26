@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
+import { useNavigationContext } from '@/contexts/NavigationContext';
 
 export default function ProfileSetup() {
   const [profileImage, setProfileImage] = useState<string | null>(null)
@@ -19,6 +20,14 @@ export default function ProfileSetup() {
   const [country, setCountry] = useState("")
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+
+  const { fromPage, setFromPage } = useNavigationContext();
+
+  useEffect(() => {
+    if (fromPage !== 'register') {
+      router.replace('/unauthorized'); // or '/'
+    }
+  }, [fromPage]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -130,6 +139,7 @@ export default function ProfileSetup() {
 
       console.log("Profile update successful:", data)
       toast.success("Profile updated successfully!")
+      setFromPage('profile-setup');
       router.push("/quiz/join-communities")
     } catch (error: any) {
       console.error("Profile update error details:", {

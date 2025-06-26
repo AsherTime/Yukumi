@@ -1,23 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/contexts/AuthContext"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
-import Image from "next/image"
-import { ChevronsLeft, ChevronsRight, Heart, RefreshCw, Play } from "lucide-react"
-import Link from "next/link"
+import { ChevronsLeft, ChevronsRight } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useNavigationContext } from '@/contexts/NavigationContext';
 
 interface QuizAnswer {
   companion: string
@@ -141,6 +136,8 @@ export default function FindAnimeQuiz() {
     },
   ]
 
+  const { setFromPage } = useNavigationContext();
+
   const handleAnswer = (questionId: string, value: any) => {
     setAnswers(prev => ({
       ...prev,
@@ -188,6 +185,7 @@ export default function FindAnimeQuiz() {
       if (quizError) throw quizError
 
       toast.success("Quiz completed! Redirecting to your recommendations...")
+      setFromPage("find-anime")
       router.push("/recommended-anime")
     } catch (error: any) {
       console.error("Error submitting quiz:", error)

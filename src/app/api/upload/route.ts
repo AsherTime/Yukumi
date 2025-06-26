@@ -9,6 +9,11 @@ const imagekit = new ImageKit({
   urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT!,
 });
 
+export async function GET(req: Request) {
+  return NextResponse.redirect(new URL('/unauthorized', req.url)); // Send to homepage
+}
+
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();

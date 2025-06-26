@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import styles from "./styles.module.css";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
+import { useNavigationContext } from '@/contexts/NavigationContext';
 
 interface Anime {
   id: string;
@@ -24,6 +24,13 @@ const RecommendedAnimePage = () => {
   const [previousAnswers, setPreviousAnswers] = useState<any>(null);
   const { user } = useAuth();
   const router = useRouter();
+  const { fromPage } = useNavigationContext();
+
+  useEffect(() => {
+    if (fromPage !== 'find-anime') {
+      router.replace('/unauthorized'); // or '/'
+    }
+  }, [fromPage]);
 
   useEffect(() => {
     const fetchRecommendations = async () => {

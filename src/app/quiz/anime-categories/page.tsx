@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ChevronsLeft, ChevronsRight } from "lucide-react"
@@ -8,6 +8,7 @@ import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from 'next/navigation'
 import { useAuth } from "@/contexts/AuthContext"
+import { useNavigationContext } from '@/contexts/NavigationContext';
 
 interface Category {
   id: string
@@ -88,6 +89,14 @@ export default function AnimeCategories() {
   const userId = user?.id
   const router = useRouter()
 
+  const { fromPage, setFromPage } = useNavigationContext();
+    
+      useEffect(() => {
+        if (fromPage !== 'join-communities') {
+          router.replace('/unauthorized'); // or '/'
+        }
+      }, [fromPage]);
+
   const toggleCategory = (categoryId: string) => {
     const newSelected = new Set(selectedCategories)
     if (newSelected.has(categoryId)) {
@@ -112,6 +121,7 @@ export default function AnimeCategories() {
       });
 
       if (error) throw error;
+      setFromPage('anime-categories');
       router.push('/quiz/last-quiz')
     } catch (error: any) {
       console.error('Error saving preferences:', error.message)
