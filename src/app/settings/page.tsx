@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { TopNav } from "@/components/top-nav"
 import Footer from "@/components/footer"
-import { createClient } from "@supabase/supabase-js";
 
 export default function SettingsPage() {
     const [notifAll, setNotifAll] = useState(true);
@@ -164,8 +163,23 @@ export default function SettingsPage() {
         }
     };
 
+    useEffect(() => {
+        console.log("User: ", user);
+    }, [user]);
 
+    if (!user) {
+        return (
+            <div className="flex items-center justify-center min-h-screen w-full px-4 text-center">
+                <div className="flex flex-col items-center">
+                    <h2 className="text-2xl font-semibold text-white mb-4">You're not signed in</h2>
+                    <p className="text-gray-400 mb-6">
+                        Please sign in or register to access this page.
+                    </p>
+                </div>
+            </div>
 
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#10101a] flex flex-col ">

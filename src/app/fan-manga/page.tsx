@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { ArrowLeftCircle, ArrowRightCircle, BookOpenText, ChevronDown } from 'lucide-react';
+import { useRouter } from "next/navigation";
 
 const customColors = {
   'cozy-text-light': '#E0E0E0',
@@ -12,13 +13,14 @@ const customColors = {
 export default function MangaReaderPage({ mangaData, onBack }: { mangaData: any, onBack: () => void }) {
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [activePageIndex, setActivePageIndex] = useState(0);
+  const router = useRouter();
 
   if (!mangaData || !mangaData.chapters || mangaData.chapters.length === 0) {
     return (
       <div className="absolute inset-0 flex flex-col items-center justify-center py-8 px-4 z-30 text-cozy-text-light">
         <div className="w-full max-w-2xl bg-cozy-reader-bg rounded-xl p-8 shadow-2xl text-center">
-          <p className="text-xl mb-4">No manga data available to read.</p>
-          <button onClick={onBack} className="bg-cozy-button-bg text-cozy-text-light py-2 px-4 rounded-full hover:bg-cozy-button-hover transition-colors">
+          <p className="text-xl mb-4">No fanfic selected.</p>
+          <button onClick={() => router.back()} className="bg-cozy-button-bg text-cozy-text-light py-2 px-4 rounded-full hover:bg-cozy-button-hover transition-colors">
             Go Back
           </button>
         </div>

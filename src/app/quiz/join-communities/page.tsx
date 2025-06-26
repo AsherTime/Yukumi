@@ -4,13 +4,13 @@ import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { Check, ChevronsRight, Search, ChevronsLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
-import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
+import { useNavigationContext } from '@/contexts/NavigationContext';
 
 interface Community {
   id: string;
@@ -26,6 +26,14 @@ export default function JoinCommunities() {
   const { user } = useAuth();
   const userId = user?.id;
   const router = useRouter();
+
+  const { fromPage, setFromPage } = useNavigationContext();
+  
+    useEffect(() => {
+      if (fromPage !== 'profile-setup') {
+        router.replace('/unauthorized'); // or '/'
+      }
+    }, [fromPage]);
 
 
   async function fetchCommunities() {
@@ -61,7 +69,7 @@ export default function JoinCommunities() {
       // Optionally show toast or error UI
       return;
     }
-
+    setFromPage('join-communities');
     router.push("/quiz/anime-categories");
   };
 

@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 import { setCookie } from "cookies-next"
 import { FaGoogle, FaDiscord } from "react-icons/fa"
+import { useNavigationContext } from '@/contexts/NavigationContext';
 
 interface FormData {
   email: string
@@ -73,6 +74,7 @@ export default function RegisterPage() {
     confirmPassword: "",
   })
   const router = useRouter();
+  const { setFromPage } = useNavigationContext();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
@@ -108,6 +110,7 @@ export default function RegisterPage() {
       if (data.user) {
         toast.success("Registration successful! Please check your email to confirm your account.");
         setFormData({ email: "", password: "", confirmPassword: "" });
+        setFromPage('register'); 
         router.push("/profile-setup");
       }
     } catch (error: any) {
@@ -119,6 +122,7 @@ export default function RegisterPage() {
 
   // Social login with Google
   const signInWithGoogle = async () => {
+    setFromPage('register'); 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -130,6 +134,7 @@ export default function RegisterPage() {
 
   // Social login with Discord
   const signInWithDiscord = async () => {
+    setFromPage('register'); 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'discord',
       options: {
