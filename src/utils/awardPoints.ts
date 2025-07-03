@@ -21,7 +21,7 @@ export async function awardPoints(
     };
 
     // Build the full function URL for the award-tracker-points edge function
-    const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_EDGE_FUNCTION_URL}/functions/v1/award-tracker-points`;
+    const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/award-tracker-points`;
     if (!functionUrl) {
       throw new Error('Edge function URL not configured');
     }
