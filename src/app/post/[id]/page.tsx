@@ -1,5 +1,5 @@
 "use client";
-
+export const runtime = "edge";
 import { FiEdit2, FiTrash2 } from "react-icons/fi"; // Importing icons
 import { ThumbsUpIcon, Flag, PlusCircle, MinusCircle } from 'lucide-react';
 import { useEffect, useState } from "react";

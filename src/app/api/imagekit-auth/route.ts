@@ -1,4 +1,5 @@
 // app/api/imagekit-auth/route.ts
+export const runtime = "edge";
 import { NextResponse } from "next/server";
 import ImageKit from "imagekit";
 
