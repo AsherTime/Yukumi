@@ -1,6 +1,5 @@
 "use client";
-
-
+export const runtime = "edge";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { RecentPosts } from "@/components/recent-posts";
 import { Input } from "@/components/ui/input";
