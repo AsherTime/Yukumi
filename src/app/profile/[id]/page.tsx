@@ -541,6 +541,8 @@ export default function ProfilePage() {
           <div className="absolute left-16 -bottom-20">
             <Image
               src={avatarUrl}
+              width={160}
+              height={192}
               className="w-40 h-48 object-cover rounded-2xl border-4 border-black shadow-lg"
               alt="Profile"
             />
@@ -835,7 +837,7 @@ export default function ProfilePage() {
               <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-4 mb-4 text-center cursor-pointer ${isDragActive ? 'border-pink-500 bg-pink-50' : 'border-zinc-700 bg-zinc-800'}`}>
                 <input {...getInputProps()} />
                 {editBanner ? (
-                  <Image src={editBanner} alt="Banner preview" className="w-full h-32 object-cover rounded mb-2" />
+                  <Image src={editBanner} alt="Banner preview" className="w-full h-32 object-cover rounded mb-2" width={800} height={128}/>
                 ) : (
                   <span className="text-zinc-400">Drag & drop a banner image here, or click to select</span>
                 )}

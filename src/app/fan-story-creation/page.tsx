@@ -6,7 +6,7 @@ import { useImageUpload } from '@/hooks/useImageUpload';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { Image } from "@/components/ui/image"
+import Image from "next/image";
 import { awardPoints } from '@/utils/awardPoints';
 
 interface Particle {
@@ -226,7 +226,14 @@ const StoryContentEditor: React.FC<StoryContentEditorProps> = ({
           className="hidden"
         />
         {coverImageUrl ? (
-          <Image src={coverImageUrl} alt="Manga Cover Preview" className="w-full max-h-64 object-cover rounded-md mb-4" />
+          <Image
+            src={coverImageUrl}
+            alt="Manga Cover Preview"
+            width={400}
+            height={256}
+            className="w-full max-h-64 object-cover rounded-md mb-4"
+            loading="lazy"
+          />
         ) : (
           <div className="w-full h-48 flex items-center justify-center border-2 border-dashed border-gray-600 rounded-md mb-4 text-gray-500 text-center">
             <p>Click below to choose your manga&apos;s cover image</p>
@@ -693,7 +700,7 @@ export default function FanStoryCreationPage() {
           insertedId,
           'fan_story'
         );
-        alert("Manga Published! 80 Points and 90 XP awarded!");
+        alert("Manga Published! 90 XP awarded!");
       } catch (pointsError) {
         alert("Manga published, but failed to award points/xp: " + pointsError);
       }
@@ -710,10 +717,6 @@ export default function FanStoryCreationPage() {
     setChapters([{ id: 'ch1', name: 'Prologue', pages: [{ id: 'ch1_p1', content: '' }] }]);
     setActiveChapterIndex(0);
     setActivePageIndex(0);
-  };
-
-  const handleSaveDraft = () => {
-    alert('Manga Draft Saved! (Concept)');
   };
 
   // Inject Keyframes for background animation (if this component is the root for effects)
@@ -807,21 +810,6 @@ export default function FanStoryCreationPage() {
 
         {/* Action Buttons */}
         <div className="flex justify-end space-x-4 pt-6 border-t border-gray-700/50">
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            className="px-6 py-3 rounded-full text-lg font-semibold transition-all duration-300 ease-in-out"
-            style={{
-              backgroundColor: customColors['cozy-button-bg'],
-              color: customColors['cozy-text-light'],
-              boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-              textShadow: '0 0 5px rgba(0,0,0,0.3)',
-            }}
-            onMouseEnter={e => e.currentTarget.style.backgroundColor = customColors['cozy-button-hover']}
-            onMouseLeave={e => e.currentTarget.style.backgroundColor = customColors['cozy-button-bg']}
-          >
-            Save Draft
-          </button>
           <button
             type="submit"
             onClick={handlePublish}

@@ -453,6 +453,8 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
                         <Image
                           src={userProfile.avatar_url}
                           alt="Profile"
+                          width={40}
+                          height={40}
                           className="h-full w-full object-cover"
                         />
                       ) : (

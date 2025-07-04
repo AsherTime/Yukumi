@@ -99,12 +99,15 @@ export function MangaFeed() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-semibold text-white mb-6">{manga.title}</h3>
-                  {manga.synopsis ?
-                  (<div
-                    className="text-gray-300 text-sm mb-8 -ml-10"
-                    dangerouslySetInnerHTML={{ __html: manga.synopsis }}
-                  />) : <div className='text-gray-300 text-sm mb-8'>No synopsis available</div>
-                  }
+                  {manga.synopsis ? (
+                    <div
+                      className="text-gray-300 text-sm mb-8 line-clamp-4"
+                      dangerouslySetInnerHTML={{ __html: manga.synopsis }}
+                    />
+                  ) : (
+                    <div className="text-gray-300 text-sm mb-8">No synopsis available</div>
+                  )}
+
                   <div className="flex items-center gap-4 text-sm text-gray-400">
                     <span>👁️ {manga.views || 0} views</span>
                     <span>📅 {new Date(manga.created_at).toLocaleDateString()}</span>

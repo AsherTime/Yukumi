@@ -251,18 +251,25 @@ const AnimeSearchBar = ({ value, onChange }: AnimeSearchBarProps) => (
   </div>
 );
 
-const AnimeBanner = () => (
+const AnimeBanner = () => {
+  const router = useRouter();
+  const { requireLogin } = useLoginGate();
+  return (
   <section className="w-full relative h-[260px] md:h-[340px] flex items-end justify-center overflow-hidden">
     <Image src={ANIME_BANNER_URL} alt="Anime Banner" fill className="object-cover w-full h-full" priority />
     <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-black/90 flex flex-col items-center justify-center text-center px-4">
       <h1 className="text-2xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-2">FIND THE BEST ANIME FOR YOU</h1>
       <p className="text-zinc-300 mb-4">Take the quiz and discover what fits your vibe</p>
-      <Link href="/quiz/find-anime">
-        <Button className="px-8 py-3 text-lg font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg hover:scale-105 hover:shadow-pink-500/40 transition-transform">TRY NOW</Button>
-      </Link>
+       <Button 
+       onClick={() => {
+          const allowed = requireLogin();
+          if (!allowed) return;
+          router.push("/quiz/find-anime")
+        }}
+       className="px-8 py-3 text-lg font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg hover:scale-105 hover:shadow-pink-500/40 transition-transform">TRY NOW</Button>
     </div>
   </section>
-);
+)};
 
 
 const AnimeBrowser: React.FC = () => {
