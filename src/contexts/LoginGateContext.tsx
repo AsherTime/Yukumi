@@ -35,10 +35,8 @@ export const LoginGateProvider = ({ children }: { children: React.ReactNode }) =
   };
 
   useEffect(() => {
-    if (showModal) {
-      closeModal();
-    }
-  }, [pathname, showModal]);
+    closeModal();
+  }, [pathname]);
 
   return (
     <LoginGateContext.Provider value={{ requireLogin, showModal, closeModal }}>
