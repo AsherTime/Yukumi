@@ -642,7 +642,7 @@ export default function FanStoryCreationPage() {
 
   const handlePublish = async () => {
 
-    if(!user) return;
+    if (!user) return;
 
     if (!mangaTitle.trim() || chapters.length === 0 || chapters.every(ch => ch.pages.every(p => !p.content.trim()))) {
       alert('Manga Title, Chapters, and Content cannot be empty!');
@@ -651,9 +651,7 @@ export default function FanStoryCreationPage() {
 
     // Prepare data
 
-    const newMangaId = self.crypto.randomUUID();
     const newManga = {
-      id: newMangaId,
       user_id: user?.id,
       title: mangaTitle,
       synopsis: chapters[0]?.pages[0]?.content?.slice(0, 200) || "",
@@ -667,32 +665,42 @@ export default function FanStoryCreationPage() {
     };
 
     // Insert into fan_stories
-    const { error } = await supabase.from("fan_stories").insert([newManga]);
+    const { data, error } = await supabase
+      .from("fan_stories")
+      .insert([newManga])
+      .select(); // Supabase will return the inserted rows
+
     if (error) {
       alert("Failed to publish manga: " + error.message);
       return;
     }
-
     // Award points and XP, and log in user_activities_log
-    try {
-      await awardPoints(
-        user.id,
-        'manga_posted',
-        80,
-        newMangaId,
-        'fan_story'
-      );
-      await awardPoints(
-        user.id,
-        'manga_posted_xp',
-        90,
-        newMangaId,
-        'fan_story'
-      );
-      alert("Manga Published! 80 Points and 90 XP awarded!");
-    } catch (pointsError) {
-      alert("Manga published, but failed to award points/xp: " + pointsError);
+    if (data && data.length > 0) {
+      const insertedId = data[0].id;
+
+      try {
+        await awardPoints(
+          user.id,
+          'manga_posted',
+          80,
+          insertedId,
+          'fan_story'
+        );
+        await awardPoints(
+          user.id,
+          'manga_posted_xp',
+          90,
+          insertedId,
+          'fan_story'
+        );
+        alert("Manga Published! 80 Points and 90 XP awarded!");
+      } catch (pointsError) {
+        alert("Manga published, but failed to award points/xp: " + pointsError);
+      }
     }
+
+
+
 
     // Reset state after publish
     setMangaTitle('');
