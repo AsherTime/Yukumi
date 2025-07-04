@@ -90,6 +90,8 @@ export default function PostCard({ post, idx, total, formatDate, navigatetoCommu
                   <Image
                     src={post.Profiles.avatar_url}
                     alt={post.Profiles.username || "User"}
+                    width={40}
+                    height={40}
                     className="w-10 h-10 rounded-full object-cover border border-zinc-700 group-hover:ring-2 group-hover:ring-blue-500 transition"
                   />
                 ) : (
@@ -220,6 +222,8 @@ export default function PostCard({ post, idx, total, formatDate, navigatetoCommu
               <Image
                 src={post.image_url}
                 alt={post.title}
+                width={1200}
+                height={800}
                 className="max-w-full max-h-[32rem] mx-auto rounded object-contain"
                 loading="lazy"
               />

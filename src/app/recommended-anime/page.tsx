@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import styles from "./styles.module.css";
-import { Image } from "@/components/ui/image";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -167,6 +167,7 @@ const RecommendedAnimePage = () => {
                         <Image
                           src={anime.image_url}
                           alt={anime.title}
+                          fill
                           className="absolute inset-0 w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />

@@ -21,6 +21,9 @@ export default function JoinedCommunitiesSidebar({ userId }: Props) {
   const [search, setSearch] = useState("");
 
   const filteredCommunities = useMemo(() => {
+    if (!search.trim()) {
+      return communities;
+    }
     return communities.filter(c =>
       c.title.toLowerCase().includes(search.toLowerCase())
     );
@@ -30,24 +33,36 @@ export default function JoinedCommunitiesSidebar({ userId }: Props) {
     if (!userId) return;
 
     const fetchCommunities = async () => {
-      console.log(userId)
-      const { data, error } = await supabase
+      // first, get the community IDs
+      const { data: memberships, error } = await supabase
         .from("members")
-        .select("community_id, community(title, banner_url)")
+        .select("community_id")
         .eq("user_id", userId);
 
       if (error) {
-        console.error("Failed to fetch communities:", error.message);
+        console.error(error);
         return;
       }
 
-      // Map to [{ id: community_id, title }]
-      const mapped: Community[] = (data ?? []).map((row) => ({
-        id: row.community_id,
-        title: row.community?.[0]?.title ?? null,
-        banner_url: row.community?.[0]?.banner_url ?? null,
-      }));
+      const communityIds = memberships?.map(m => m.community_id) ?? [];
 
+      // then, get the community details
+      const { data: communities, error: commError } = await supabase
+        .from("community")
+        .select("id, title, banner_url")
+        .in("id", communityIds);
+
+      if (commError) {
+        console.error(commError);
+        return;
+      }
+
+      // map them
+      const mapped: Community[] = communities.map(c => ({
+        id: c.id,
+        title: c.title,
+        banner_url: c.banner_url
+      }));
 
       setCommunities(mapped);
     };

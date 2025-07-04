@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import DOMPurify from 'dompurify';
-import { Image } from "@/components/ui/image"
+import Image from "next/image";
 import { awardPoints } from "@/utils/awardPoints"
 import { useImageUpload } from '@/hooks/useImageUpload';
 
@@ -384,6 +384,8 @@ export default function CoverUpload() {
                 <Image
                   src={previewImage}
                   alt="Preview"
+                  width={300}
+                  height={192}
                   className="max-h-48 rounded"
                 />
               </div>

@@ -788,12 +788,14 @@ export default function TrackerPage() {
       <div className="absolute inset-0 z-0 overflow-hidden">
         <Image
           src="https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Leonardo_Anime_XL_Generate_a_wide_horizontal_image_for_a_websi_1.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hMDVhOTMwNi0zYmRiLTQ5YjQtYWRkNi0xYzIxMzY4YmM3MDEiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9MZW9uYXJkb19BbmltZV9YTF9HZW5lcmF0ZV9hX3dpZGVfaG9yaXpvbnRhbF9pbWFnZV9mb3JfYV93ZWJzaV8xLmpwZyIsImlhdCI6MTc1MDA5MDEwOSwiZXhwIjoxNzgxNjI2MTA5fQ.fWu7BWc3R8PgN7n8Q8XrSS0sK3m8jC5Rub8EVZP6LUk"
-          className="object-cover w-full h-full blur-[2.25px] brightness-70 grayscale-[0.07]"
-          style={{ pointerEvents: 'none' }}
           alt="Background"
+          fill
+          className="object-cover blur-[2.25px] brightness-70 grayscale-[0.07]"
+          style={{ pointerEvents: 'none' }}
         />
         <div className="absolute inset-0 bg-black/50" />
       </div>
+
 
       {/* Content Layer */}
       <div className="relative z-10 flex flex-col min-h-screen">
