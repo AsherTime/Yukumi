@@ -15,6 +15,7 @@ import handleLike from "@/utils/handleLike";
 import handleFollow from "@/utils/handleFollow";
 
 // Ad Placeholder Components
+/*
 const AdPlaceholder = ({ 
   size, 
   className = "", 
@@ -51,8 +52,10 @@ const AdPlaceholder = ({
     </div>
   );
 };
+*/
 
 // In-Feed Ad Component
+/*
 const InFeedAd = () => (
   <motion.div
     initial={{ opacity: 0, y: 10 }}
@@ -68,6 +71,7 @@ const InFeedAd = () => (
     />
   </motion.div>
 );
+*/
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -155,9 +159,11 @@ export default function HomePage() {
       );
       
       // Add in-feed ad after every 4th post
+      /*
       if ((idx + 1) % 4 === 0) {
         postsWithAds.push(<InFeedAd key={`ad-${idx}`} />);
       }
+        */
     });
     
     return postsWithAds;
@@ -171,7 +177,7 @@ export default function HomePage() {
           {/* Left Sidebar */}
           <div className="w-[20%] hidden lg:block">
             <FeaturePanel />
-            {/* Left Sidebar Ad - 300x250 */}
+            {/* Left Sidebar Ad - 300x250 
             <div className="mt-6">
               <AdPlaceholder 
                 size="300x250" 
@@ -179,6 +185,7 @@ export default function HomePage() {
                 className="w-full h-[250px]"
               />
             </div>
+            */}
           </div>
 
           {/* Main Content */}
@@ -227,7 +234,7 @@ export default function HomePage() {
                   <>
                     {renderPostsWithAds()}
                     
-                    {/* Bottom Large Banner Ad - 728x90 */}
+                    {/* Bottom Large Banner Ad - 728x90 
                     <div className="mt-6 px-4 pb-4">
                       <AdPlaceholder 
                         size="728x90" 
@@ -235,6 +242,7 @@ export default function HomePage() {
                         className="w-full h-[90px]"
                       />
                     </div>
+                    */}
                   </>
                 )}
               </AnimatePresence>
@@ -247,9 +255,9 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right Sidebar - Vertical Ad */}
+          {/* Right Sidebar - Vertical Ad 
           <div className="w-[25%] hidden lg:block">
-            {/* Right Side Vertical Ad - 160x600 */}
+            {/* Right Side Vertical Ad - 160x600 }
             <div className="sticky top-20">
               <AdPlaceholder 
                 size="160x600" 
@@ -258,10 +266,11 @@ export default function HomePage() {
               />
             </div>
           </div>
+          */}
         </div>
       </div>
       
-      {/* Mobile Sticky Footer Ad - 320x50 */}
+      {/* Mobile Sticky Footer Ad - 320x50 
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-zinc-900 border-t border-zinc-800 p-2">
         <AdPlaceholder 
           size="320x50" 
@@ -270,6 +279,7 @@ export default function HomePage() {
           className="w-full h-[50px]"
         />
       </div>
+      */}
       
       <Footer />
     </>
