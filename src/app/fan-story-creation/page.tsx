@@ -651,7 +651,7 @@ export default function FanStoryCreationPage() {
 
     // Prepare data
 
-    const newMangaId = crypto.randomUUID();
+    const newMangaId = self.crypto.randomUUID();
     const newManga = {
       id: newMangaId,
       user_id: user?.id,
