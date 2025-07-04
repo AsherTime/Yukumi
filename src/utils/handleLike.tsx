@@ -1,6 +1,5 @@
 import { supabase } from "@/lib/supabase";
 import { awardPoints } from '@/utils/awardPoints';
-import { POINTS } from '@/utils/pointConfig';
 
 interface Post {
     id: string;

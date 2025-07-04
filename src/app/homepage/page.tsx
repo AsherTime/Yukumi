@@ -5,7 +5,6 @@ import { FeaturePanel } from "@/components/feature-panel";
 import { TopNav } from "@/components/top-nav";
 import useSavedPosts from "@/utils/use-saved-posts";
 import { MangaFeed } from "@/components/manga/manga-feed";
-import { Card } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
@@ -70,28 +69,6 @@ const InFeedAd = () => (
   </motion.div>
 );
 
-interface Post {
-  id: string;
-  title: string;
-  content: string;
-  created_at: string;
-  user_id: string;
-  likes_count: number;
-  comments_count: number;
-  liked_by_user: boolean;
-  image_url: string;
-  animetitle_post: string | null;
-  post_collections: string | null;
-  original_work: boolean;
-  reference_link: string | null;
-  Profiles?: {
-    avatar_url: string;
-    username: string;
-  };
-  tags?: string[];
-  views: number;
-}
-
 export default function HomePage() {
   const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
@@ -123,11 +100,11 @@ export default function HomePage() {
         .select("followed_id")
         .eq("follower_id", user.id);
       if (!error && data) {
-        setFollowedIds(data.map((row: any) => row.followed_id));
+        setFollowedIds(data.map((row) => row.followed_id));
       }
     };
     if (user) fetchFollowedIds();
-  }, [following])
+  }, [following, user])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -173,9 +150,7 @@ export default function HomePage() {
           handleFollowToggle={handleFollowToggle}
           saved={saved}
           onToggleSave={() => toggleSave(post.id)}
-          onPostOpen={(post: Post) => {
-            // Remove recent posts functionality
-          }}
+          onPostOpen={() => {          }}
         />
       );
       

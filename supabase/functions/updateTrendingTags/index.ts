@@ -15,7 +15,7 @@ const INITIAL_TIME_WINDOW_HOURS = 24;
 const MAX_TIME_WINDOW_HOURS = 24 * 30; // Max 30 days history for "trending"
 const MAX_ATTEMPTS = 8; // Max attempts to widen the time window
 
-serve(async (req) => {
+serve(async () => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -40,7 +40,7 @@ serve(async (req) => {
     }
 
     for (const community of communities) {
-      let uniqueTags = new Set<string>();
+      const uniqueTags = new Set<string>();
       let timeWindowHours = INITIAL_TIME_WINDOW_HOURS;
       let attempt = 0;
 
@@ -127,13 +127,11 @@ serve(async (req) => {
     }
 
     return new Response("Trending tags updated", { status: 200 });
-  } catch (e: any) {
+  } catch (e) {
     console.error("🔥 Full crash:", e);
     return new Response(
       JSON.stringify({
         error: "Internal Server Error",
-        message: e?.message,
-        stack: e?.stack,
       }),
       {
         status: 500,

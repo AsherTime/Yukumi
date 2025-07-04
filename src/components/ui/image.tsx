@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 interface CustomImageProps {
   src: string;
   alt: string;

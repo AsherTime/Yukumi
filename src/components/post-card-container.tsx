@@ -184,7 +184,6 @@ export default function PostCardContainer({
             navigatetoCommunity={navigateToCommunity}
             setMenuOpenId={setMenuOpenId}
             menuOpenId={menuOpenId}
-            user={user}
             setShowConfirmId={setShowConfirmId}
             showConfirmId={showConfirmId}
             reportConfirmId={reportConfirmId}

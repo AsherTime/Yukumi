@@ -14,26 +14,23 @@ export default function SettingsPage() {
     const router = useRouter();
     const { user } = useAuth();
 
-
-
-    const fetchNotificationPrefs = async () => {
-        if (!user) return;
-        const { data, error } = await supabase
-            .from("Profiles")
-            .select("notif_all, notif_likes, notif_replies, notif_follows")
-            .eq("id", user.id)
-            .maybeSingle();
-
-        if (error) console.error(error);
-        else {
-            setNotifAll(data?.notif_all || true);
-            setNotifLikes(data?.notif_likes || true);
-            setNotifReplies(data?.notif_replies || true);
-            setNotifFollows(data?.notif_follows || true);
-        }
-    };
-
     useEffect(() => {
+        const fetchNotificationPrefs = async () => {
+            if (!user) return;
+            const { data, error } = await supabase
+                .from("Profiles")
+                .select("notif_all, notif_likes, notif_replies, notif_follows")
+                .eq("id", user.id)
+                .maybeSingle();
+
+            if (error) console.error(error);
+            else {
+                setNotifAll(data?.notif_all || true);
+                setNotifLikes(data?.notif_likes || true);
+                setNotifReplies(data?.notif_replies || true);
+                setNotifFollows(data?.notif_follows || true);
+            }
+        };
         fetchNotificationPrefs();
     }, [user]);
 
@@ -171,7 +168,7 @@ export default function SettingsPage() {
         return (
             <div className="flex items-center justify-center min-h-screen w-full px-4 text-center">
                 <div className="flex flex-col items-center">
-                    <h2 className="text-2xl font-semibold text-white mb-4">You're not signed in</h2>
+                    <h2 className="text-2xl font-semibold text-white mb-4">You&apos;re not signed in</h2>
                     <p className="text-gray-400 mb-6">
                         Please sign in or register to access this page.
                     </p>

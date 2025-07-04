@@ -78,7 +78,7 @@ export default function CommunityIdPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [followedIds, setFollowedIds] = useState<string[]>([]);
-  const [recentPosts, setRecentPosts] = useState<Post[]>(() => {
+  const [, setRecentPosts] = useState<Post[]>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("recentPosts");
       return stored ? JSON.parse(stored) : [];
@@ -102,11 +102,11 @@ export default function CommunityIdPage() {
         .select("followed_id")
         .eq("follower_id", user.id);
       if (!error && data) {
-        setFollowedIds(data.map((row: any) => row.followed_id));
+        setFollowedIds(data.map((row) => row.followed_id));
       }
     };
     if (user) fetchFollowedIds();
-  }, [following])
+  }, [following, user])
 
   useEffect(() => {
     const fetchCommunityAndAnime = async () => {

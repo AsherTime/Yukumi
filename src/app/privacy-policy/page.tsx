@@ -6,7 +6,7 @@ const PrivacyPolicy = () => {
       <h3 className="text-lg font-semibold mb-4">Last Updated: June 2025</h3>
       <br />
       <p className="mb-4">
-        Welcome to Yukumi ("we," "our," "us"). Your privacy is important to us, and we are committed to protecting the personal information you share with us. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website and use our services.<br />
+        Welcome to Yukumi (&quot;we,&quot; &quot;our,&quot; &quot;us&quot;). Your privacy is important to us, and we are committed to protecting the personal information you share with us. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website and use our services.<br />
         If you do not agree with this policy, please do not use our platform.
       </p>
       <br />
@@ -43,7 +43,7 @@ const PrivacyPolicy = () => {
 
         To create and manage user accounts.<br />
 
-        To provide, operate, and improve the platform's features.<br />
+        To provide, operate, and improve the platform&apos;s features.<br />
 
         To moderate content and ensure community safety.<br />
 
@@ -55,7 +55,7 @@ const PrivacyPolicy = () => {
 
         To comply with legal obligations.<br /><br />
 
-        Marketing: We may send promotional emails if you've opted in. You can opt out at any time.
+        Marketing: We may send promotional emails if you&apos;ve opted in. You can opt out at any time.
       </p><br />
 
       <h2 className="text-2xl font-semibold mt-4">3. How We Share Your Information</h2><br />
@@ -94,7 +94,7 @@ const PrivacyPolicy = () => {
 
         Rectification: Correct inaccurate or incomplete data.<br />
 
-        Erasure ("Right to be Forgotten"): Request deletion of your data.<br />
+        Erasure (&quot;Right to be Forgotten&quot;): Request deletion of your data.<br />
 
         Data Portability: Receive your data in a structured format.<br />
 
@@ -134,14 +134,14 @@ const PrivacyPolicy = () => {
         If you are located outside India, your data may be transferred to, stored, and processed in countries where data protection laws may differ from those in your jurisdiction. We take appropriate measures to ensure your data is protected.
       </p><br />
 
-      <h2 className="text-2xl font-semibold mt-4">9. Children's Privacy</h2><br />
+      <h2 className="text-2xl font-semibold mt-4">9. Children&apos;s Privacy</h2><br />
       <p>
         Our platform is not intended for children under the age of 13. We do not knowingly collect personal data from children. If we learn that we have collected data from a child without parental consent, we will delete it promptly.
       </p><br />
 
       <h2 className="text-2xl font-semibold mt-4">10. Changes to This Privacy Policy</h2><br />
       <p>
-        We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated "Effective Date." Your continued use of the platform after changes means you accept the updated policy.
+        We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated &quot;Effective Date.&quot; Your continued use of the platform after changes means you accept the updated policy.
       </p><br />
 
       <h2 className="text-2xl font-semibold mt-4">11. Contact Us</h2><br />

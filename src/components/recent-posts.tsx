@@ -1,7 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
 import { FiHeart, FiMessageCircle } from "react-icons/fi"
-import { useEffect, useState } from "react"
 import { Eye } from "lucide-react"
 
 interface Post {

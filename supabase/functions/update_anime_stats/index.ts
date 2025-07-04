@@ -5,7 +5,7 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 // File: supabase/functions/update_anime_stats/index.ts
 
-import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 serve(async () => {
@@ -32,10 +32,10 @@ serve(async () => {
     if (updatePopularityError) throw updatePopularityError;
 
     return new Response(JSON.stringify({ success: true }), { status: 200 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating anime stats:", error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: error }),
       {
         status: 500,
       },

@@ -1,21 +1,39 @@
 import React from 'react';
 import { Card } from './ui/card';
 import Link from 'next/link';
+import { Image } from '@/components/ui/image';
+
+interface MangaType{
+  id: string;
+  title: string;
+  cover_image_url: string;
+  synopsis: string;
+  Profiles: {
+    avatar_url: string;
+    username: string;
+  }
+  tags: string[];
+  views: number;
+  created_at: string;
+  likes_count: number;
+  comments_count: number;
+  status: string
+}
 
 interface FanMangaCardProps {
-  manga: any;
+  manga: MangaType;
   idx: number;
   total: number;
-  onLike: (manga: any) => void;
-  onComment: (manga: any) => void;
-  onShare: (manga: any) => void;
+  onLike: (manga: MangaType) => void;
+  onComment: (manga: MangaType) => void;
+  onShare: (manga: MangaType) => void;
 }
 
 export default function FanMangaCard({ manga, idx, total, onLike, onComment, onShare }: FanMangaCardProps) {
   return (
     <Card className={`bg-gradient-to-br from-[#232232] to-[#1a1a2e] border-0 p-4 relative ${idx !== total - 1 ? 'mb-4' : ''}`}>
       <div className="flex items-center gap-3 mb-2">
-        <img
+        <Image
           src={manga.Profiles?.avatar_url || "/placeholder.svg"}
           alt={manga.Profiles?.username || "User"}
           className="w-10 h-10 rounded-full object-cover border border-zinc-700"
@@ -26,7 +44,7 @@ export default function FanMangaCard({ manga, idx, total, onLike, onComment, onS
       <h3 className="text-lg font-semibold text-white mb-1">{manga.title}</h3>
       {manga.cover_image_url && (
         <div className="relative w-full h-64 mb-4">
-          <img
+          <Image
             src={manga.cover_image_url}
             alt={manga.title}
             className="w-full h-full object-cover rounded-lg"

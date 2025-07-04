@@ -1,8 +1,6 @@
 "use client"
 
-import { X } from "lucide-react"
 import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase";
 
 type CommunitiesSidebarProps = {

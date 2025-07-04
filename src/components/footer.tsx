@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Twitter, Github, Mail } from "lucide-react";
+import { Github, Mail } from "lucide-react";
 
 const Footer = () => (
   <footer className="w-full py-8 bg-[#181828] border-t border-zinc-800 mt-12">

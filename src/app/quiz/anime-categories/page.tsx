@@ -95,7 +95,7 @@ export default function AnimeCategories() {
         if (fromPage !== 'join-communities') {
           router.replace('/unauthorized'); // or '/'
         }
-      }, [fromPage]);
+      }, [fromPage, router]);
 
   const toggleCategory = (categoryId: string) => {
     const newSelected = new Set(selectedCategories)
@@ -123,8 +123,8 @@ export default function AnimeCategories() {
       if (error) throw error;
       setFromPage('anime-categories');
       router.push('/quiz/last-quiz')
-    } catch (error: any) {
-      console.error('Error saving preferences:', error.message)
+    } catch (error) {
+      console.error('Error saving preferences:', error)
     } finally {
       setIsSaving(false)
     }

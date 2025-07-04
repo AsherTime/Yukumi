@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useState, useEffect, useRef, use } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { RecentPosts } from "@/components/recent-posts";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
@@ -127,10 +127,10 @@ export default function ProfilePage() {
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState('Posts');
   const [username, setUsername] = useState<string | null>(null);
-  const [posts, setPosts] = useState<any[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [userAnime, setUserAnime] = useState<UserAnime[]>([]);
   const [selectedStatus, setSelectedStatus] = useState('');
-  let profileId = userId || user?.id;
+  const profileId = userId || user?.id;
   const { requireLogin } = useLoginGate();
   const { setPostsData, fetchPosts } = fetchPost();
   const { saved, savedLoading, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
@@ -147,14 +147,6 @@ export default function ProfilePage() {
       return data;
     }
   );
-
-  const statusOrder: Record<string, number> = {
-    Watching: 0,
-    Completed: 1,
-    'On-Hold': 2,
-    Dropped: 3,
-    Planning: 4,
-  };
 
   const statusButtonColors: Record<
     string,
@@ -181,18 +173,18 @@ export default function ProfilePage() {
     ? userAnime.filter((anime) => anime.status === selectedStatus)
     : userAnime;
 
-  const uniqueSavedPosts = Array.isArray(savedPosts)
-    ? savedPosts.filter(
-      (post, index, self) =>
-        post.id && self.findIndex(p => p.id === post.id) === index
-    )
-    : [];
-
+  const uniqueSavedPosts = useMemo(() => {
+    return Array.isArray(savedPosts)
+      ? savedPosts.filter(
+        (post, index, self) =>
+          post.id && self.findIndex(p => p.id === post.id) === index
+      )
+      : [];
+  }, [savedPosts]);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        profileId = userId || user?.id;
         if (!profileId) return;
         const { data: profile, error: profileError } = await supabase
           .from('Profiles')
@@ -210,6 +202,7 @@ export default function ProfilePage() {
           setAbout(profile.about || "");
         }
       } catch (error) {
+        console.error("Error fetching user profile:", error);
         setDisplayName("Anonymous");
         setAvatarUrl("/placeholder.svg");
       } finally {
@@ -217,9 +210,17 @@ export default function ProfilePage() {
       }
     };
     fetchUserProfile();
-  }, [userId, user]);
+  }, [userId, user, profileId]);
 
   useEffect(() => {
+
+    const statusOrder: Record<string, number> = {
+      Watching: 0,
+      Completed: 1,
+      'On-Hold': 2,
+      Dropped: 3,
+      Planning: 4,
+    };
 
     const fetchUserPosts = async () => {
 
@@ -273,7 +274,7 @@ export default function ProfilePage() {
         .select("followed_id")
         .eq("follower_id", user.id);
       if (!error && data) {
-        setFollowedIds(data.map((row: any) => row.followed_id));
+        setFollowedIds(data.map((row) => row.followed_id));
       }
     };
     if (user) fetchFollowedIds();
@@ -382,8 +383,8 @@ export default function ProfilePage() {
       }
 
 
-    } catch (error: any) {
-      console.error('Error toggling like:', error.message);
+    } catch (error) {
+      console.error('Error toggling like:', error);
       throw error;
     }
   };
@@ -494,7 +495,7 @@ export default function ProfilePage() {
         likedSavedPostIds = new Set(userLikesSaved?.map(like => like.post_id) ?? []);
       }
 
-      const { data: latestPosts, error: postsError } = await supabase
+      const { data: latestPosts } = await supabase
         .from("posts")
         .select("id, likes_count")
         .in("id", allPostIds);
@@ -520,7 +521,7 @@ export default function ProfilePage() {
     };
 
     fetchEnriched();
-  }, [posts, uniqueSavedPosts, user?.id]);
+  }, [posts, uniqueSavedPosts, user]);
 
   useEffect(() => {
     console.log("Enriched Posts: ", enrichedPosts);
@@ -539,7 +540,7 @@ export default function ProfilePage() {
         <div className="w-full h-72 bg-cover bg-center relative" style={{ backgroundImage: `url('${bannerUrl}')` }}>
           {/* Avatar */}
           <div className="absolute left-16 -bottom-20">
-            <img
+            <Image
               src={avatarUrl}
               className="w-40 h-48 object-cover rounded-2xl border-4 border-black shadow-lg"
               alt="Profile"
@@ -835,7 +836,7 @@ export default function ProfilePage() {
               <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-4 mb-4 text-center cursor-pointer ${isDragActive ? 'border-pink-500 bg-pink-50' : 'border-zinc-700 bg-zinc-800'}`}>
                 <input {...getInputProps()} />
                 {editBanner ? (
-                  <img src={editBanner} alt="Banner preview" className="w-full h-32 object-cover rounded mb-2" />
+                  <Image src={editBanner} alt="Banner preview" className="w-full h-32 object-cover rounded mb-2" />
                 ) : (
                   <span className="text-zinc-400">Drag & drop a banner image here, or click to select</span>
                 )}

@@ -6,7 +6,7 @@ const termsofservice = () => {
         <h3 className="text-lg font-semibold mb-4">Last Updated: June 2025</h3>
         <br/>
         <p className="mb-4">
-          Welcome to Yukumi ("we," "our," "us"). By accessing or using our website, you agree to comply with and be bound by the following Terms of Service. If you do not agree with these terms, please do not use our platform.
+          Welcome to Yukumi (&quot;we,&quot; &quot;our,&quot; &quot;us&quot;). By accessing or using our website, you agree to comply with and be bound by the following Terms of Service. If you do not agree with these terms, please do not use our platform.
         </p>
         <br />
         <h2 className="text-2xl font-semibold mt-4">1. Use of the Platform</h2><br />

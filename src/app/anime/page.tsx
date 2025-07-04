@@ -85,10 +85,7 @@ const AnimeCard = ({ anime, favourites, selectedStatus, score, onViewDetails, on
 
 
   useEffect(() => {
-    fetchCommunity();
-  }, [anime.id]);
-
-  async function fetchCommunity() {
+    async function fetchCommunity() {
     const { data, error } = await supabase.from("community").select("id").eq("anime_id", anime.id).maybeSingle();
     if (error) {
       console.error("Failed to fetch community data:", error.message);
@@ -96,6 +93,10 @@ const AnimeCard = ({ anime, favourites, selectedStatus, score, onViewDetails, on
     }
     setCommunityId(data?.id);
   }
+    fetchCommunity();
+  }, [anime.id]);
+
+ 
 
   // Combine tags and genres, deduplicate, and show up to 3
   //const tagSet = new Set([...(anime.tags || []), ...(anime.genres || [])]);
@@ -266,16 +267,9 @@ const AnimeBanner = () => (
 
 const AnimeBrowser: React.FC = () => {
   const [animeList, setAnimeList] = useState<Anime[]>([])
-  const [displayedAnime, setDisplayedAnime] = useState<Anime[]>([])
   const [searchQuery, setSearchQuery] = useState("")
-  const [page, setPage] = useState(1)
-  const [favorites, setFavorites] = useState<Anime[]>([])
-  const [userScores, setUserScores] = useState<Record<number, string>>({})
-  const [userStatuses, setUserStatuses] = useState<Record<number, string>>({})
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<string>("");
-  const [score, setScore] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("All");
   const [favourites, setFavourites] = useState<string[]>([]);
   const { user } = useAuth()
@@ -384,8 +378,8 @@ const AnimeBrowser: React.FC = () => {
     return { enrichedAnimeList, statusMap, scoreMap };
   };
 
-  const [statusMap, setStatusMap] = useState<Record<string, string>>({});
-  const [scoreMap, setScoreMap] = useState<Record<string, number | null>>({});
+  const [, setStatusMap] = useState<Record<string, string>>({});
+  const [, setScoreMap] = useState<Record<string, number | null>>({});
 
   useEffect(() => {
     async function loadData() {

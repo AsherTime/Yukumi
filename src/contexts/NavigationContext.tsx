@@ -1,14 +1,20 @@
 // contexts/NavigationContext.tsx
 'use client';
-import { createContext, useContext, useState } from 'react';
+import { createContext, useState, Dispatch, SetStateAction, useContext } from "react";
 
-const NavigationContext = createContext({
-  fromPage: '',
-  setFromPage: (page: string) => {},
+interface NavigationContextType {
+  fromPage: string;
+  setFromPage: Dispatch<SetStateAction<string>>;
+}
+
+export const NavigationContext = createContext<NavigationContextType>({
+  fromPage: "",
+  setFromPage: (_value: SetStateAction<string>) => { void _value; },
 });
 
 export const NavigationProvider = ({ children }: { children: React.ReactNode }) => {
-  const [fromPage, setFromPage] = useState('');
+  const [fromPage, setFromPage] = useState<string>("");
+
   return (
     <NavigationContext.Provider value={{ fromPage, setFromPage }}>
       {children}

@@ -5,7 +5,6 @@ import { motion } from "framer-motion"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
-import { setCookie } from "cookies-next"
 import { FaGoogle, FaDiscord } from "react-icons/fa"
 import { useNavigationContext } from '@/contexts/NavigationContext';
 
@@ -113,8 +112,8 @@ export default function RegisterPage() {
         setFromPage('register'); 
         router.push("/profile-setup");
       }
-    } catch (error: any) {
-      toast.error(error.message || "Something went wrong. Please try again.");
+    } catch (error) {
+      console.log(error || "Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }

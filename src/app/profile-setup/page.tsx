@@ -27,7 +27,7 @@ export default function ProfileSetup() {
     if (fromPage !== 'register') {
       router.replace('/unauthorized'); // or '/'
     }
-  }, [fromPage]);
+  }, [fromPage, router]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -70,9 +70,8 @@ export default function ProfileSetup() {
 
         console.log("Table check passed")
         setLoading(false)
-      } catch (error: any) {
+      } catch (error) {
         console.error("Initialization error:", error)
-        toast.error("Failed to initialize: " + error.message)
       }
     }
 
@@ -141,13 +140,8 @@ export default function ProfileSetup() {
       toast.success("Profile updated successfully!")
       setFromPage('profile-setup');
       router.push("/quiz/join-communities")
-    } catch (error: any) {
-      console.error("Profile update error details:", {
-        message: error.message,
-        name: error.name,
-        stack: error.stack
-      })
-      toast.error(error.message || "Failed to update profile")
+    } catch (error) {
+      console.error(error || "Failed to update profile")
     }
   }
 
@@ -176,8 +170,8 @@ export default function ProfileSetup() {
       } = supabase.storage.from('avatars').getPublicUrl(filePath);
   
       setProfileImage(publicUrl);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to upload image");
+    } catch (error) {
+      console.error(error || "Failed to upload image");
     }
   };
   

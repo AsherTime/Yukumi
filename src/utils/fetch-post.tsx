@@ -1,7 +1,6 @@
 import { supabase } from "@/lib/supabase";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
 
 interface Post {
     id: string;
@@ -26,26 +25,28 @@ interface Post {
     views: number;
 }
 
-export default function fetchPost() {
+type PostTag = {
+    tags?: {
+        name?: string;
+    };
+};
+
+
+export default function useFetchPost() {
     const [postsData, setPostsData] = useState<Post[]>([]);
     const { user } = useAuth();
 
-    const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
-    const [loadingMore, setLoadingMore] = useState(false);
+    const [page,] = useState(1);
+    const [, setHasMore] = useState(true);
+    const [, setLoadingMore] = useState(false);
     const POSTS_PER_PAGE = 10;
 
-    useEffect(() => {
-        fetchPosts(true); // Always call
-    }, [user]);
-
-
-    const fetchPosts = async (reset = false) => {
+    const fetchPosts = useCallback(async (reset = false) => {
         try {
             const from = reset ? 0 : (page - 1) * POSTS_PER_PAGE;
             const to = from + POSTS_PER_PAGE - 1;
 
-            const { data: posts, error, count } = await supabase
+            const { data: posts, error } = await supabase
                 .from("posts")
                 .select(`*, Profiles(username, avatar_url),post_tags(tags(name))`, { count: "exact" })
                 .order("created_at", { ascending: false })
@@ -86,7 +87,7 @@ export default function fetchPost() {
             const postsWithMeta = await Promise.all(
                 posts.map(async post => {
                     const tags =
-                        post.post_tags?.map((pt: any) => pt.tags?.name).filter(Boolean) || [];
+                        post.post_tags?.map((pt: PostTag) => pt.tags?.name).filter(Boolean) || [];
 
                     // Prepare promises
                     const countLikesPromise = supabase
@@ -123,15 +124,23 @@ export default function fetchPost() {
                 })
             );
 
-            reset ? setPostsData(postsWithMeta) : setPostsData(prev => [...prev, ...postsWithMeta]);
+            if (reset) {
+                setPostsData(postsWithMeta);
+            } else {
+                setPostsData(prev => [...prev, ...postsWithMeta]);
+            }
+
             setHasMore(postsWithMeta.length === POSTS_PER_PAGE);
         } catch (err) {
             console.error("fetchPosts error:", err);
         } finally {
             setLoadingMore(false);
         }
-    };
+    }, [user, page, POSTS_PER_PAGE]);
 
+    useEffect(() => {
+        fetchPosts(true); // Always call
+    }, [user, fetchPosts]);
 
     return { postsData, setPostsData, fetchPosts };
 }

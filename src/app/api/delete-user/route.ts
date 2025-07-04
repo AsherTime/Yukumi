@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ message: 'User deleted successfully' }, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message || 'Unknown server error' }, { status: 500 });
+  } catch (e) {
+    return NextResponse.json({ error: e || 'Unknown server error' }, { status: 500 });
   }
 }
