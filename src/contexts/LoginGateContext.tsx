@@ -17,7 +17,7 @@ export const LoginGateProvider = ({ children }: { children: React.ReactNode }) =
   const { user } = useAuth();
   const pathname = usePathname();
   const [showModal, setShowModal] = useState(false);
-  const [queuedCallback, setQueuedCallback] = useState<(() => void) | null>(null);
+  const [, setQueuedCallback] = useState<(() => void) | null>(null);
 
   const requireLogin = (callback?: () => void) => {
     if (!user) {
@@ -38,7 +38,7 @@ export const LoginGateProvider = ({ children }: { children: React.ReactNode }) =
     if (showModal) {
       closeModal();
     }
-  }, [pathname]);
+  }, [pathname, showModal]);
 
   return (
     <LoginGateContext.Provider value={{ requireLogin, showModal, closeModal }}>

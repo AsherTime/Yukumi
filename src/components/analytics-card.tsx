@@ -1,5 +1,4 @@
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react"
 
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import styles from "./styles.module.css";
+import { Image } from "@/components/ui/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -17,11 +18,21 @@ interface Anime {
   synopsis: string;
 }
 
+interface Answers{
+  genres: string[];
+  ageGroup: string;
+  companion: string;
+  mood: string;
+  tags: string[];
+  lengthPreference: string;
+  countryPreference: string;
+}
+
 const RecommendedAnimePage = () => {
   const [recommendations, setRecommendations] = useState<Anime[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [previousAnswers, setPreviousAnswers] = useState<any>(null);
+  const [previousAnswers, setPreviousAnswers] = useState<Answers>();
   const { user } = useAuth();
   const router = useRouter();
   const { fromPage } = useNavigationContext();
@@ -30,7 +41,7 @@ const RecommendedAnimePage = () => {
     if (fromPage !== 'find-anime') {
       router.replace('/unauthorized'); // or '/'
     }
-  }, [fromPage]);
+  }, [fromPage, router]);
 
   useEffect(() => {
     const fetchRecommendations = async () => {
@@ -153,7 +164,7 @@ const RecommendedAnimePage = () => {
                       }}
                     >
                       <div className="relative h-96 w-full">
-                        <img
+                        <Image
                           src={anime.image_url}
                           alt={anime.title}
                           className="absolute inset-0 w-full h-full object-cover"

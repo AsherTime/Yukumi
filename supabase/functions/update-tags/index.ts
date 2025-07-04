@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+type PostTag = {
+  name: string;
+};
+
 serve(async () => {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -28,7 +32,7 @@ serve(async () => {
     }
 
     let totalUpdated = 0;
-    let errors: string[] = [];
+    const errors: string[] = [];
 
     for (const ids of chunkedIds) {
       const query = `
@@ -57,7 +61,7 @@ serve(async () => {
       const animeList = json?.data?.Page?.media || [];
 
       for (const anime of animeList) {
-        const tags = anime.tags.map((t: any) => t.name);
+        const tags = anime.tags.map((t: PostTag) => t.name);
 
         const { error } = await supabase
           .from("Anime")
@@ -79,8 +83,8 @@ serve(async () => {
       errors: errors.length > 0 ? errors : undefined,
     }), { status: 200 });
 
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err }), { status: 500 });
   }
 });
 

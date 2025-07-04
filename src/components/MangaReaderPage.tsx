@@ -3,6 +3,37 @@ import React, { useState } from 'react';
 import { ArrowLeftCircle, ArrowRightCircle, BookOpenText, ChevronDown } from 'lucide-react';
 import { useRouter } from "next/navigation";
 
+interface FanStoryFromDB {
+  id: string;
+  user_id: string;
+  title: string;
+  synopsis: string | null;
+  content: string;
+  tags: string[] | null;
+  cover_image_url: string | null;
+  created_at: string;
+  updated_at: string;
+  status: string;
+  views: number;
+}
+
+type Pages = {
+  id: string;
+  content: string;
+}
+
+type Chapter = {
+  id: number;
+  pages: Pages[];
+  title: string;
+  name: string;
+  length: number;
+};
+
+interface FanStory extends FanStoryFromDB {
+  chapters: Chapter[];
+}
+
 const customColors = {
   'cozy-text-light': '#E0E0E0',
   'cozy-button-bg': '#5A6A80',
@@ -10,7 +41,7 @@ const customColors = {
   'cozy-reader-bg': 'rgba(30, 30, 45, 0.85)',
 };
 
-export default function MangaReaderPage({ mangaData, onBack }: { mangaData: any, onBack: () => void }) {
+export default function MangaReaderPage({ mangaData, onBack }: { mangaData: FanStory, onBack: () => void }) {
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [activePageIndex, setActivePageIndex] = useState(0);
   const router = useRouter();
@@ -90,7 +121,7 @@ export default function MangaReaderPage({ mangaData, onBack }: { mangaData: any,
               className="bg-gray-800 text-cozy-text-light p-2 rounded-md border border-gray-700 appearance-none pr-8"
               style={{ backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center' }}
             >
-              {mangaData.chapters.map((chapter: any, index: number) => (
+              {mangaData.chapters.map((chapter: Chapter, index: number) => (
                 <option key={chapter.id} value={index}>
                   {chapter.name}
                 </option>

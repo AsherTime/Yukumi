@@ -8,6 +8,8 @@ import { FollowButton } from "@/components/FollowButton";
 import PostShareMenu from '@/components/post-share-menu';
 import useViewCountOnVisible from '@/hooks/use-view-count';
 import { useLoginGate } from '@/contexts/LoginGateContext';
+import { useAuth } from '@/contexts/AuthContext';
+import Image from 'next/image';
 
 interface Post {
   id: string;
@@ -32,7 +34,7 @@ interface Post {
   views: number;
 }
 
-export default function PostCard({ post, idx, total, formatDate, navigatetoCommunity, setMenuOpenId, menuOpenId, user, setShowConfirmId, showConfirmId, reportConfirmId, setReportConfirmId, handleDelete, handleLikeClick, handleCommentClick, handleReport, saved, handleSave, isFollowing, handleFollowClick, onPostOpen }: {
+export default function PostCard({ post, idx, total, formatDate, navigatetoCommunity, setMenuOpenId, menuOpenId, setShowConfirmId, showConfirmId, reportConfirmId, setReportConfirmId, handleDelete, handleLikeClick, handleCommentClick, handleReport, saved, handleSave, isFollowing, handleFollowClick, onPostOpen }: {
   post: Post,
   idx: number,
   total: number,
@@ -40,7 +42,6 @@ export default function PostCard({ post, idx, total, formatDate, navigatetoCommu
   navigatetoCommunity: (communityId: string | null) => void,
   setMenuOpenId: React.Dispatch<React.SetStateAction<string | null>>,
   menuOpenId: string | null,
-  user: any,
   setShowConfirmId: React.Dispatch<React.SetStateAction<string | null>>,
   showConfirmId: string | null,
   reportConfirmId: string | null,
@@ -58,11 +59,15 @@ export default function PostCard({ post, idx, total, formatDate, navigatetoCommu
   const viewRef = useViewCountOnVisible(post.id);
   const isSaved = saved.includes(post.id);
   const { requireLogin } = useLoginGate();
+  const { user } = useAuth();
   return (
-    <div onClick={() => {
-      { onPostOpen && onPostOpen(post); }
-      handleCommentClick(post.id)
-    }} className="cursor-pointer">
+    <div
+      onClick={() => {
+        if (onPostOpen) onPostOpen(post);
+        handleCommentClick(post.id);
+      }}
+      className="cursor-pointer"
+    >
       <motion.section
         ref={viewRef}
         key={post.id}
@@ -82,7 +87,7 @@ export default function PostCard({ post, idx, total, formatDate, navigatetoCommu
             <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-3">
               <Link href={`/profile/${post.user_id}`} className="flex items-center gap-3 group" prefetch={false}>
                 {post.Profiles?.avatar_url ? (
-                  <img
+                  <Image
                     src={post.Profiles.avatar_url}
                     alt={post.Profiles.username || "User"}
                     className="w-10 h-10 rounded-full object-cover border border-zinc-700 group-hover:ring-2 group-hover:ring-blue-500 transition"
@@ -212,7 +217,7 @@ export default function PostCard({ post, idx, total, formatDate, navigatetoCommu
               rel="noopener noreferrer"
               className="relative z-5 block"
             >
-              <img
+              <Image
                 src={post.image_url}
                 alt={post.title}
                 className="max-w-full max-h-[32rem] mx-auto rounded object-contain"

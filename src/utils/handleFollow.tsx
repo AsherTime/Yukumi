@@ -2,11 +2,11 @@ import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 
 
-export default function handleFollow(
+export default function useHandleFollow(
     user: { id: string } | null,
 ) {
     const [following, setFollowing] = useState<Set<string>>(new Set());
-    
+
     useEffect(() => {
         const fetchFollowing = async () => {
             if (!user?.id) return;
@@ -32,7 +32,11 @@ export default function handleFollow(
         // Optimistic UI update
         setFollowing(prev => {
             const newSet = new Set(prev);
-            isFollowingUser ? newSet.delete(followedUserId) : newSet.add(followedUserId);
+            if (isFollowingUser) {
+                newSet.delete(followedUserId);
+            } else {
+                newSet.add(followedUserId);
+            }
             return newSet;
         });
 

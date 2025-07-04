@@ -11,7 +11,7 @@ const data = {
 message: `Hello ${name}!`,
 }
 
-let { data: Profiles, error } = await supabase
+const { data: Profiles } = await supabase
   .from('Profiles')
   .select('display_name')
 

@@ -10,6 +10,7 @@ interface PostShareMenuProps {
 }
 
 export default function PostShareMenu({ path, title }: PostShareMenuProps) {
+  const [copied, setCopied] = useState(false);
   if (typeof window === "undefined") return null;
 
   const origin = window.location.origin;
@@ -24,8 +25,7 @@ export default function PostShareMenu({ path, title }: PostShareMenuProps) {
     reddit: `https://www.reddit.com/submit?url=${encodedUrl}&title=${encodedTitle}`,
   };
 
-  const [copied, setCopied] = useState(false);
-
+  
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(fullUrl);

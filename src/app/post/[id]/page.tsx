@@ -127,19 +127,19 @@ const PostPage = () => {
   const [newComment, setNewComment] = useState<string>("");
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
-  const [replyTo, setReplyTo] = useState<string | null>(null);
-  const { postsData, setPostsData, fetchPosts } = fetchPost();
+  const [, setReplyTo] = useState<string | null>(null);
+  const { setPostsData, fetchPosts } = fetchPost();
   const { saved, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
   const { handleLikeClick } = handleLike(user, setPostsData, fetchPosts);
   const { following, handleFollowToggle } = handleFollow(user);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [, setProfile] = useState<Profile | null>(null);
   const { requireLogin } = useLoginGate();
 
   useEffect(() => {
     if (!user) return;
 
     const fetchProfile = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("Profiles")
         .select("username, avatar_url")
         .eq("id", user.id)
@@ -246,42 +246,6 @@ const PostPage = () => {
     return () => clearTimeout(timer);
   }, [id]);
 
-  /*
-  const handleAddComment = async () => {
-    if (!newComment.trim() || !user) return;
-
-    try {
-      console.log('Trying to insert comment...');
-      const { data: commentData, error: insertError } = await supabase
-        .from('comments')
-        .insert([
-          {
-            post_id: id,
-            user_id: user.id,
-            content: newComment.trim(),
-          },
-        ])
-        .select()
-        .maybeSingle();
-
-      console.log('Insert response error:', insertError);
-      console.log('Insert response data:', commentData);
-
-      if (insertError) throw insertError;
-
-      if (commentData) {
-        console.log('New comment added:', commentData);
-        setComments((prev) => [commentData, ...prev]);
-        setNewComment('');
-
-        
-      }
-    } catch (error) {
-      console.error('Error adding comment:', error);
-      toast.error('Failed to add comment. Please try again.');
-    }
-  };
-  */
 
   const handleAddComment: (postId: string, parentId: string | null, content: string) => Promise<void> = async (
     postId,
@@ -472,7 +436,7 @@ const PostPage = () => {
       return;
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("comments")
       .update({ is_reported: true })
       .eq("id", commentId)
@@ -590,7 +554,7 @@ const PostPage = () => {
 
   useEffect(() => {
     setNestedComments(buildCommentTree(comments, likeCounts));
-  }, [comments]);
+  }, [comments, likeCounts]);
 
 
   if (isLoading) {

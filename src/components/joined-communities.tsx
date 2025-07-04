@@ -42,11 +42,12 @@ export default function JoinedCommunitiesSidebar({ userId }: Props) {
       }
 
       // Map to [{ id: community_id, title }]
-      const mapped: Community[] = (data as any[]).map((row) => ({
+      const mapped: Community[] = (data ?? []).map((row) => ({
         id: row.community_id,
-        title: row.community?.title,
-        banner_url: row.community?.banner_url
+        title: row.community?.[0]?.title ?? null,
+        banner_url: row.community?.[0]?.banner_url ?? null,
       }));
+
 
       setCommunities(mapped);
     };
@@ -90,7 +91,7 @@ export default function JoinedCommunitiesSidebar({ userId }: Props) {
 
         {communities.length === 0 && (
           <li className="text-sm text-gray-500">
-            You haven't joined any communities yet.
+            You haven&apos;t joined any communities yet.
           </li>
         )}
       </ul>

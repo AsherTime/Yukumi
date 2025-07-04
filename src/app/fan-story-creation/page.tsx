@@ -1,12 +1,13 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Upload, Image, Palette, Link, Bold, Italic, Underline, Type, AlignLeft, AlignCenter, AlignRight, List, Quote, BookText, ListOrdered, MessageSquare, Lightbulb, ChevronDown, ChevronUp, Plus, Trash2, Pencil, XCircle } from 'lucide-react';
+import { Upload, Bold, Italic, Underline, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from "@/lib/supabase"; // At the top if not already
-import { awardPoints } from '@/utils/awardPoints';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { Image } from "@/components/ui/image"
+import { awardPoints } from '@/utils/awardPoints';
 
 interface Particle {
   id: number;
@@ -20,12 +21,36 @@ interface StoryContentEditorProps {
   title: string;
   setTitle: React.Dispatch<React.SetStateAction<string>>;
   currentContent: string;
-  setCurrentContent: React.Dispatch<React.SetStateAction<string>>;
+  setCurrentContent: (newContent: string) => void;
   coverImage: File | null;
   setCoverImage: React.Dispatch<React.SetStateAction<File | null>>;
   coverImageUrl: string;
   setCoverImageUrl: React.Dispatch<React.SetStateAction<string>>;
 }
+
+interface Page {
+  id: string;
+  content: string;
+}
+
+interface Chapter {
+  id: string;
+  name: string;
+  pages: Page[];
+}
+
+interface StoryToolsPanelProps {
+  chapters: Chapter[];
+  setChapters: React.Dispatch<React.SetStateAction<Chapter[]>>;
+  activeChapterIndex: number;
+  setActiveChapterIndex: React.Dispatch<React.SetStateAction<number>>;
+  activePageIndex: number;
+  setActivePageIndex: React.Dispatch<React.SetStateAction<number>>;
+  tags: string[];
+  setTags: React.Dispatch<React.SetStateAction<string[]>>;
+}
+
+
 
 
 // Custom Tailwind colors for a cozy dark anime vibe
@@ -43,14 +68,14 @@ const customColors = {
 // This component is included as it provides visual context for the page.
 function FloatingDustParticles() {
   type Particle = {
-  id: number;
-  left: number;
-  delay: number;
-  duration: number;
-  size: number;
-};
+    id: number;
+    left: number;
+    delay: number;
+    duration: number;
+    size: number;
+  };
 
-const [particles, setParticles] = useState<Particle[]>([]);
+  const [particles, setParticles] = useState<Particle[]>([]);
 
 
   useEffect(() => {
@@ -93,19 +118,19 @@ const [particles, setParticles] = useState<Particle[]>([]);
 
 
 // --- StoryContentEditor Component (Enhanced for Rich Text and Image Upload) ---
-const StoryContentEditor: React.FC<StoryContentEditorProps> = ({ 
-  currentContent, 
-  setCurrentContent, 
-  title, 
-  setTitle, 
-  coverImage, 
-  setCoverImage, 
-  coverImageUrl, 
-  setCoverImageUrl 
+const StoryContentEditor: React.FC<StoryContentEditorProps> = ({
+  currentContent,
+  setCurrentContent,
+  title,
+  setTitle,
+  coverImage,
+  setCoverImage,
+  coverImageUrl,
+  setCoverImageUrl
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [particles, setParticles] = useState<Particle[]>([]);
+  const [, setParticles] = useState<Particle[]>([]);
 
   // Initialize image upload hooks for different purposes
   const { uploadImage: uploadCoverImage, uploadProgress: coverUploadProgress } = useImageUpload({
@@ -201,10 +226,10 @@ const StoryContentEditor: React.FC<StoryContentEditorProps> = ({
           className="hidden"
         />
         {coverImageUrl ? (
-          <img src={coverImageUrl} alt="Manga Cover Preview" className="w-full max-h-64 object-cover rounded-md mb-4" />
+          <Image src={coverImageUrl} alt="Manga Cover Preview" className="w-full max-h-64 object-cover rounded-md mb-4" />
         ) : (
           <div className="w-full h-48 flex items-center justify-center border-2 border-dashed border-gray-600 rounded-md mb-4 text-gray-500 text-center">
-            <p>Click below to choose your manga's cover image</p>
+            <p>Click below to choose your manga&apos;s cover image</p>
           </div>
         )}
         <label
@@ -319,15 +344,15 @@ const StoryContentEditor: React.FC<StoryContentEditorProps> = ({
 }
 
 // --- StoryToolsPanel Component ---
-function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveChapterIndex, activePageIndex, setActivePageIndex, tags, setTags }: any) {
+function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveChapterIndex, activePageIndex, setActivePageIndex, tags, setTags }: StoryToolsPanelProps) {
   const [activeSection, setActiveSection] = useState('chapters'); // 'chapters', 'notes', 'tags', 'tips'
   const [newChapterName, setNewChapterName] = useState('');
-  const [editingChapterIndex, setEditingChapterIndex] = useState(null);
+  const [editingChapterIndex, setEditingChapterIndex] = useState<number | null>(null);
   const [editedChapterName, setEditedChapterName] = useState('');
   const [newTagInput, setNewTagInput] = useState('');
 
-  const toggleSection = (section:any) => {
-    setActiveSection(activeSection === section ? null : section);
+  const toggleSection = (section: string) => {
+    setActiveSection(activeSection === section ? '' : section);
   };
 
   const addChapter = () => {
@@ -341,12 +366,12 @@ function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveC
     }
   };
 
-  const startEditChapter = (index: any) => {
+  const startEditChapter = (index: number) => {
     setEditingChapterIndex(index);
     setEditedChapterName(chapters[index].name);
   };
 
-  const saveEditedChapter = (index: any) => {
+  const saveEditedChapter = (index: number) => {
     if (editedChapterName.trim()) {
       const updatedChapters = [...chapters];
       updatedChapters[index].name = editedChapterName.trim();
@@ -355,13 +380,13 @@ function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveC
     }
   };
 
-  const deleteChapter = (indexToDelete: any) => {
+  const deleteChapter = (indexToDelete: number) => {
     if (window.confirm(`Are you sure you want to delete chapter "${chapters[indexToDelete].name}" and all its pages?`)) {
-      const updatedChapters = chapters.filter((_ : any, i: any) => i !== indexToDelete);
+      const updatedChapters = chapters.filter((_, index) => index !== indexToDelete);
       setChapters(updatedChapters);
       if (activeChapterIndex === indexToDelete) {
         // If current chapter is deleted, navigate to first chapter or null
-        setActiveChapterIndex(updatedChapters.length > 0 ? 0 : null);
+        setActiveChapterIndex(updatedChapters.length > 0 ? 0 : -1);
         setActivePageIndex(0);
       } else if (activeChapterIndex > indexToDelete) {
         setActiveChapterIndex(activeChapterIndex - 1);
@@ -380,12 +405,12 @@ function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveC
     }
   };
 
-  const deletePage = (pageIndexToDelete : any) => {
+  const deletePage = (pageIndexToDelete: number) => {
     if (activeChapterIndex !== null && chapters[activeChapterIndex].pages.length > 1) {
       if (window.confirm(`Are you sure you want to delete this page?`)) {
         const updatedChapters = [...chapters];
         const currentChapter = updatedChapters[activeChapterIndex];
-        currentChapter.pages = currentChapter.pages.filter((_ : any, i : any) => i !== pageIndexToDelete);
+        currentChapter.pages = currentChapter.pages.filter((_, i) => i !== pageIndexToDelete);
         setChapters(updatedChapters);
         // Adjust active page index if necessary
         setActivePageIndex(Math.max(0, pageIndexToDelete - 1));
@@ -402,14 +427,14 @@ function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveC
     }
   };
 
-  const removeTag = (tagToRemove : any) => {
-    setTags(tags.filter((tag : any) => tag !== tagToRemove));
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter((tag) => tag !== tagToRemove));
   };
 
 
   return (
     <div className="w-1/3 p-6 space-y-6 bg-cozy-card-bg rounded-xl border border-gray-700/50 backdrop-blur-sm shadow-lg flex flex-col overflow-y-auto">
-      <h2 className="text-2xl font-bold text-center text-indigo-300 mb-4">Writer's Toolkit</h2>
+      <h2 className="text-2xl font-bold text-center text-indigo-300 mb-4">Writer&apos;s Toolkit</h2>
 
       {/* Chapters Section */}
       <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700/50">
@@ -434,7 +459,7 @@ function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveC
               </button>
             </div>
             <ul className="space-y-1">
-              {chapters.map((chapter : any, index : any) => (
+              {chapters.map((chapter, index) => (
                 <li
                   key={chapter.id}
                   className={`flex items-center justify-between p-2 rounded-md transition-colors ${activeChapterIndex === index ? 'bg-indigo-700/30 text-indigo-200 font-semibold' : 'hover:bg-gray-700/50 cursor-pointer'}`}
@@ -472,7 +497,7 @@ function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveC
           <h3 className="text-xl font-semibold text-gray-300 mb-3">Pages (Current: {activePageIndex + 1}/{chapters[activeChapterIndex]?.pages.length || 0})</h3>
           <div className="flex justify-between items-center gap-2">
             <button
-              onClick={() => setActivePageIndex((prev: any) => Math.max(0, prev - 1))}
+              onClick={() => setActivePageIndex((prev) => Math.max(0, prev - 1))}
               disabled={activePageIndex === 0}
               className="bg-cozy-button-bg text-cozy-text-light py-2 px-3 rounded-md hover:bg-cozy-button-hover transition-colors disabled:opacity-50"
             >
@@ -485,7 +510,7 @@ function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveC
               Add Page
             </button>
             <button
-              onClick={() => setActivePageIndex((prev: any) => Math.min(chapters[activeChapterIndex].pages.length - 1, prev + 1))}
+              onClick={() => setActivePageIndex((prev) => Math.min(chapters[activeChapterIndex].pages.length - 1, prev + 1))}
               disabled={activePageIndex === (chapters[activeChapterIndex].pages.length - 1)}
               className="bg-cozy-button-bg text-cozy-text-light py-2 px-3 rounded-md hover:bg-cozy-button-hover transition-colors disabled:opacity-50"
             >
@@ -514,7 +539,7 @@ function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveC
           <div className="mt-3 text-gray-400 text-sm space-y-2 pt-3 border-t border-gray-700/30">
             <p className="italic">Add relevant tags to your manga (e.g., Action, Romance, Fantasy).</p>
             <div className="flex flex-wrap gap-2 mb-2">
-              {tags.map((tag : any, index: any) => (
+              {tags.map((tag, index) => (
                 <span key={index} className="bg-indigo-600/30 text-indigo-200 text-xs px-2 py-1 rounded-full flex items-center gap-1">
                   {tag}
                   <button onClick={() => removeTag(tag)} className="ml-1 text-gray-300 hover:text-white text-sm">X</button>
@@ -572,7 +597,7 @@ function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveC
               <li>Plan your panel layouts.</li>
               <li>Practice dynamic poses.</li>
               <li>Develop strong character expressions.</li>
-              <li>Show, don't just tell.</li>
+              <li>Show, don&apos;t just tell.</li>
             </ul>
           </div>
         )}
@@ -580,17 +605,16 @@ function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveC
 
       {/* Progress / Status (Placeholder) */}
       <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700/50 text-gray-400 text-sm text-center">
-        <h3 className="text-xl font-semibold text-gray-300 mb-2">Total Pages: <span className="font-bold text-cozy-text-light">{chapters.reduce((acc: any, ch: any) => acc + ch.pages.length, 0)}</span></h3>
+        <h3 className="text-xl font-semibold text-gray-300 mb-2">Total Pages: <span className="font-bold text-cozy-text-light">{chapters.reduce((acc, ch) => acc + ch.pages.length, 0)}</span></h3>
       </div>
     </div>
   );
 }
 
-
 // --- Fan Story Creation Page Component (Main Layout for Manga Writing) ---
-export default function FanStoryCreationPage({ userId, awardPoints }: any) {
-
+export default function FanStoryCreationPage() {
   const router = useRouter();
+  const { user } = useAuth();
   // State for the entire manga project
   const [mangaTitle, setMangaTitle] = useState('');
   const [coverImage, setCoverImage] = useState<File | null>(null);
@@ -607,7 +631,7 @@ export default function FanStoryCreationPage({ userId, awardPoints }: any) {
   const currentChapter = chapters[activeChapterIndex];
   const currentPage = currentChapter ? currentChapter.pages[activePageIndex] : null;
 
-  const setCurrentPageContent = useCallback((newContent: any) => {
+  const setCurrentPageContent = useCallback((newContent: string) => {
     if (currentPage) {
       const updatedChapters = [...chapters];
       updatedChapters[activeChapterIndex].pages[activePageIndex].content = newContent;
@@ -617,13 +641,15 @@ export default function FanStoryCreationPage({ userId, awardPoints }: any) {
 
 
   const handlePublish = async () => {
+
+    if(!user) return;
+
     if (!mangaTitle.trim() || chapters.length === 0 || chapters.every(ch => ch.pages.every(p => !p.content.trim()))) {
       alert('Manga Title, Chapters, and Content cannot be empty!');
       return;
     }
 
     // Prepare data
-    const { user } = useAuth();
 
     const newMangaId = crypto.randomUUID();
     const newManga = {
@@ -650,22 +676,22 @@ export default function FanStoryCreationPage({ userId, awardPoints }: any) {
     // Award points and XP, and log in user_activities_log
     try {
       await awardPoints(
-        user?.id,
+        user.id,
         'manga_posted',
         80,
         newMangaId,
         'fan_story'
       );
       await awardPoints(
-        user?.id,
+        user.id,
         'manga_posted_xp',
         90,
         newMangaId,
         'fan_story'
       );
       alert("Manga Published! 80 Points and 90 XP awarded!");
-    } catch (pointsError: any) {
-      alert("Manga published, but failed to award points/xp: " + pointsError.message);
+    } catch (pointsError) {
+      alert("Manga published, but failed to award points/xp: " + pointsError);
     }
 
     // Reset state after publish
@@ -719,88 +745,88 @@ export default function FanStoryCreationPage({ userId, awardPoints }: any) {
     // background image and overlay, as it focuses on the card itself.
     // If used standalone, ensure parent provides full screen div with background.
     <div className="absolute inset-0 flex flex-col items-center justify-center py-8 px-4 z-30 overflow-y-auto">
-        {/* Background elements if rendered within this component directly.
+      {/* Background elements if rendered within this component directly.
             Ideally, FloatingDustParticles would be higher up in the component tree
             if they are meant to cover the entire page background. */}
-        <FloatingDustParticles />
+      <FloatingDustParticles />
 
-        {/* Main content card, max-width adjusted, height set to full available minus some padding */}
-        <div className="w-full max-w-screen-2xl flex-1 rounded-xl p-8 shadow-2xl border border-gray-700/50 backdrop-blur-md flex flex-col overflow-y-auto"
-            style={{
-                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4), inset 0 0 10px rgba(0, 0, 0, 0.2)',
-                background: `
+      {/* Main content card, max-width adjusted, height set to full available minus some padding */}
+      <div className="w-full max-w-screen-2xl flex-1 rounded-xl p-8 shadow-2xl border border-gray-700/50 backdrop-blur-md flex flex-col overflow-y-auto"
+        style={{
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4), inset 0 0 10px rgba(0, 0, 0, 0.2)',
+          background: `
                     radial-gradient(circle at center, rgba(157, 214, 255, 0.05) 0%, transparent 70%),
                     ${customColors['cozy-card-bg']}
                 `,
-            }}
-        >
-            {/* Back button */}
-            <button onClick={() => router.back()} className="absolute top-4 left-4 text-gray-400 hover:text-gray-200 text-lg flex items-center gap-1 z-40">
-                &larr; Back
-            </button>
-            
-            {/* Page Title */}
-            <h1 className="text-3xl font-bold text-center mt-4 mb-8 text-indigo-300">
-                Craft Your Manga
-            </h1>
+        }}
+      >
+        {/* Back button */}
+        <button onClick={() => router.back()} className="absolute top-4 left-4 text-gray-400 hover:text-gray-200 text-lg flex items-center gap-1 z-40">
+          &larr; Back
+        </button>
 
-            {/* Main content area with two panels: Editor on left, Tools on right */}
-            <div className="flex flex-1 space-x-6 pb-6">
-                {/* Left pane: Content Editor */}
-                <StoryContentEditor
-                    title={mangaTitle}
-                    setTitle={setMangaTitle}
-                    currentContent={currentPage ? currentPage.content : ''}
-                    setCurrentContent={setCurrentPageContent}
-                    coverImage={coverImage}
-                    setCoverImage={setCoverImage}
-                    coverImageUrl={coverImageUrl}
-                    setCoverImageUrl={setCoverImageUrl}
-                />
+        {/* Page Title */}
+        <h1 className="text-3xl font-bold text-center mt-4 mb-8 text-indigo-300">
+          Craft Your Manga
+        </h1>
 
-                {/* Right pane: Tools Panel */}
-                <StoryToolsPanel
-                    chapters={chapters}
-                    setChapters={setChapters}
-                    activeChapterIndex={activeChapterIndex}
-                    setActiveChapterIndex={setActiveChapterIndex}
-                    activePageIndex={activePageIndex}
-                    setActivePageIndex={setActivePageIndex}
-                    tags={tags}
-                    setTags={setTags}
-                />
-            </div>
+        {/* Main content area with two panels: Editor on left, Tools on right */}
+        <div className="flex flex-1 space-x-6 pb-6">
+          {/* Left pane: Content Editor */}
+          <StoryContentEditor
+            title={mangaTitle}
+            setTitle={setMangaTitle}
+            currentContent={currentPage ? currentPage.content : ''}
+            setCurrentContent={setCurrentPageContent}
+            coverImage={coverImage}
+            setCoverImage={setCoverImage}
+            coverImageUrl={coverImageUrl}
+            setCoverImageUrl={setCoverImageUrl}
+          />
 
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-4 pt-6 border-t border-gray-700/50">
-                <button
-                type="button"
-                onClick={handleSaveDraft}
-                className="px-6 py-3 rounded-full text-lg font-semibold transition-all duration-300 ease-in-out"
-                style={{
-                    backgroundColor: customColors['cozy-button-bg'],
-                    color: customColors['cozy-text-light'],
-                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-                    textShadow: '0 0 5px rgba(0,0,0,0.3)',
-                }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = customColors['cozy-button-hover']}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = customColors['cozy-button-bg']}
-                >
-                Save Draft
-                </button>
-                <button
-                type="submit"
-                onClick={handlePublish}
-                className="px-6 py-3 rounded-full text-lg font-semibold transition-all duration-300 ease-in-out bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
-                style={{
-                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
-                    textShadow: '0 0 5px rgba(0,0,0,0.3)',
-                }}
-                >
-                Publish Manga
-                </button>
-            </div>
+          {/* Right pane: Tools Panel */}
+          <StoryToolsPanel
+            chapters={chapters}
+            setChapters={setChapters}
+            activeChapterIndex={activeChapterIndex}
+            setActiveChapterIndex={setActiveChapterIndex}
+            activePageIndex={activePageIndex}
+            setActivePageIndex={setActivePageIndex}
+            tags={tags}
+            setTags={setTags}
+          />
         </div>
+
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-4 pt-6 border-t border-gray-700/50">
+          <button
+            type="button"
+            onClick={handleSaveDraft}
+            className="px-6 py-3 rounded-full text-lg font-semibold transition-all duration-300 ease-in-out"
+            style={{
+              backgroundColor: customColors['cozy-button-bg'],
+              color: customColors['cozy-text-light'],
+              boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+              textShadow: '0 0 5px rgba(0,0,0,0.3)',
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = customColors['cozy-button-hover']}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = customColors['cozy-button-bg']}
+          >
+            Save Draft
+          </button>
+          <button
+            type="submit"
+            onClick={handlePublish}
+            className="px-6 py-3 rounded-full text-lg font-semibold transition-all duration-300 ease-in-out bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
+            style={{
+              boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
+              textShadow: '0 0 5px rgba(0,0,0,0.3)',
+            }}
+          >
+            Publish Manga
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

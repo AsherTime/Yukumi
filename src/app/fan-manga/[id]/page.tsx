@@ -2,13 +2,44 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import MangaReaderPage from "../page";
+import MangaReaderPage from "@/components/MangaReaderPage";
+
+interface FanStoryFromDB {
+  id: string;
+  user_id: string;
+  title: string;
+  synopsis: string | null;
+  content: string;
+  tags: string[] | null;
+  cover_image_url: string | null;
+  created_at: string;
+  updated_at: string;
+  status: string;
+  views: number;
+}
+
+type Pages = {
+  id: string;
+  content: string;
+}
+
+type Chapter = {
+  id: number;
+  pages: Pages[];
+  title: string;
+  name: string;
+  length: number;
+};
+
+interface FanStory extends FanStoryFromDB {
+  chapters: Chapter[];
+}
 
 export default function FanMangaReadPage() {
   const router = useRouter();
   const params = useParams();
   const mangaId = params?.id as string;
-  const [mangaData, setMangaData] = useState<any>(null);
+  const [mangaData, setMangaData] = useState<FanStory | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,7 +52,7 @@ export default function FanMangaReadPage() {
     };
 
     incrementViews();
-  }, [params]);
+  }, [params, mangaId]);
 
 
   useEffect(() => {
@@ -37,16 +68,21 @@ export default function FanMangaReadPage() {
         setMangaData(null);
       } else {
         // Parse chapters/pages from content
-        let chapters = [];
-        try {
-          chapters = JSON.parse(data.content || "[]");
-        } catch {
-          chapters = [];
+        if (data) {
+          let chapters = [];
+          try {
+            chapters = JSON.parse(data.content || "[]");
+          } catch {
+            chapters = [];
+          }
+          const storyWithChapters: FanStory = {
+            ...data,
+            chapters,
+          };
+          setMangaData(storyWithChapters);
+        } else {
+          setMangaData(null);
         }
-        setMangaData({
-          ...data,
-          chapters,
-        });
       }
       setLoading(false);
     };

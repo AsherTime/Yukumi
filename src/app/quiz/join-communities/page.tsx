@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
-import { Check, ChevronsRight, Search, ChevronsLeft } from "lucide-react"
+import { Check, ChevronsRight, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
@@ -20,7 +20,7 @@ interface Community {
 
 export default function JoinCommunities() {
   const [open, setOpen] = useState(false)
-  const [value, setValue] = useState<string>()
+  const [value] = useState<string>()
   const [communities, setCommunities] = useState<Community[]>([])
   const [joinedCommunities, setJoinedCommunities] = useState<Community[]>([]);
   const { user } = useAuth();
@@ -33,7 +33,7 @@ export default function JoinCommunities() {
       if (fromPage !== 'profile-setup') {
         router.replace('/unauthorized'); // or '/'
       }
-    }, [fromPage]);
+    }, [fromPage, router]);
 
 
   async function fetchCommunities() {
@@ -47,8 +47,8 @@ export default function JoinCommunities() {
         throw error;
       else
         setCommunities(communities);
-    } catch (error: any) {
-      console.log(error.message);
+    } catch (error) {
+      console.log(error);
     }
 
   }

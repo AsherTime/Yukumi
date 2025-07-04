@@ -146,9 +146,9 @@ export default function LoginPage() {
         router.push("/homepage"); // Redirect to home page
       }
     }
-    catch (err: any) {
-      //console.error("Unexpected sign-in error:", err);  // Optional
+    catch (err) {
       alert("Something went wrong. Please try again.");
+      console.error("Unexpected error logging in:", err);
     }
     finally {
       setIsLoading(false);

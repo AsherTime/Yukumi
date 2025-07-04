@@ -60,11 +60,11 @@ export default function AnimeDetail() {
   const [, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [anime, setAnime] = useState<Anime | null>(null);
-  const [animeList, setAnimeList] = useState<UserAnime>();
+  const [, setAnimeList] = useState<UserAnime>();
   const [watchlistStatus, setWatchlistStatus] = useState<string>("Watching");
-  const [progress, setProgress] = useState(1);
+  const [, setProgress] = useState(1);
   const [score, setScore] = useState(10);
-  const [shouldUpdate, setShouldUpdate] = useState(false);
+  const [, setShouldUpdate] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const {requireLogin} = useLoginGate();
 
@@ -161,8 +161,7 @@ export default function AnimeDetail() {
 
       setShouldUpdate(false);
       setUpdateSuccess(true);
-    } catch (error: any) {
-      console.error('Error updating watchlist:', error?.message || error);
+    } catch (error) {
       console.log('Full error object:', error);
       toast.error('Failed to update watchlist. Please try again.');
     }

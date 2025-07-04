@@ -1,6 +1,6 @@
 "use client"
 
-import { use, useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { ChevronsRight, ChevronsLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -28,7 +28,7 @@ export default function AnimeSurvey() {
     if (fromPage !== 'anime-categories') {
       router.replace('/unauthorized'); // or '/'
     }
-  }, [fromPage]);
+  }, [fromPage, router]);
 
   const handleNext = async () => {
 

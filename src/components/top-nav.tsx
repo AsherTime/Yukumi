@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Image from "next/image"
 import Link from "next/link"
 import { Search, Bell, User, Upload } from "lucide-react"
@@ -42,6 +42,12 @@ type Notification = {
   created_at: string
 }
 
+type userProfile = {
+  id: string
+  username: string
+  avatar_url: string
+}
+
 
 export function TopNav({ children }: { children?: React.ReactNode }) {
   const { user } = useAuth();
@@ -61,7 +67,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
     { href: "/community/a8a96442-c394-41dd-9632-8a968e53a7fe", label: "Community" },
     { href: "/tracker", label: "Tracker" },
   ]);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<userProfile>();
 
 
   useEffect(() => {
@@ -71,7 +77,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
 
       if (!userId) return;
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("members")
         .select("community_id")
         .eq("user_id", userId)
@@ -114,29 +120,20 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
     fetchUserProfile();
   }, [user?.id]);
 
-  const performSearch = async (query: string) => {
-
+  const performSearch = useCallback(async (query: string) => {
 
     let profilesQuery = supabase
-      .from('Profiles')
-      .select('id, username')
-      .ilike('username', `%${query}%`);
+      .from("Profiles")
+      .select("id, username")
+      .ilike("username", `%${query}%`);
 
     if (user?.id) {
-      // exclude the logged-in user
-      profilesQuery = profilesQuery.neq('id', user.id);
+      profilesQuery = profilesQuery.neq("id", user.id);
     }
 
-
     const [animeRes, communityRes, userRes] = await Promise.all([
-      supabase.from('Anime')
-        .select('id, title')
-        .ilike('title', `%${query}%`),
-
-      supabase.from('community')
-        .select('id, title')
-        .ilike('title', `%${query}%`),
-
+      supabase.from("Anime").select("id, title").ilike("title", `%${query}%`),
+      supabase.from("community").select("id, title").ilike("title", `%${query}%`),
       profilesQuery,
     ]);
 
@@ -145,9 +142,11 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
       community: communityRes.data || [],
       users: userRes.data || [],
     };
-  };
 
-  function debounce<T extends (...args: any[]) => void>(
+  }, [user?.id]);
+
+
+  function debounce<T extends (...args: string[]) => void>(
     fn: T,
     delay = 300
   ): (...args: Parameters<T>) => void {
@@ -160,17 +159,18 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
   }
 
 
-  const debouncedSearch = useCallback(
-    debounce(async (query) => {
+  const debouncedSearch = useMemo(() =>
+    debounce(async (query: string) => {
       if (query.trim()) {
         const results = await performSearch(query);
         setSearchResults(results);
       } else {
         setSearchResults(null);
       }
-    }, 300),
-    []
-  );
+    }, 300)
+    , [performSearch]);
+
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -199,40 +199,40 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
         return;
       }
 
-      if(profilePrefs){
+      if (profilePrefs) {
 
-      const { notif_all, notif_likes, notif_replies, notif_follows } = profilePrefs;
+        const { notif_all, notif_likes, notif_replies, notif_follows } = profilePrefs;
 
-      // Step 2: Build filter types based on preferences
-      let typesToInclude: string[] = [];
+        // Step 2: Build filter types based on preferences
+        let typesToInclude: string[] = [];
 
-      if (notif_all) {
-        typesToInclude = ['like_milestone', 'comment_reply', 'follow'];
-      } else {
-        if (notif_likes) typesToInclude.push('like_milestone');
-        if (notif_replies) typesToInclude.push('comment_reply');
-        if (notif_follows) typesToInclude.push('follow');
+        if (notif_all) {
+          typesToInclude = ['like_milestone', 'comment_reply', 'follow'];
+        } else {
+          if (notif_likes) typesToInclude.push('like_milestone');
+          if (notif_replies) typesToInclude.push('comment_reply');
+          if (notif_follows) typesToInclude.push('follow');
+        }
+
+        // If no types are included, don't bother querying
+        if (typesToInclude.length === 0) {
+          return;
+        }
+
+        // Step 3: Fetch notifications matching selected types
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .in('type', typesToInclude)
+          .order('created_at', { ascending: false });
+
+        if (!error && data && isMounted) {
+          setNotifications(data as Notification[]);
+        } else if (error) {
+          console.error('Error fetching notifications:', error.message);
+        }
       }
-
-      // If no types are included, don't bother querying
-      if (typesToInclude.length === 0) {
-        return;
-      }
-
-      // Step 3: Fetch notifications matching selected types
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .in('type', typesToInclude)
-        .order('created_at', { ascending: false });
-
-      if (!error && data && isMounted) {
-        setNotifications(data as Notification[]);
-      } else if (error) {
-        console.error('Error fetching notifications:', error.message);
-      }
-    }
     };
 
     fetchNotifications();
@@ -450,7 +450,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
                   <DropdownMenuTrigger className="focus:outline-none">
                     <div className="relative h-8 w-8 rounded-full overflow-hidden cursor-pointer hover:ring-2 hover:ring-pink-500 transition-all">
                       {userProfile?.avatar_url ? (
-                        <img
+                        <Image
                           src={userProfile.avatar_url}
                           alt="Profile"
                           className="h-full w-full object-cover"

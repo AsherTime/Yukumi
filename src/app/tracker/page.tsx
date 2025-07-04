@@ -1,15 +1,14 @@
-// @ts-nocheck
 "use client"
 
 import React, { useState, useEffect } from "react"
 import { CheckCircle, Trophy, BarChart3, MessageSquare, BookOpen, Flame, Star, Hexagon, CalendarDays, ThumbsUp, TrendingUp, HandCoins, Info } from "lucide-react"
 import { TopNav } from "@/components/top-nav"
-import { awardPoints } from '@/utils/awardPoints'
 import { wasTaskCompletedToday } from '@/utils/dailyTasks'
 import { supabase } from '@/lib/supabase'
 import Footer from "@/components/footer"
 import { useWeeklyStats } from "@/hooks/useWeeklyStats"
 import { useAuth } from "@/contexts/AuthContext"
+import Image from "next/image"
 
 // Minimal Card component for self-containment
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -99,20 +98,11 @@ function getScoreGradient(score: number) {
   return "from-purple-400 to-violet-500"
 }
 
-function getScoreGlow(score: number) {
-  if (score <= 200) return "shadow-gray-500/20"
-  if (score <= 400) return "shadow-yellow-500/30"
-  if (score <= 600) return "shadow-green-500/30"
-  if (score <= 800) return "shadow-blue-500/30"
-  return "shadow-purple-500/40"
-}
 
 // Falling star animation component
 function FallingStar({ left, onEnd }: { left: number; onEnd: () => void }) {
   // Randomize diagonal direction (left-to-right or right-to-left)
   const isLeftToRight = Math.random() > 0.5;
-  // Randomize the angle (between 20deg and 35deg)
-  const angle = isLeftToRight ? 28 : -28;
   useEffect(() => {
     const timer = setTimeout(onEnd, 7000) // 7s for slow, cozy fall
     return () => clearTimeout(timer)
@@ -191,10 +181,19 @@ function FormingStar({ left, onEnd }: { left: number; onEnd: () => void }) {
   )
 }
 
+interface Floating {
+  left: number;
+  top: number;
+  delay: number;
+  duration: number;
+  size: number;
+}
+
+
 function BackgroundElements() {
   const [fallingStars, setFallingStars] = useState<{ id: number; left: number }[]>([])
-  const [floatingStars, setFloatingStars] = useState<any[]>([])
-  const [floatingHexagons, setFloatingHexagons] = useState<any[]>([])
+  const [floatingStars, setFloatingStars] = useState<Floating[]>([])
+  const [floatingHexagons, setFloatingHexagons] = useState<Floating[]>([])
   const [formingStars, setFormingStars] = useState<{ id: number; left: number }[]>([])
 
   // Generate floating stars and hexagons only once on mount
@@ -405,30 +404,50 @@ function TrackerScore({ score }: { score: number }) {
   )
 }
 
-/**
- * @param {{ icon: React.ElementType, label: string, value: string | number, onClick: () => void }} props
- */
-function StatItem({ icon: Icon, label, value, onClick }) {
+function StatItem({
+  icon: Icon,
+  label,
+  value,
+  onClick,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string | number;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
       className="flex justify-between items-center w-full px-4 py-3 rounded-lg text-lg text-gray-300 bg-gray-700/30 hover:bg-gray-700/50 transition-colors cursor-pointer group relative overflow-hidden"
     >
       <div className="flex items-center gap-3">
-        <Icon size={20} className="text-indigo-400 group-hover:text-indigo-300 transition-colors" />
+        <Icon
+          size={20}
+          className="text-indigo-400 group-hover:text-indigo-300 transition-colors"
+        />
         <span>{label}:</span>
       </div>
       <span className="font-bold text-cozy-text-light">{value}</span>
-      {/* Subtle background glow on hover */}
       <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-10 transition-opacity duration-300 pointer-events-none" />
     </button>
   );
 }
 
-/**
- * @param {{ isOpen: boolean, onClose: () => void, title: string, content: React.ReactNode, icon: React.ElementType | null, anchorBelow?: boolean }} props
- */
-function StatDetailsModal({ isOpen, onClose, title, content, icon: Icon, anchorBelow }) {
+function StatDetailsModal({
+  isOpen,
+  onClose,
+  title,
+  content,
+  icon: Icon,
+  anchorBelow,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  content: React.ReactNode;
+  icon: React.ElementType | null;
+  anchorBelow?: boolean;
+}) {
   if (!isOpen) return null;
   if (anchorBelow) {
     return (
@@ -482,10 +501,25 @@ function StatDetailsModal({ isOpen, onClose, title, content, icon: Icon, anchorB
   );
 }
 
-/**
- * @param {{ stats: { checkInStreak: string, postReactions: number, netActivities: number, xpGained: number }, onStatClick: (statKey: string, details: { title: string, content: React.ReactNode, icon: React.ElementType }) => void }} props
- */
-function WeeklyStatsCard({ stats, onStatClick }) {
+function WeeklyStatsCard({
+  stats,
+  onStatClick,
+}: {
+  stats: {
+    streak: string;
+    totalInteractions: number;
+    countActivities: number;
+    points: number;
+  };
+  onStatClick: (
+    statKey: string,
+    details: {
+      title: string;
+      content: React.ReactNode;
+      icon: React.ElementType;
+    }
+  ) => void;
+}) {
   return (
     <Card className="group w-[350px] hover:bg-gray-800/70 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-indigo-500/20 overflow-hidden">
       <div className="flex justify-between items-center mb-3">
@@ -510,7 +544,7 @@ function WeeklyStatsCard({ stats, onStatClick }) {
             title: "Check-in Streak Details",
             content: (
               <>
-                <p>You've logged in consecutively for <b>{stats.streak}</b> days!</p>
+                <p>You&apos;ve logged in consecutively for <b>{stats.streak}</b> days!</p>
                 <p className="text-sm text-gray-400 mt-2">Keep up the great habit to earn bonus rewards!</p>
               </>
             ),
@@ -525,7 +559,7 @@ function WeeklyStatsCard({ stats, onStatClick }) {
             title: "Post Reactions Breakdown",
             content: (
               <>
-                <p>You've liked and commented <b>{stats.totalInteractions}</b> times across various posts this week!</p>
+                <p>You&apos;ve liked and commented <b>{stats.totalInteractions}</b> times across various posts this week!</p>
                 <p className="text-sm text-gray-400 mt-2">Your love is making an impact!</p>
               </>
             ),
@@ -568,20 +602,31 @@ function WeeklyStatsCard({ stats, onStatClick }) {
   );
 }
 
+type StatDetails = {
+  title: string;
+  content: React.ReactNode;
+  icon: React.ElementType | null;
+};
+
+
 export default function TrackerPage() {
   const [tracker, setTracker] = useState<{ xp: number; level: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [reflection, setReflection] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoadingReflection, setIsLoadingReflection] = useState(false)
-  const [awardStatus, setAwardStatus] = useState<string | null>(null)
+  const [awardStatus,] = useState<string | null>(null)
   const [dailyTasks, setDailyTasks] = useState({
     dailyCheckIn: false,
     commentComrade: false,
     quickReviewer: false,
   });
   const [isStatModalOpen, setIsStatModalOpen] = useState(false);
-  const [currentStatDetails, setCurrentStatDetails] = useState({ title: '', content: '', icon: null });
+  const [currentStatDetails, setCurrentStatDetails] = useState<StatDetails>({
+    title: '',
+    content: '',
+    icon: null,
+  });
   const { user } = useAuth();
   // Get the current user (adjust for your auth setup)
   const [userId, setUserId] = useState<string | null>(null)
@@ -634,23 +679,6 @@ export default function TrackerPage() {
     return () => clearInterval(interval);
   }, [userId]);
 
-  // Test award points button handler
-  const handleTestAward = async () => {
-    setAwardStatus(null)
-    if (!userId) return
-    try {
-      await awardPoints(
-        userId,
-        'test_award',
-        10,
-      )
-      setAwardStatus('Points awarded! Reloading...')
-      setTimeout(() => setAwardStatus(null), 2000)
-    } catch (e) {
-      setAwardStatus('Error awarding points. See console.')
-    }
-  }
-
   const fetchCozyReflection = async () => {
     setIsLoadingReflection(true);
     setReflection("");
@@ -698,7 +726,7 @@ export default function TrackerPage() {
   // Mock weekly stats for demo
   const weeklyStats = useWeeklyStats();
 
-  const handleStatClick = (statKey, details) => {
+  const handleStatClick = (_statKey: string, details: StatDetails) => {
     setCurrentStatDetails(details);
     setIsStatModalOpen(true);
   };
@@ -758,7 +786,7 @@ export default function TrackerPage() {
     >
       {/* Background Layer */}
       <div className="absolute inset-0 z-0 overflow-hidden">
-        <img
+        <Image
           src="https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Leonardo_Anime_XL_Generate_a_wide_horizontal_image_for_a_websi_1.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hMDVhOTMwNi0zYmRiLTQ5YjQtYWRkNi0xYzIxMzY4YmM3MDEiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9MZW9uYXJkb19BbmltZV9YTF9HZW5lcmF0ZV9hX3dpZGVfaG9yaXpvbnRhbF9pbWFnZV9mb3JfYV93ZWJzaV8xLmpwZyIsImlhdCI6MTc1MDA5MDEwOSwiZXhwIjoxNzgxNjI2MTA5fQ.fWu7BWc3R8PgN7n8Q8XrSS0sK3m8jC5Rub8EVZP6LUk"
           className="object-cover w-full h-full blur-[2.25px] brightness-70 grayscale-[0.07]"
           style={{ pointerEvents: 'none' }}

@@ -15,14 +15,8 @@ export function useWeeklyStats() {
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   useEffect(() => {
-    if (userId) {
-      loginStreak();
-      countInteractions();
-      pointsGained();
-    }
-  }, [userId]);
-
-  async function loginStreak() {
+    
+    async function loginStreak() {
     const { data, error } = await supabase
       .from('user_activities_log')
       .select('created_at')
@@ -92,6 +86,13 @@ export function useWeeklyStats() {
     setCountActivities(data.length);
     setPoints(totalScore);
   }
+
+    if (userId) {
+      loginStreak();
+      countInteractions();
+      pointsGained();
+    }
+  }, [userId, oneWeekAgo]);
 
   return { streak, totalInteractions, countActivities, points };
 }

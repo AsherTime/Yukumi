@@ -10,13 +10,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Define the view milestones and their corresponding points (kept for reference, though not used here directly)
-const VIEW_MILESTONES = [
-  { threshold: 1000, points: 25, identifier: "1k_views" },
-  { threshold: 10000, points: 50, identifier: "10k_views" },
-  { threshold: 100000, points: 100, identifier: "100k_views" },
-  { threshold: 1000000, points: 200, identifier: "1m_views" },
-];
 
 serve(async (req) => {
   // Handle CORS preflight request
@@ -190,7 +183,6 @@ serve(async (req) => {
 
     // Calculate new XP and level
     const currentXp = tracker?.xp || 0;
-    const currentLevel = tracker?.level || 1;
     const newXp = currentXp + points_awarded;
     const newLevel = Math.floor(newXp / 200) + 1; // Level up every 200 XP
 

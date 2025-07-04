@@ -8,7 +8,7 @@ const VIEW_MILESTONES = [
   { threshold: 1000000, points: 200, identifier: '1m_views' },
 ];
 
-serve(async (req: Request) => {
+serve(async () => {
   const supabaseClient = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -90,7 +90,7 @@ serve(async (req: Request) => {
     if (error instanceof Error) {
       message = error.message;
     } else if (typeof error === "object" && error && "message" in error) {
-      message = (error as any).message;
+      message = (error as { message: string }).message;
     } else if (typeof error === "string") {
       message = error;
     }
@@ -100,39 +100,3 @@ serve(async (req: Request) => {
     });
   }
 });
-
-const handleAddComment = async () => {
-  if (!newComment.trim() || !user) return;
-
-  try {
-    // Insert the comment
-    const { data: commentData, error: insertError } = await supabase
-      .from('comments')
-      .insert([
-        {
-          post_id: id,
-          user_id: user.id,
-          content: newComment.trim(),
-        },
-      ])
-      .select()
-      .maybeSingle();
-
-    if (insertError) throw insertError;
-
-    if (commentData) {
-      setComments((prev) => [commentData, ...prev]);
-      setNewComment('');
-
-      // Award points for commenting
-      try {
-        await awardPoints(user.id, 'comment_made', 15, id, 'post');
-      } catch (pointsError) {
-        console.error('Failed to award points for comment:', pointsError);
-      }
-    }
-  } catch (error) {
-    console.error('Error adding comment:', error);
-    toast.error('Failed to add comment. Please try again.');
-  }
-};
