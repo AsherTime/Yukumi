@@ -21,20 +21,47 @@ export default function ProfileSetup() {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
-  const { fromPage, setFromPage } = useNavigationContext();
+  const { setFromPage } = useNavigationContext();
 
   useEffect(() => {
+    const fromPage = new URLSearchParams(window.location.search).get('fromPage');
+
     if (fromPage !== 'register') {
-      router.replace('/unauthorized'); // or '/'
+      router.replace('/unauthorized');
     }
-  }, [fromPage, router]);
+  }, []);
+
+  useEffect(() => {
+    const checkIfNewUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      // Check in your own table (e.g., "Profiles") if the profile exists
+      const { data: profile } = await supabase
+        .from('Profiles')
+        .select('*')
+        .eq('id', user.id) // or 'firebase_uid' or whatever ID field you use
+        .maybeSingle();
+
+      if (profile) {
+        // Existing user, go to homepage or dashboard
+        router.push('/homepage'); // or wherever
+      }
+    };
+
+    checkIfNewUser();
+  }, []);
+
 
   useEffect(() => {
     const checkUser = async () => {
       try {
         // First check user session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
+
         if (sessionError) {
           console.error("Session error:", sessionError)
           toast.error("Failed to get user session")
@@ -90,21 +117,21 @@ export default function ProfileSetup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!username || !displayName) {
       toast.error("Please fill in all required fields")
       return
     }
-    
+
     try {
       console.log("Starting profile update...")
-      
+
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       if (sessionError) {
         console.error("Session error:", sessionError)
         throw new Error("Failed to get user session")
       }
-      
+
       if (!session?.user) {
         console.error("No user session found")
         throw new Error("No user session")
@@ -149,38 +176,38 @@ export default function ProfileSetup() {
     try {
       const file = e.target.files?.[0];
       if (!file) return;
-  
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session?.user) throw new Error("No user session");
-  
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${session.user.id}-${Math.random()}.${fileExt}`;
       const filePath = `${session.user.id}/${fileName}`;
-  
+
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file);
-  
+
       if (uploadError) throw uploadError;
-  
+
       const {
         data: { publicUrl },
       } = supabase.storage.from('avatars').getPublicUrl(filePath);
-  
+
       setProfileImage(publicUrl);
     } catch (error) {
       console.error(error || "Failed to upload image");
     }
   };
-  
+
 
   return (
     <div className="min-h-screen bg-black p-8">
       <div className="mx-auto max-w-2xl">
         <h1 className="mb-8 text-3xl font-bold text-white">Complete Your Profile</h1>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="flex items-center space-x-4">
             <Avatar className="h-24 w-24">
@@ -210,7 +237,7 @@ export default function ProfileSetup() {
               <Input
                 id="display-name"
                 value={displayName}
-                
+
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Enter your display name"
               />
