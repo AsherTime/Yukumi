@@ -94,23 +94,37 @@ export default function MangaReaderPage({ mangaData, onBack }: { mangaData: FanS
     }
   };
 
+
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center py-8 px-4 z-30 overflow-y-auto">
-      <div className="w-full max-w-screen-xl flex-1 rounded-xl p-8 shadow-2xl border border-gray-700/50 backdrop-blur-md flex flex-col"
+    <div className="absolute inset-0 flex flex-col items-center py-6 px-2 sm:py-8 sm:px-4 z-30 overflow-y-auto">
+      <div
+        className="w-full max-w-screen-xl flex-1 rounded-xl p-4 sm:p-8 shadow-2xl border border-gray-700/50 backdrop-blur-md flex flex-col"
         style={{
           boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4), inset 0 0 10px rgba(0, 0, 0, 0.2)',
           background: `
-            radial-gradient(circle at center, rgba(157, 214, 255, 0.05) 0%, transparent 70%),
-            ${customColors['cozy-reader-bg']}
-          `,
+        radial-gradient(circle at center, rgba(157, 214, 255, 0.05) 0%, transparent 70%),
+        ${customColors['cozy-reader-bg']}
+      `,
         }}
       >
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-700/50">
-          <button onClick={onBack} className="text-gray-400 hover:text-gray-200 text-lg flex items-center gap-1">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-center gap-4 mb-6 pb-4 border-b border-gray-700/50">
+          {/* Back Button */}
+          <button
+            onClick={onBack}
+            className="text-gray-400 hover:text-gray-200 text-base sm:text-lg flex items-center gap-1 shrink-0"
+          >
             <ArrowLeftCircle size={20} /> Back to Library
           </button>
-          <h1 className="text-3xl font-bold text-indigo-300 text-center flex-1">{mangaData.title}</h1>
-          <div className="relative">
+
+          {/* Title */}
+          <h1 className="text-2xl sm:text-3xl font-bold text-indigo-300 text-center flex-1 truncate">
+            {mangaData.title}
+          </h1>
+
+
+          {/* Chapter Dropdown */}
+          <div className="relative w-full sm:w-40 shrink-0">
             <select
               name="chapter-select"
               value={activeChapterIndex}
@@ -118,7 +132,7 @@ export default function MangaReaderPage({ mangaData, onBack }: { mangaData: FanS
                 setActiveChapterIndex(parseInt(e.target.value));
                 setActivePageIndex(0);
               }}
-              className="bg-gray-800 text-cozy-text-light p-2 rounded-md border border-gray-700 appearance-none pr-8"
+              className="w-full bg-gray-800 text-cozy-text-light p-2 rounded-md border border-gray-700 appearance-none pr-8"
               style={{ backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center' }}
             >
               {mangaData.chapters.map((chapter: Chapter, index: number) => (
@@ -127,22 +141,31 @@ export default function MangaReaderPage({ mangaData, onBack }: { mangaData: FanS
                 </option>
               ))}
             </select>
-            <ChevronDown size={16} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" />
+            <ChevronDown
+              size={16}
+              className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400"
+            />
           </div>
         </div>
+
+
+        {/* Content */}
         <div
-          className="flex-1 overflow-y-auto p-4 bg-gray-900/50 rounded-lg border border-gray-700 text-cozy-text-light leading-relaxed text-lg"
+          className="flex-1 overflow-y-auto p-3 sm:p-4 bg-gray-900/50 rounded-lg border border-gray-700 text-cozy-text-light leading-relaxed text-base sm:text-lg"
           dangerouslySetInnerHTML={{ __html: currentPageContent }}
         />
-        <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-700/50">
+
+        {/* Footer Controls */}
+        <div className="flex flex-col sm:flex-row justify-between items-center mt-6 pt-4 border-t border-gray-700/50 gap-4 sm:gap-0">
           <button
             onClick={goToPreviousChapter}
             disabled={activeChapterIndex === 0}
-            className="bg-cozy-button-bg text-cozy-text-light py-2 px-4 rounded-full hover:bg-cozy-button-hover transition-colors disabled:opacity-50 flex items-center gap-1"
+            className="w-full sm:w-auto bg-cozy-button-bg text-cozy-text-light py-2 px-4 rounded-full hover:bg-cozy-button-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
           >
             <BookOpenText size={18} /> Prev Chapter
           </button>
-          <div className="flex items-center space-x-4">
+
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
             <button
               onClick={goToPreviousPage}
               disabled={activePageIndex === 0 && activeChapterIndex === 0}
@@ -150,19 +173,23 @@ export default function MangaReaderPage({ mangaData, onBack }: { mangaData: FanS
             >
               <ArrowLeftCircle size={20} /> Previous
             </button>
-            <span className="text-xl font-bold">Page {activePageIndex + 1}</span>
+            <span className="text-lg font-bold">Page {activePageIndex + 1}</span>
             <button
               onClick={goToNextPage}
-              disabled={activePageIndex === (currentChapter?.pages.length - 1) && activeChapterIndex === (mangaData.chapters.length - 1)}
+              disabled={
+                activePageIndex === currentChapter?.pages.length - 1 &&
+                activeChapterIndex === mangaData.chapters.length - 1
+              }
               className="bg-cozy-button-bg text-cozy-text-light py-2 px-4 rounded-full hover:bg-cozy-button-hover transition-colors disabled:opacity-50"
             >
               Next <ArrowRightCircle size={20} />
             </button>
           </div>
+
           <button
             onClick={goToNextChapter}
             disabled={activeChapterIndex === mangaData.chapters.length - 1}
-            className="bg-cozy-button-bg text-cozy-text-light py-2 px-4 rounded-full hover:bg-cozy-button-hover transition-colors disabled:opacity-50 flex items-center gap-1"
+            className="w-full sm:w-auto bg-cozy-button-bg text-cozy-text-light py-2 px-4 rounded-full hover:bg-cozy-button-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
           >
             Next Chapter <BookOpenText size={18} />
           </button>

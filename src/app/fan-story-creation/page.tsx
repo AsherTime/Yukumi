@@ -273,7 +273,7 @@ const StoryContentEditor: React.FC<StoryContentEditorProps> = ({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="w-full p-4 rounded-md bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-cozy-text-light text-3xl font-bold placeholder-gray-500 text-center"
-          placeholder="Your Masterpiece Title Here"
+          placeholder="Your Title Here"
           required
         />
       </div>
@@ -440,7 +440,7 @@ function StoryToolsPanel({ chapters, setChapters, activeChapterIndex, setActiveC
 
 
   return (
-    <div className="w-1/3 p-6 space-y-6 bg-cozy-card-bg rounded-xl border border-gray-700/50 backdrop-blur-sm shadow-lg flex flex-col overflow-y-auto">
+    <div className="w-full lg:w-1/3 p-4 sm:p-6 space-y-6 bg-cozy-card-bg rounded-xl border border-gray-700/50 backdrop-blur-sm shadow-lg flex flex-col">
       <h2 className="text-2xl font-bold text-center text-indigo-300 mb-4">Writer&apos;s Toolkit</h2>
 
       {/* Chapters Section */}
@@ -755,35 +755,34 @@ export default function FanStoryCreationPage() {
     // This component assumes it's being rendered within a parent that handles the full screen
     // background image and overlay, as it focuses on the card itself.
     // If used standalone, ensure parent provides full screen div with background.
-    <div className="absolute inset-0 flex flex-col items-center justify-center py-8 px-4 z-30 overflow-y-auto">
-      {/* Background elements if rendered within this component directly.
-            Ideally, FloatingDustParticles would be higher up in the component tree
-            if they are meant to cover the entire page background. */}
+    <div className="absolute inset-0 z-30 overflow-y-auto px-2 sm:px-4 py-4 sm:py-8">
       <FloatingDustParticles />
 
-      {/* Main content card, max-width adjusted, height set to full available minus some padding */}
-      <div className="w-full max-w-screen-2xl flex-1 rounded-xl p-8 shadow-2xl border border-gray-700/50 backdrop-blur-md flex flex-col overflow-y-auto"
+      <div
+        className="w-full max-w-screen-2xl mx-auto rounded-xl p-4 sm:p-8 shadow-2xl border border-gray-700/50 backdrop-blur-md flex flex-col min-h-full"
         style={{
           boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4), inset 0 0 10px rgba(0, 0, 0, 0.2)',
           background: `
-                    radial-gradient(circle at center, rgba(157, 214, 255, 0.05) 0%, transparent 70%),
-                    ${customColors['cozy-card-bg']}
-                `,
+        radial-gradient(circle at center, rgba(157, 214, 255, 0.05) 0%, transparent 70%),
+        ${customColors['cozy-card-bg']}
+      `,
         }}
       >
         {/* Back button */}
-        <button onClick={() => router.back()} className="absolute top-4 left-4 text-gray-400 hover:text-gray-200 text-lg flex items-center gap-1 z-40">
+        <button
+          onClick={() => router.back()}
+          className="absolute top-4 left-4 text-gray-400 hover:text-gray-200 text-base sm:text-lg flex items-center gap-1 z-40"
+        >
           &larr; Back
         </button>
 
         {/* Page Title */}
-        <h1 className="text-3xl font-bold text-center mt-4 mb-8 text-indigo-300">
+        <h1 className="text-2xl sm:text-3xl font-bold text-center mt-12 mb-6 text-indigo-300">
           Craft Your Manga
         </h1>
 
-        {/* Main content area with two panels: Editor on left, Tools on right */}
-        <div className="flex flex-1 space-x-6 pb-6">
-          {/* Left pane: Content Editor */}
+        {/* Main content: Editor + Tools */}
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1">
           <StoryContentEditor
             title={mangaTitle}
             setTitle={setMangaTitle}
@@ -795,7 +794,6 @@ export default function FanStoryCreationPage() {
             setCoverImageUrl={setCoverImageUrl}
           />
 
-          {/* Right pane: Tools Panel */}
           <StoryToolsPanel
             chapters={chapters}
             setChapters={setChapters}
@@ -808,12 +806,12 @@ export default function FanStoryCreationPage() {
           />
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex justify-end space-x-4 pt-6 border-t border-gray-700/50">
+        {/* Action Button */}
+        <div className="flex justify-end mt-6 pt-4 border-t border-gray-700/50">
           <button
             type="submit"
             onClick={handlePublish}
-            className="px-6 py-3 rounded-full text-lg font-semibold transition-all duration-300 ease-in-out bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
+            className="w-full sm:w-auto px-6 py-3 rounded-full text-lg font-semibold transition-all duration-300 ease-in-out bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
             style={{
               boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
               textShadow: '0 0 5px rgba(0,0,0,0.3)',
@@ -824,5 +822,6 @@ export default function FanStoryCreationPage() {
         </div>
       </div>
     </div>
+
   );
 }

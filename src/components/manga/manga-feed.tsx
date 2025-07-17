@@ -82,7 +82,7 @@ export function MangaFeed() {
             className="block bg-white/10 backdrop-blur-md rounded-lg overflow-hidden hover:bg-white/20 transition-all"
           >
             <div className="p-4">
-              <div className="flex items-start gap-4">
+              <div className="flex flex-col sm:flex-row items-start gap-4">
                 <div className="relative w-24 h-32 flex-shrink-0">
                   {manga.cover_image_url ? (
                     <Image
