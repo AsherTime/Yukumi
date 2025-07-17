@@ -85,17 +85,17 @@ const AnimeCard = ({ anime, favourites, selectedStatus, score, onViewDetails, on
 
   useEffect(() => {
     async function fetchCommunity() {
-    const { data, error } = await supabase.from("community").select("id").eq("anime_id", anime.id).maybeSingle();
-    if (error) {
-      console.error("Failed to fetch community data:", error.message);
-      return false;
+      const { data, error } = await supabase.from("community").select("id").eq("anime_id", anime.id).maybeSingle();
+      if (error) {
+        console.error("Failed to fetch community data:", error.message);
+        return false;
+      }
+      setCommunityId(data?.id);
     }
-    setCommunityId(data?.id);
-  }
     fetchCommunity();
   }, [anime.id]);
 
- 
+
 
   // Combine tags and genres, deduplicate, and show up to 3
   //const tagSet = new Set([...(anime.tags || []), ...(anime.genres || [])]);
@@ -254,21 +254,22 @@ const AnimeBanner = () => {
   const router = useRouter();
   const { requireLogin } = useLoginGate();
   return (
-  <section className="w-full relative h-[260px] md:h-[340px] flex items-end justify-center overflow-hidden">
-    <Image src={ANIME_BANNER_URL} alt="Anime Banner" fill className="object-cover w-full h-full" priority />
-    <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-black/90 flex flex-col items-center justify-center text-center px-4">
-      <h1 className="text-2xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-2">FIND THE BEST ANIME FOR YOU</h1>
-      <p className="text-zinc-300 mb-4">Take the quiz and discover what fits your vibe</p>
-       <Button 
-       onClick={() => {
-          const allowed = requireLogin();
-          if (!allowed) return;
-          router.push("/quiz/find-anime")
-        }}
-       className="px-8 py-3 text-lg font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg hover:scale-105 hover:shadow-pink-500/40 transition-transform">TRY NOW</Button>
-    </div>
-  </section>
-)};
+    <section className="w-full relative h-[260px] md:h-[340px] flex items-end justify-center overflow-hidden">
+      <Image src={ANIME_BANNER_URL} alt="Anime Banner" fill className="object-cover w-full h-full" priority />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-black/90 flex flex-col items-center justify-center text-center px-4">
+        <h1 className="hidden md:block text-2xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-2">FIND THE BEST ANIME FOR YOU</h1>
+        <p className="text-zinc-300 mb-4">Take the quiz and discover what fits your vibe</p>
+        <Button
+          onClick={() => {
+            const allowed = requireLogin();
+            if (!allowed) return;
+            router.push("/quiz/find-anime")
+          }}
+          className="px-8 py-3 text-lg font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg hover:scale-105 hover:shadow-pink-500/40 transition-transform">TRY NOW</Button>
+      </div>
+    </section>
+  )
+};
 
 
 const AnimeBrowser: React.FC = () => {
@@ -571,7 +572,7 @@ const AnimeBrowser: React.FC = () => {
       <TopNav />
       <main className="flex-1 flex flex-col">
         <AnimeBanner />
-        <div className="max-w-7xl mx-auto px-4 flex items-center gap-4 mb-6">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col lg:flex-row items-stretch lg:items-center gap-4 mb-6">
           <AnimeSearchBar value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
           <div>
             <label htmlFor="status-filter" className="sr-only">Filter by Status</label>

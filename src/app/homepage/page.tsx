@@ -173,9 +173,9 @@ export default function HomePage() {
     <>
       <TopNav />
       <div className="container mx-auto px-4 py-8 space-y-12">
-        <div className="flex gap-6 pt-16">
+        <div className="flex flex-col lg:flex-row gap-6 pt-16">
           {/* Left Sidebar */}
-          <div className="w-[20%] hidden lg:block">
+          <div className="ml-4 w-full lg:w-[20%] order-1 lg:order-none">
             <FeaturePanel />
             {/* Left Sidebar Ad - 300x250 
             <div className="mt-6">
@@ -189,7 +189,7 @@ export default function HomePage() {
           </div>
 
           {/* Main Content */}
-          <div className="w-full lg:w-[55%] flex flex-col gap-y-6">
+          <div className="w-full lg:w-[55%] flex flex-col gap-y-6 order-2 lg:order-none">
             {/* Main Box for Posts and Filter Bar */}
             <div className="relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[90vh] overflow-y-auto">
               {/* Collection Filter Bar inside the box, sticky */}

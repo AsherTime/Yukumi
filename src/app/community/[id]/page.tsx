@@ -393,7 +393,7 @@ export default function CommunityIdPage() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 pb-16">
           <div className="flex flex-col md:flex-row gap-8">
             {/* Main Posts Feed */}
-            <div className="flex-1 flex flex-col bg-[#18181b] space-y-4">
+            <div className="order-2 md:order-1 flex-1 flex flex-col bg-[#18181b] space-y-4">
               <AnimatePresence mode="wait">
                 {uniquePosts.length === 0 ? (
                   <motion.div
@@ -432,7 +432,7 @@ export default function CommunityIdPage() {
             </div>
 
             {/* Right Sidebar */}
-            <div className="w-full md:w-80 flex-shrink-0 space-y-8">
+            <div className="order-1 md:order-2 w-full md:w-80 flex-shrink-0 space-y-8">
               <div className="bg-[#18181b] rounded-2xl border border-zinc-800 shadow-md p-6">
                 <h3 className="text-lg font-semibold mb-4">Categories</h3>
                 <div className="flex flex-wrap gap-2">

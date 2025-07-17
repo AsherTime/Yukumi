@@ -67,7 +67,7 @@ export default function AnimeDetail() {
   const [score, setScore] = useState(10);
   const [, setShouldUpdate] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
-  const {requireLogin} = useLoginGate();
+  const { requireLogin } = useLoginGate();
 
 
   useEffect(() => {
@@ -221,7 +221,7 @@ export default function AnimeDetail() {
               <Image
                 src={anime.image_url || "/placeholder.svg"}
                 alt={anime.title || "Anime image"}
-                fill 
+                fill
                 className="rounded-lg object-cover"
                 sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
               />
@@ -274,10 +274,10 @@ export default function AnimeDetail() {
                   </div>
                 </>
               ) : (
-                <Button onClick={() => { 
+                <Button onClick={() => {
                   const allowed = requireLogin();
                   if (!allowed) return;
-                  setIsInList(true) 
+                  setIsInList(true)
                 }} className="bg-blue-700 hover:bg-blue-800 text-white transition-colors w-full">+ Add to List</Button>
               )
               }
@@ -323,7 +323,7 @@ export default function AnimeDetail() {
             </div>
 
             <div className="bg-[#1f1f1f] text-white p-6">
-              <div className="grid grid-cols-4 text-center py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 text-center gap-y-6 py-4">
                 <div>
                   <p className="text-lg text-gray-300 tracking-wide">SCORE</p>
                   <p className="text-4xl font-semibold mt-1">{anime.score || "N/A"}</p>

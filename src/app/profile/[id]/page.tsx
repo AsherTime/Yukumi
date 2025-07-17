@@ -532,37 +532,48 @@ export default function ProfilePage() {
     return <div>Loading...</div>;
   }
   return (
+    <>
     <div className="relative z-10 max-w-7xl mx-auto px-8 pt-20">
       <TopNav />
       <div className="w-full">
         {/* Banner */}
-        <div className="w-full h-72 bg-cover bg-center relative" style={{ backgroundImage: `url('${bannerUrl}')` }}>
+        <div
+          className="w-full h-60 sm:h-72 bg-cover bg-center relative"
+          style={{ backgroundImage: `url('${bannerUrl}')` }}
+        >
           {/* Avatar */}
-          <div className="absolute left-16 -bottom-20">
+          <div className="absolute left-4 sm:left-16 -bottom-16 sm:-bottom-20">
             <Image
               src={avatarUrl}
               width={160}
               height={192}
-              className="w-40 h-48 object-cover rounded-2xl border-4 border-black shadow-lg"
+              className="w-28 h-36 sm:w-40 sm:h-48 object-cover rounded-2xl border-4 border-black shadow-lg"
               alt="Profile"
             />
           </div>
         </div>
 
+
         {/* Profile Info */}
-        <div className="flex items-end gap-8 pl-64 pt-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-8 pt-8 sm:pl-64 px-4">
           <div>
-            <div className="flex items-center gap-4">
-              <h1 className="text-4xl font-bold text-white">{displayName}</h1>
-              {/* Only show Follow button if viewing another user's profile */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+              <h1 className="text-2xl sm:text-4xl mt-8 sm:mt-0 font-bold text-white">{displayName}</h1>
+
+              {/* Follow button for other users */}
               {userId && userId !== user?.id && (
                 <button
-                  className={`px-6 py-2 rounded font-semibold ${followedIds.includes(userId) ? 'bg-zinc-700 text-zinc-300 cursor-default' : 'bg-pink-500 hover:bg-pink-600 text-white'}`}
+                  className={`px-4 sm:px-6 py-2 rounded font-semibold text-sm sm:text-base ${followedIds.includes(userId)
+                    ? 'bg-zinc-700 text-zinc-300 cursor-default'
+                    : 'bg-pink-500 hover:bg-pink-600 text-white'
+                    }`}
                   disabled={followedIds.includes(userId)}
                   onClick={async () => {
                     const allowed = requireLogin();
                     if (!allowed) return;
-                    const { error } = await supabase.from('follows').insert({ follower_id: user?.id, followed_id: userId });
+                    const { error } = await supabase
+                      .from('follows')
+                      .insert({ follower_id: user?.id, followed_id: userId });
                     if (!error) {
                       setFollowedIds([...followedIds, userId]);
                       toast.success('Now following!');
@@ -572,38 +583,42 @@ export default function ProfilePage() {
                   {followedIds.includes(userId) ? 'Following' : 'Follow'}
                 </button>
               )}
+
+              {/* Edit button for self */}
               {userId === user?.id && (
                 <button
-                  className="ml-4 bg-zinc-800 text-white px-4 py-2 rounded"
+                  className="bg-zinc-800 text-white px-4 py-2 rounded text-sm sm:text-base"
                   onClick={() => setShowEditModal(true)}
                 >
                   Edit details
                 </button>
               )}
-
             </div>
+
             {username && (
               <p className="text-gray-400 text-sm mt-1">@{username}</p>
             )}
+
             <div className="flex gap-8 mt-2">
               <div className="flex flex-col items-center">
-                <span className="text-lg font-bold">{followingCount}</span>
+                <span className="text-base sm:text-lg font-bold">{followingCount}</span>
                 <span className="text-xs text-gray-400">Following</span>
               </div>
               <div className="flex flex-col items-center">
-                <span className="text-lg font-bold">{followersCount}</span>
+                <span className="text-base sm:text-lg font-bold">{followersCount}</span>
                 <span className="text-xs text-gray-400">Followers</span>
               </div>
             </div>
           </div>
         </div>
 
+
         {/* Tabs */}
-        <div className="flex gap-2 mt-8 pl-48">
+        <div className="flex flex-wrap sm:flex-nowrap gap-2 mt-8 px-4 sm:pl-48 overflow-x-auto">
           {['Posts', 'Anime List', 'Favourites', ...(userId === user?.id ? ['Saved Posts'] : []), ...(userId === user?.id ? ['Recent Posts'] : []), 'About'].map(tab => (
             <button
               key={tab}
-              className={`px-6 py-2 font-medium rounded-t-lg ${tab === activeTab ? 'bg-pink-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}
+              className={`px-6 py-2 font-medium rounded-t-lg whitespace-nowrap ${tab === activeTab ? 'bg-pink-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}
               onClick={() => setActiveTab(tab)}
             >
               {tab}
@@ -611,12 +626,13 @@ export default function ProfilePage() {
           ))}
         </div>
 
+
         {/* Below Tabs: Analytics left, Content right */}
-        <div className="flex md:flex-row gap-4 mt-8 items-start">
-          <div className="w-[340px] flex-shrink-0">
+        <div className="flex flex-col md:flex-row gap-4 mt-8 items-start">
+          <div className="w-full md:w-[340px] flex-shrink-0">
             <AnalyticsCard userId={userId} />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 w-full">
             {activeTab === 'Posts' && (
               <div className="w-full relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[110vh] overflow-y-auto">
                 <AnimatePresence>
@@ -667,23 +683,27 @@ export default function ProfilePage() {
                   >
                     All
                   </button>
-                  {['Watching', 'Completed', 'On-Hold', 'Dropped', 'Planning'].map((status) => {
-                    const isActive = selectedStatus === status;
-                    const color = statusButtonColors[status];
+                  <div className="flex flex-wrap sm:flex-nowrap gap-2 sm:gap-4 overflow-x-auto pb-2">
+                    {['Watching', 'Completed', 'On-Hold', 'Dropped', 'Planning'].map((status) => {
+                      const isActive = selectedStatus === status;
+                      const color = statusButtonColors[status];
 
-                    return (
-                      <button
-                        key={status}
-                        onClick={() => setSelectedStatus(status)}
-                        className={`
-        px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200
-        ${isActive ? color.base : `bg-white/5 ${color.hover}`}
-      `}
-                      >
-                        {status}
-                      </button>
-                    );
-                  })}
+                      return (
+                        <button
+                          key={status}
+                          onClick={() => setSelectedStatus(status)}
+                          className={`
+          px-4 py-2 rounded-lg text-sm sm:text-base text-white font-medium transition-colors duration-200
+          whitespace-nowrap
+          ${isActive ? color.base : `bg-white/5 ${color.hover}`}
+        `}
+                        >
+                          {status}
+                        </button>
+                      );
+                    })}
+                  </div>
+
 
                 </div>
                 <div className="overflow-x-auto">
@@ -837,7 +857,7 @@ export default function ProfilePage() {
               <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-4 mb-4 text-center cursor-pointer ${isDragActive ? 'border-pink-500 bg-pink-50' : 'border-zinc-700 bg-zinc-800'}`}>
                 <input {...getInputProps()} />
                 {editBanner ? (
-                  <Image src={editBanner} alt="Banner preview" className="w-full h-32 object-cover rounded mb-2" width={800} height={128}/>
+                  <Image src={editBanner} alt="Banner preview" className="w-full h-32 object-cover rounded mb-2" width={800} height={128} />
                 ) : (
                   <span className="text-zinc-400">Drag & drop a banner image here, or click to select</span>
                 )}
@@ -857,8 +877,9 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
-      <Footer />
     </div>
+    <Footer />
+    </>
   )
 }
 

@@ -108,7 +108,7 @@ export default function PostCard({ post, idx, total, formatDate, navigatetoCommu
                 followedId={post.user_id}
                 isFollowing={isFollowing}
                 onToggle={() => handleFollowClick(post.user_id)}
-                className="rounded-full px-4 py-1 bg-blue-900 text-blue-400 font-semibold shadow hover:bg-blue-800 transition text-xs"
+                className="hidden md:block rounded-full px-4 py-1 bg-blue-900 text-blue-400 font-semibold shadow hover:bg-blue-800 transition text-xs"
               />
               <button
                 onClick={() => {
