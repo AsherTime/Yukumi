@@ -157,17 +157,31 @@ export default function LoginPage() {
 
   // Social login with Google
   const signInWithGoogle = async () => {
+    sessionStorage.setItem("fromPageReload", "register");
+    const redirectUrl = `${window.location.origin}/profile-setup`;
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+      },
     });
+
     if (error) console.error('Google login error:', error.message);
   };
 
   // Social login with Discord
   const signInWithDiscord = async () => {
+    sessionStorage.setItem("fromPageReload", "register");
+    const redirectUrl = `${window.location.origin}/profile-setup`;
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'discord',
+      options: {
+        redirectTo: redirectUrl,
+      },
     });
+
     if (error) console.error('Discord login error:', error.message);
   };
 

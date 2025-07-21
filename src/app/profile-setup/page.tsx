@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import debounce from 'lodash/debounce';
+import { flushSync } from 'react-dom';
 import { Upload, User } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
@@ -18,18 +20,68 @@ export default function ProfileSetup() {
   const [age, setAge] = useState("")
   const [gender, setGender] = useState("")
   const [country, setCountry] = useState("")
+  const [isUsernameAvailable, setIsUsernameAvailable] = useState<boolean | null>(null);
+  const [checking, setChecking] = useState(false);
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
-  const { setFromPage } = useNavigationContext();
+  const { fromPage, setFromPage } = useNavigationContext();
 
   useEffect(() => {
-    const fromPage = new URLSearchParams(window.location.search).get('fromPage');
-
-    if (fromPage !== 'register') {
-      router.replace('/unauthorized');
+    const fromPageReload = sessionStorage.getItem("fromPageReload");
+    const fromNoProfile = sessionStorage.getItem("fromNoProfile");
+    if (fromPage !== 'register' && fromPageReload !== 'register' && fromNoProfile !== 'register') {
+      router.replace('/unauthorized'); // or '/'
     }
+    sessionStorage.removeItem("fromPageReload");
+
+  }, [fromPage, router]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      sessionStorage.setItem("fromPageReload", "register");
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
+
+
+
+  const checkUsernameAvailability = async (username: string) => {
+    if (!username.trim()) {
+      setIsUsernameAvailable(null);
+      return;
+    }
+
+    setChecking(true);
+    const { data, error } = await supabase
+      .from("Profiles")
+      .select("id")
+      .eq("username", username)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      console.error("Error checking username:", error);
+      setIsUsernameAvailable(null);
+    } else {
+      setIsUsernameAvailable(!data);
+    }
+
+    setChecking(false);
+  };
+
+  const debouncedCheck = useMemo(
+    () => debounce(checkUsernameAvailability, 500),
+    []
+  );
+
+  useEffect(() => {
+    debouncedCheck(username);
+    return () => {
+      debouncedCheck.cancel();
+    };
+  }, [username]);
 
   useEffect(() => {
     const checkIfNewUser = async () => {
@@ -123,6 +175,11 @@ export default function ProfileSetup() {
       return
     }
 
+    if (!isUsernameAvailable) {
+      toast.error("Username is not available. Please choose another one.");
+      return;
+    }
+
     try {
       console.log("Starting profile update...")
 
@@ -145,9 +202,9 @@ export default function ProfileSetup() {
           id: session.user.id,
           username: username,
           display_name: displayName,
-          age: age,
-          gender: gender,
-          country: country,
+          age: age || 18,
+          gender: gender || 'prefer-not-to-say',
+          country: country || 'prefer-not-to-say',
           avatar_url: profileImage,
           updated_at: new Date().toISOString(),
         })
@@ -165,7 +222,9 @@ export default function ProfileSetup() {
 
       console.log("Profile update successful:", data)
       toast.success("Profile updated successfully!")
-      setFromPage('profile-setup');
+      flushSync(() => {
+        setFromPage("profile-setup");
+      });
       router.push("/quiz/join-communities")
     } catch (error) {
       console.error(error || "Failed to update profile")
@@ -248,11 +307,19 @@ export default function ProfileSetup() {
               <Input
                 id="username"
                 value={username}
-                autoComplete="on"
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter your username"
+                className={isUsernameAvailable === false ? 'border-red-500' : ''}
               />
+              {checking && <p className="text-gray-400 text-sm mt-1">Checking availability...</p>}
+              {isUsernameAvailable === true && (
+                <p className="text-green-400 text-sm mt-1">Username is available ✅</p>
+              )}
+              {isUsernameAvailable === false && (
+                <p className="text-red-400 text-sm mt-1">Username is already taken ❌</p>
+              )}
             </div>
+
 
             <div>
               <Label htmlFor="age">Age</Label>
@@ -271,7 +338,7 @@ export default function ProfileSetup() {
                 <SelectTrigger id="gender">
                   <SelectValue placeholder="Select gender" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-gray-800 text-white">
                   <SelectItem value="male">Male</SelectItem>
                   <SelectItem value="female">Female</SelectItem>
                   <SelectItem value="other">Other</SelectItem>

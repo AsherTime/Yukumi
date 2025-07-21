@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { ChevronsRight, ChevronsLeft } from "lucide-react"
+import { ChevronsRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
@@ -25,10 +24,21 @@ export default function AnimeSurvey() {
   const { fromPage } = useNavigationContext();
 
   useEffect(() => {
-    if (fromPage !== 'anime-categories') {
+    const fromPageReload = sessionStorage.getItem("fromPageReload");
+    if (fromPage !== 'anime-categories' && fromPageReload !== 'anime-categories') {
       router.replace('/unauthorized'); // or '/'
     }
+    sessionStorage.removeItem("fromPageReload");
   }, [fromPage, router]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      sessionStorage.setItem("fromPageReload", "anime-categories");
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
 
   const handleNext = async () => {
 
@@ -181,12 +191,6 @@ export default function AnimeSurvey() {
         </Card>
 
         <div className="flex justify-between mt-8">
-          <Link href="/quiz/anime-categories">
-            <Button className="bg-[#2c2c2c] hover:bg-[#3c3c3c] text-white">
-              <ChevronsLeft className="mr-2 h-5 w-5" />
-              Previous
-            </Button>
-          </Link>
           <Button
             onClick={handleNext}
             className="bg-[#B624FF] hover:bg-[#B624FF]/80 text-white"

@@ -338,8 +338,7 @@ const PostPage = () => {
         toast.warning('Comment added, but points system is temporarily unavailable');
       }
     } catch (error) {
-      console.error('Error adding comment:', JSON.stringify(error, null, 2));
-      toast.error('Failed to add comment');
+      toast.error('Failed to add comment. Please login again.');
     }
   };
 

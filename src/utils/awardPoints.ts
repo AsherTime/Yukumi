@@ -54,11 +54,6 @@ export async function awardPoints(
           body: JSON.stringify(payload)
         });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => null);
-          throw new Error(errorData?.error || `HTTP error! status: ${response.status}`);
-        }
-
         const data = await response.json();
         console.log('Points awarded successfully:', data);
         return;

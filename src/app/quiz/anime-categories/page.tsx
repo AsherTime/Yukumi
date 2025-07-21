@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { ChevronsLeft, ChevronsRight } from "lucide-react"
-import Link from "next/link"
+import { ChevronsRight } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from 'next/navigation'
 import { useAuth } from "@/contexts/AuthContext"
 import { useNavigationContext } from '@/contexts/NavigationContext';
+import { flushSync } from "react-dom"
 
 interface Category {
   id: string
@@ -90,12 +90,23 @@ export default function AnimeCategories() {
   const router = useRouter()
 
   const { fromPage, setFromPage } = useNavigationContext();
-    
-      useEffect(() => {
-        if (fromPage !== 'join-communities') {
-          router.replace('/unauthorized'); // or '/'
-        }
-      }, [fromPage, router]);
+
+  useEffect(() => {
+    const fromPageReload = sessionStorage.getItem("fromPageReload");
+    if (fromPage !== 'join-communities' && fromPageReload !== 'join-communities') {
+      router.replace('/unauthorized'); // or '/'
+    }
+    sessionStorage.removeItem("fromPageReload");
+  }, [fromPage, router]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      sessionStorage.setItem("fromPageReload", "join-communities");
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
 
   const toggleCategory = (categoryId: string) => {
     const newSelected = new Set(selectedCategories)
@@ -121,7 +132,9 @@ export default function AnimeCategories() {
       });
 
       if (error) throw error;
-      setFromPage('anime-categories');
+      flushSync(() => {
+        setFromPage("anime-categories");
+      });
       router.push('/quiz/last-quiz')
     } catch (error) {
       console.error('Error saving preferences:', error)
@@ -159,12 +172,6 @@ export default function AnimeCategories() {
         </div>
 
         <div className="flex justify-between mt-8">
-          <Link href="/quiz/join-communities">
-            <Button className="bg-[#2c2c2c] hover:bg-[#3c3c3c] text-white">
-              <ChevronsLeft className="mr-2 h-5 w-5" />
-              Previous
-            </Button>
-          </Link>
           <Button
             onClick={handleNext}
             disabled={isSaving || selectedCategories.size === 0}

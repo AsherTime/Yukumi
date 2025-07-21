@@ -118,13 +118,16 @@ export default function ProfilePage() {
     }
     return [];
   });
+  const [showEditModal, setShowEditModal] = useState(false);
   const DEFAULT_BANNER = "https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Flux_Dev_a_stunning_illustration_of_Create_an_animethemed_webs_0.jpg?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5X2EwNWE5MzA2LTNiZGItNDliNC1hZGQ2LTFjMjEzNjhiYzcwMSJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9GbHV4X0Rldl9hX3N0dW5uaW5nX2lsbHVzdHJhdGlvbl9vZl9DcmVhdGVfYW5fYW5pbWV0aGVtZWRfd2Vic18wLmpwZyIsImlhdCI6MTc0NzU2NDg0NiwiZXhwIjoxNzc5MTAwODQ2fQ.ow7wQ-1Dunza5HIya7Ky4wjGdYULgrged7V6J-Smag0";
   const [bannerUrl, setBannerUrl] = useState<string>(DEFAULT_BANNER);
   const [editBanner, setEditBanner] = useState<string | null>(null);
   const [editBannerFile, setEditBannerFile] = useState<File | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState('Posts');
+  const [profilePic, setProfilePic] = useState<string | null>(null)
+  const [editProfilePic, setEditProfilePic] = useState<string | null>(null);
+  const [editProfilePicFile, setEditProfilePicFile] = useState<File | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [userAnime, setUserAnime] = useState<UserAnime[]>([]);
@@ -405,7 +408,25 @@ export default function ProfilePage() {
       setEditBanner(URL.createObjectURL(acceptedFiles[0]));
     }
   };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: { 'image/*': [] } });
+
+
+  const onDropProfilePic = (acceptedFiles: File[]) => {
+    if (acceptedFiles && acceptedFiles[0]) {
+      setEditProfilePicFile(acceptedFiles[0]);
+      setEditProfilePic(URL.createObjectURL(acceptedFiles[0]));
+    }
+  };
+
+  const {
+    getRootProps: getProfilePicRootProps,
+    getInputProps: getProfilePicInputProps,
+    isDragActive: isProfilePicDragActive
+  } = useDropzone({
+    onDrop: onDropProfilePic,
+    accept: { 'image/*': [] }
+  });
 
   const handleBannerUpload = async () => {
     if (!editBannerFile) return;
@@ -431,11 +452,43 @@ export default function ProfilePage() {
     return urlData.publicUrl;
   };
 
+  const handleImageUpload = async () => {
+    if (!editProfilePicFile) return;
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.user) return;
+
+    const file = editProfilePicFile;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${session.user.id}-${Math.random()}.${fileExt}`;
+    const filePath = `${session.user.id}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from('avatars').getPublicUrl(filePath);
+
+    setProfilePic(publicUrl);
+    return publicUrl;
+  }
+
   const handleSaveProfile = async () => {
     let newBannerUrl = bannerUrl;
     if (editBannerFile) {
       const uploaded = await handleBannerUpload();
       if (uploaded) newBannerUrl = uploaded;
+    }
+    let newProfilePic = profilePic;
+    if (editProfilePicFile) {
+      const uploaded = await handleImageUpload();
+      if (uploaded) newProfilePic = uploaded;
     }
     // Save display name, banner, and about
     const { data: { session } } = await supabase.auth.getSession();
@@ -444,6 +497,7 @@ export default function ProfilePage() {
       .from('Profiles')
       .update({
         display_name: displayName,
+        avatar_url: newProfilePic,
         banner: newBannerUrl,
         about: about,
         updated_at: new Date().toISOString()
@@ -451,6 +505,9 @@ export default function ProfilePage() {
       .eq('id', session.user.id);
     if (!error) {
       setShowEditModal(false);
+      setProfilePic(newProfilePic);
+      setEditProfilePicFile(null);
+      setEditProfilePic(null);
       setBannerUrl(newBannerUrl);
       setEditBannerFile(null);
       setEditBanner(null);
@@ -533,110 +590,229 @@ export default function ProfilePage() {
   }
   return (
     <>
-    <div className="relative z-10 max-w-7xl mx-auto px-8 pt-20">
-      <TopNav />
-      <div className="w-full">
-        {/* Banner */}
-        <div
-          className="w-full h-60 sm:h-72 bg-cover bg-center relative"
-          style={{ backgroundImage: `url('${bannerUrl}')` }}
-        >
-          {/* Avatar */}
-          <div className="absolute left-4 sm:left-16 -bottom-16 sm:-bottom-20">
-            <Image
-              src={avatarUrl}
-              width={160}
-              height={192}
-              className="w-28 h-36 sm:w-40 sm:h-48 object-cover rounded-2xl border-4 border-black shadow-lg"
-              alt="Profile"
-            />
-          </div>
-        </div>
-
-
-        {/* Profile Info */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-8 pt-8 sm:pl-64 px-4">
-          <div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-              <h1 className="text-2xl sm:text-4xl mt-8 sm:mt-0 font-bold text-white">{displayName}</h1>
-
-              {/* Follow button for other users */}
-              {userId && userId !== user?.id && (
-                <button
-                  className={`px-4 sm:px-6 py-2 rounded font-semibold text-sm sm:text-base ${followedIds.includes(userId)
-                    ? 'bg-zinc-700 text-zinc-300 cursor-default'
-                    : 'bg-pink-500 hover:bg-pink-600 text-white'
-                    }`}
-                  disabled={followedIds.includes(userId)}
-                  onClick={async () => {
-                    const allowed = requireLogin();
-                    if (!allowed) return;
-                    const { error } = await supabase
-                      .from('follows')
-                      .insert({ follower_id: user?.id, followed_id: userId });
-                    if (!error) {
-                      setFollowedIds([...followedIds, userId]);
-                      toast.success('Now following!');
-                    }
-                  }}
-                >
-                  {followedIds.includes(userId) ? 'Following' : 'Follow'}
-                </button>
-              )}
-
-              {/* Edit button for self */}
-              {userId === user?.id && (
-                <button
-                  className="bg-zinc-800 text-white px-4 py-2 rounded text-sm sm:text-base"
-                  onClick={() => setShowEditModal(true)}
-                >
-                  Edit details
-                </button>
-              )}
-            </div>
-
-            {username && (
-              <p className="text-gray-400 text-sm mt-1">@{username}</p>
-            )}
-
-            <div className="flex gap-8 mt-2">
-              <div className="flex flex-col items-center">
-                <span className="text-base sm:text-lg font-bold">{followingCount}</span>
-                <span className="text-xs text-gray-400">Following</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-base sm:text-lg font-bold">{followersCount}</span>
-                <span className="text-xs text-gray-400">Followers</span>
-              </div>
+      <div className="relative z-10 max-w-7xl mx-auto px-8 pt-20">
+        <TopNav />
+        <div className="w-full">
+          {/* Banner */}
+          <div
+            className="w-full h-60 sm:h-72 bg-cover bg-center relative"
+            style={{ backgroundImage: `url('${bannerUrl}')` }}
+          >
+            {/* Avatar */}
+            <div className="absolute left-4 sm:left-16 -bottom-16 sm:-bottom-20">
+              <Image
+                src={avatarUrl}
+                width={160}
+                height={192}
+                className="w-28 h-36 sm:w-40 sm:h-48 object-cover rounded-2xl border-4 border-black shadow-lg"
+                alt="Profile"
+              />
             </div>
           </div>
-        </div>
 
 
-        {/* Tabs */}
-        <div className="flex flex-wrap sm:flex-nowrap gap-2 mt-8 px-4 sm:pl-48 overflow-x-auto">
-          {['Posts', 'Anime List', 'Favourites', ...(userId === user?.id ? ['Saved Posts'] : []), ...(userId === user?.id ? ['Recent Posts'] : []), 'About'].map(tab => (
-            <button
-              key={tab}
-              className={`px-6 py-2 font-medium rounded-t-lg whitespace-nowrap ${tab === activeTab ? 'bg-pink-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+          {/* Profile Info */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-8 pt-8 sm:pl-64 px-4">
+            <div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+                <h1 className="text-2xl sm:text-4xl mt-8 sm:mt-0 font-bold text-white">{displayName}</h1>
 
+                {/* Follow button for other users */}
+                {userId && userId !== user?.id && (
+                  <button
+                    className={`px-4 sm:px-6 py-2 rounded font-semibold text-sm sm:text-base ${followedIds.includes(userId)
+                      ? 'bg-zinc-700 text-zinc-300 cursor-default'
+                      : 'bg-pink-500 hover:bg-pink-600 text-white'
+                      }`}
+                    disabled={followedIds.includes(userId)}
+                    onClick={async () => {
+                      const allowed = requireLogin();
+                      if (!allowed) return;
+                      const { error } = await supabase
+                        .from('follows')
+                        .insert({ follower_id: user?.id, followed_id: userId });
+                      if (!error) {
+                        setFollowedIds([...followedIds, userId]);
+                        toast.success('Now following!');
+                      }
+                    }}
+                  >
+                    {followedIds.includes(userId) ? 'Following' : 'Follow'}
+                  </button>
+                )}
 
-        {/* Below Tabs: Analytics left, Content right */}
-        <div className="flex flex-col md:flex-row gap-4 mt-8 items-start">
-          <div className="w-full md:w-[340px] flex-shrink-0">
-            <AnalyticsCard userId={userId} />
+                {/* Edit button for self */}
+                {userId === user?.id && (
+                  <button
+                    className="bg-zinc-800 text-white px-4 py-2 rounded text-sm sm:text-base"
+                    onClick={() => setShowEditModal(true)}
+                  >
+                    Edit details
+                  </button>
+                )}
+              </div>
+
+              {username && (
+                <p className="text-gray-400 text-sm mt-1">@{username}</p>
+              )}
+
+              <div className="flex gap-8 mt-2">
+                <div className="flex flex-col items-center">
+                  <span className="text-base sm:text-lg font-bold">{followingCount}</span>
+                  <span className="text-xs text-gray-400">Following</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-base sm:text-lg font-bold">{followersCount}</span>
+                  <span className="text-xs text-gray-400">Followers</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex-1 w-full">
-            {activeTab === 'Posts' && (
-              <div className="w-full relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[110vh] overflow-y-auto">
-                <AnimatePresence>
-                  {enrichedPosts.length === 0 ? (
+
+
+          {/* Tabs */}
+          <div className="flex flex-wrap sm:flex-nowrap gap-2 mt-8 px-4 sm:pl-48 overflow-x-auto">
+            {['Posts', 'Anime List', 'Favourites', ...(userId === user?.id ? ['Saved Posts'] : []), ...(userId === user?.id ? ['Recent Posts'] : []), 'About'].map(tab => (
+              <button
+                key={tab}
+                className={`px-6 py-2 font-medium rounded-t-lg whitespace-nowrap ${tab === activeTab ? 'bg-pink-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+
+          {/* Below Tabs: Analytics left, Content right */}
+          <div className="flex flex-col md:flex-row gap-4 mt-8 items-start">
+            <div className="w-full md:w-[340px] flex-shrink-0">
+              <AnalyticsCard userId={userId} />
+            </div>
+            <div className="flex-1 w-full">
+              {activeTab === 'Posts' && (
+                <div className="w-full relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[110vh] overflow-y-auto">
+                  <AnimatePresence>
+                    {enrichedPosts.length === 0 ? (
+                      <motion.div
+                        key="no-posts"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="text-center text-zinc-400 py-12"
+                      >
+                        This user has no posts.
+                      </motion.div>
+                    ) : (
+                      enrichedPosts.map((post, idx) => (
+                        <PostCardContainer
+                          key={post.id || idx}  // Use post.id if available, fallback to index
+                          post={post}
+                          idx={idx}
+                          total={enrichedPosts.length}
+                          onLikeToggle={(e) => handleLikeClick(e, post.id, post.liked_by_user)}
+                          following={following}
+                          handleFollowToggle={handleFollowToggle}
+                          saved={saved}
+                          onToggleSave={() => toggleSave(post.id)}
+                          onPostOpen={(post: Post) => {
+                            setRecentPosts(prev => {
+                              const filtered = prev.filter(p => p.id !== post.id);
+                              const updated = [post, ...filtered].slice(0, 10);
+                              localStorage.setItem("recentPosts", JSON.stringify(updated));
+                              return updated;
+                            });
+                          }}
+                        />
+                      ))
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+              {/* Anime List */}
+              {activeTab === 'Anime List' && (
+                <div className="bg-white/5 rounded-lg overflow-hidden">
+                  {/* Filter Buttons */}
+                  <div className="flex gap-2 p-4">
+                    <button
+                      onClick={() => setSelectedStatus('')}
+                      className={`px-4 py-2 rounded-lg border font-medium ${selectedStatus === '' ? 'text-white border-white bg-white/10' : 'text-gray-300 border-transparent hover:text-white'} `}
+                    >
+                      All
+                    </button>
+                    <div className="flex flex-wrap sm:flex-nowrap gap-2 sm:gap-4 overflow-x-auto pb-2">
+                      {['Watching', 'Completed', 'On-Hold', 'Dropped', 'Planning'].map((status) => {
+                        const isActive = selectedStatus === status;
+                        const color = statusButtonColors[status];
+
+                        return (
+                          <button
+                            key={status}
+                            onClick={() => setSelectedStatus(status)}
+                            className={`
+          px-4 py-2 rounded-lg text-sm sm:text-base text-white font-medium transition-colors duration-200
+          whitespace-nowrap
+          ${isActive ? color.base : `bg-white/5 ${color.hover}`}
+        `}
+                          >
+                            {status}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-white/10">
+                        <tr>
+                          <th></th>
+                          <th className=" py-3 px-4 text-left">#</th>
+                          <th className="py-3 px-4 text-left">Anime Title</th>
+                          <th className="py-3 px-4 text-right">Score</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {filteredUserAnime.map((anime, index) => (
+                          <tr key={anime.Anime?.id} className="hover:bg-white/5">
+                            {/* Status Color Band */}
+                            <td className="w-1 p-0">
+                              <div
+                                className={`w-1 h-full min-h-[64px] ${statusBgColors[anime.status] || 'bg-gray-500'}`}
+                              />
+                            </td>
+
+                            {/* Index */}
+                            <td className="py-3 px-4">{index + 1}</td>
+
+                            {/* Title & Image */}
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-3">
+                                <Image
+                                  src={anime.Anime?.image_url.trimEnd() || "/placeholder.svg"}
+                                  alt={anime.Anime?.title || `Anime ${anime.Anime?.id}`}
+                                  width={40}
+                                  height={60}
+                                  className="rounded"
+                                />
+                                <span>{anime.Anime?.title}</span>
+                              </div>
+                            </td>
+
+                            {/* Score */}
+                            <td className="py-3 px-4 text-right">{anime.score || "-"}</td>
+                          </tr>
+
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {activeTab === 'Favourites' && (
+                <>
+                  {favourites.length === 0 ? (
                     <motion.div
                       key="no-posts"
                       initial={{ opacity: 0, y: 20 }}
@@ -644,241 +820,139 @@ export default function ProfilePage() {
                       exit={{ opacity: 0, y: -20 }}
                       className="text-center text-zinc-400 py-12"
                     >
-                      This user has no posts.
+                      This user has no favourites.
                     </motion.div>
                   ) : (
-                    enrichedPosts.map((post, idx) => (
-                      <PostCardContainer
-                        key={post.id || idx}  // Use post.id if available, fallback to index
-                        post={post}
-                        idx={idx}
-                        total={enrichedPosts.length}
-                        onLikeToggle={(e) => handleLikeClick(e, post.id, post.liked_by_user)}
-                        following={following}
-                        handleFollowToggle={handleFollowToggle}
-                        saved={saved}
-                        onToggleSave={() => toggleSave(post.id)}
-                        onPostOpen={(post: Post) => {
-                          setRecentPosts(prev => {
-                            const filtered = prev.filter(p => p.id !== post.id);
-                            const updated = [post, ...filtered].slice(0, 10);
-                            localStorage.setItem("recentPosts", JSON.stringify(updated));
-                            return updated;
-                          });
-                        }}
-                      />
-                    ))
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-            {/* Anime List */}
-            {activeTab === 'Anime List' && (
-              <div className="bg-white/5 rounded-lg overflow-hidden">
-                {/* Filter Buttons */}
-                <div className="flex gap-2 p-4">
-                  <button
-                    onClick={() => setSelectedStatus('')}
-                    className={`px-4 py-2 rounded-lg border font-medium ${selectedStatus === '' ? 'text-white border-white bg-white/10' : 'text-gray-300 border-transparent hover:text-white'} `}
-                  >
-                    All
-                  </button>
-                  <div className="flex flex-wrap sm:flex-nowrap gap-2 sm:gap-4 overflow-x-auto pb-2">
-                    {['Watching', 'Completed', 'On-Hold', 'Dropped', 'Planning'].map((status) => {
-                      const isActive = selectedStatus === status;
-                      const color = statusButtonColors[status];
-
-                      return (
-                        <button
-                          key={status}
-                          onClick={() => setSelectedStatus(status)}
-                          className={`
-          px-4 py-2 rounded-lg text-sm sm:text-base text-white font-medium transition-colors duration-200
-          whitespace-nowrap
-          ${isActive ? color.base : `bg-white/5 ${color.hover}`}
-        `}
-                        >
-                          {status}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-white/10">
-                      <tr>
-                        <th></th>
-                        <th className=" py-3 px-4 text-left">#</th>
-                        <th className="py-3 px-4 text-left">Anime Title</th>
-                        <th className="py-3 px-4 text-right">Score</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {filteredUserAnime.map((anime, index) => (
-                        <tr key={anime.Anime?.id} className="hover:bg-white/5">
-                          {/* Status Color Band */}
-                          <td className="w-1 p-0">
-                            <div
-                              className={`w-1 h-full min-h-[64px] ${statusBgColors[anime.status] || 'bg-gray-500'}`}
-                            />
-                          </td>
-
-                          {/* Index */}
-                          <td className="py-3 px-4">{index + 1}</td>
-
-                          {/* Title & Image */}
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-3">
-                              <Image
-                                src={anime.Anime?.image_url.trimEnd() || "/placeholder.svg"}
-                                alt={anime.Anime?.title || `Anime ${anime.Anime?.id}`}
-                                width={40}
-                                height={60}
-                                className="rounded"
-                              />
-                              <span>{anime.Anime?.title}</span>
-                            </div>
-                          </td>
-
-                          {/* Score */}
-                          <td className="py-3 px-4 text-right">{anime.score || "-"}</td>
-                        </tr>
-
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                      {favourites.map((fav) => (
+                        <AnimeCard anime={fav} key={fav.id} />
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-            {activeTab === 'Favourites' && (
-              <>
-                {favourites.length === 0 ? (
-                  <motion.div
-                    key="no-posts"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="text-center text-zinc-400 py-12"
-                  >
-                    This user has no favourites.
-                  </motion.div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                    {favourites.map((fav) => (
-                      <AnimeCard anime={fav} key={fav.id} />
-                    ))}
-                  </div>
-                )}
-
-              </>
-            )}
-            {/* Saved Posts */}
-            {activeTab === 'Saved Posts' && (
-              <div className="w-full relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[110vh] overflow-y-auto">
-                <AnimatePresence>
-                  {savedLoading ? (
-                    <motion.div
-                      key="loading-saved"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      className="text-center text-zinc-400 py-12"
-                    >
-                      Loading saved posts...
-                    </motion.div>
-                  ) : enrichedSavedPosts.length === 0 ? (
-                    <motion.div
-                      key="no-saved"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      className="text-center text-zinc-400 py-12"
-                    >
-                      No saved posts yet.
-                    </motion.div>
-                  ) : (
-                    enrichedSavedPosts.map((post, idx) => (
-
-                      <PostCardContainer
-                        key={post.id || idx}
-                        post={post}
-                        idx={idx}
-                        total={enrichedSavedPosts.length}
-                        onLikeToggle={(e) => handleLikeClick(e, post.id, post.liked_by_user)}
-                        following={following}
-                        handleFollowToggle={handleFollowToggle}
-                        saved={saved}
-                        onToggleSave={() => toggleSave(post.id)}
-                        onPostOpen={(post: Post) => {
-                          setRecentPosts(prev => {
-                            const filtered = prev.filter(p => p.id !== post.id);
-                            const updated = [post, ...filtered].slice(0, 10);
-                            localStorage.setItem("recentPosts", JSON.stringify(updated));
-                            return updated;
-                          });
-                        }}
-                      />
-                    ))
+                    </div>
                   )}
-                </AnimatePresence>
-              </div>
-            )}
-            {activeTab === 'Recent Posts' && (
-              <RecentPosts recentPosts={recentPosts} />
-            )}
-            {activeTab === 'About' && (
-              <div className="relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md p-6">
-                <h2 className="text-xl font-semibold mb-4">About</h2>
-                <p className="text-zinc-300 whitespace-pre-wrap">{about || "No about information provided."}</p>
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Edit Modal */}
-        {showEditModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-            <div className="bg-zinc-900 rounded-2xl p-8 w-full max-w-md shadow-lg relative">
-              <button className="absolute top-2 right-2 text-zinc-400 hover:text-white" onClick={() => setShowEditModal(false)}>&times;</button>
-              <h2 className="text-xl font-bold text-white mb-4">Edit Profile</h2>
-              <label className="block text-zinc-300 mb-2">Display Name</label>
-              <Input value={displayName} onChange={e => setDisplayName(e.target.value)} className="mb-4" />
-              <label className="block text-zinc-300 mb-2">About</label>
-              <textarea
-                value={about}
-                onChange={e => setAbout(e.target.value)}
-                className="w-full bg-zinc-800 text-white rounded-lg p-3 mb-4 min-h-[100px] resize-y"
-                placeholder="Tell us about yourself..."
-              />
-              <label className="block text-zinc-300 mb-2">Banner Image</label>
-              <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-4 mb-4 text-center cursor-pointer ${isDragActive ? 'border-pink-500 bg-pink-50' : 'border-zinc-700 bg-zinc-800'}`}>
-                <input {...getInputProps()} />
-                {editBanner ? (
-                  <Image src={editBanner} alt="Banner preview" className="w-full h-32 object-cover rounded mb-2" width={800} height={128} />
-                ) : (
-                  <span className="text-zinc-400">Drag & drop a banner image here, or click to select</span>
-                )}
-              </div>
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-zinc-400 text-xs">Max 5MB. PNG, JPG, WEBP, GIF.</span>
-                <button className="text-pink-500 underline text-xs" onClick={() => bannerInputRef.current?.click()}>Choose file</button>
-                <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
-                  if (e.target.files && e.target.files[0]) {
-                    setEditBannerFile(e.target.files[0]);
-                    setEditBanner(URL.createObjectURL(e.target.files[0]));
-                  }
-                }} />
-              </div>
-              <button className="w-full bg-pink-500 hover:bg-pink-600 text-white py-2 rounded font-semibold" onClick={handleSaveProfile}>Save</button>
+                </>
+              )}
+              {/* Saved Posts */}
+              {activeTab === 'Saved Posts' && (
+                <div className="w-full relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md max-h-[110vh] overflow-y-auto">
+                  <AnimatePresence>
+                    {savedLoading ? (
+                      <motion.div
+                        key="loading-saved"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="text-center text-zinc-400 py-12"
+                      >
+                        Loading saved posts...
+                      </motion.div>
+                    ) : enrichedSavedPosts.length === 0 ? (
+                      <motion.div
+                        key="no-saved"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="text-center text-zinc-400 py-12"
+                      >
+                        No saved posts yet.
+                      </motion.div>
+                    ) : (
+                      enrichedSavedPosts.map((post, idx) => (
+
+                        <PostCardContainer
+                          key={post.id || idx}
+                          post={post}
+                          idx={idx}
+                          total={enrichedSavedPosts.length}
+                          onLikeToggle={(e) => handleLikeClick(e, post.id, post.liked_by_user)}
+                          following={following}
+                          handleFollowToggle={handleFollowToggle}
+                          saved={saved}
+                          onToggleSave={() => toggleSave(post.id)}
+                          onPostOpen={(post: Post) => {
+                            setRecentPosts(prev => {
+                              const filtered = prev.filter(p => p.id !== post.id);
+                              const updated = [post, ...filtered].slice(0, 10);
+                              localStorage.setItem("recentPosts", JSON.stringify(updated));
+                              return updated;
+                            });
+                          }}
+                        />
+                      ))
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+              {activeTab === 'Recent Posts' && (
+                <RecentPosts recentPosts={recentPosts} />
+              )}
+              {activeTab === 'About' && (
+                <div className="relative rounded-2xl bg-[#1f1f1f] border border-zinc-800 shadow-md p-6">
+                  <h2 className="text-xl font-semibold mb-4">About</h2>
+                  <p className="text-zinc-300 whitespace-pre-wrap">{about || "No about information provided."}</p>
+                </div>
+              )}
             </div>
           </div>
-        )}
+
+          {/* Edit Modal */}
+          {showEditModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+              <div className="bg-zinc-900 rounded-2xl p-8 w-full max-w-md shadow-lg relative">
+                <button className="absolute top-2 right-2 text-zinc-400 hover:text-white" onClick={() => setShowEditModal(false)}>&times;</button>
+                <h2 className="text-xl font-bold text-white mb-4">Edit Profile</h2>
+                <label className="block text-zinc-300 mb-2">Display Name</label>
+                <Input value={displayName} onChange={e => setDisplayName(e.target.value)} className="mb-4" />
+                <label className="block text-zinc-300 mb-2">About</label>
+                <textarea
+                  value={about}
+                  onChange={e => setAbout(e.target.value)}
+                  className="w-full bg-zinc-800 text-white rounded-lg p-3 mb-4 min-h-[100px] resize-y"
+                  placeholder="Tell us about yourself..."
+                />
+                <label className="block text-zinc-300 mb-2">Profile Picture</label>
+
+                <div
+                  {...getProfilePicRootProps()}
+                  className={`border-2 border-dashed rounded-lg p-4 mb-4 text-center cursor-pointer ${isProfilePicDragActive ? 'border-pink-500 bg-pink-50' : 'border-zinc-700 bg-zinc-800'
+                    }`}
+                >
+                  <input {...getProfilePicInputProps()} />
+                  {editProfilePic ? (
+                    <Image
+                      src={editProfilePic}
+                      alt="Profile preview"
+                      className="w-24 h-24 object-cover rounded-full mx-auto mb-2"
+                      width={96}
+                      height={96}
+                    />
+                  ) : (
+                    <span className="text-zinc-400">Drag & drop a profile picture, or click to select</span>
+                  )}
+                </div>
+
+
+
+
+                <label className="block text-zinc-300 mb-2">Banner Image</label>
+                <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-4 mb-4 text-center cursor-pointer ${isDragActive ? 'border-pink-500 bg-pink-50' : 'border-zinc-700 bg-zinc-800'}`}>
+                  <input {...getInputProps()} />
+                  {editBanner ? (
+                    <Image src={editBanner} alt="Banner preview" className="w-full h-32 object-cover rounded mb-2" width={800} height={128} />
+                  ) : (
+                    <span className="text-zinc-400">Drag & drop a banner image here, or click to select</span>
+                  )}
+                </div>
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-zinc-400 text-xs">Max 5MB. PNG, JPG, WEBP, GIF.</span>
+                </div>
+                <button className="w-full bg-pink-500 hover:bg-pink-600 text-white py-2 rounded font-semibold" onClick={handleSaveProfile}>Save</button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-    <Footer />
+      <Footer />
     </>
   )
 }
