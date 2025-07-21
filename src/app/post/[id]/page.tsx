@@ -339,6 +339,7 @@ const PostPage = () => {
       }
     } catch (error) {
       toast.error('Failed to add comment. Please login again.');
+      console.error('Error adding comment:', error);
     }
   };
 

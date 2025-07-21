@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     checkProfileCompletion();
-  }, [user, pathname]);
+  }, [user, pathname, router]);
 
 
   useEffect(() => {

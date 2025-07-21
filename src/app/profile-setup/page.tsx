@@ -81,7 +81,7 @@ export default function ProfileSetup() {
     return () => {
       debouncedCheck.cancel();
     };
-  }, [username]);
+  }, [username, debouncedCheck]);
 
   useEffect(() => {
     const checkIfNewUser = async () => {
@@ -105,7 +105,7 @@ export default function ProfileSetup() {
     };
 
     checkIfNewUser();
-  }, []);
+  }, [router]);
 
 
   useEffect(() => {

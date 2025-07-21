@@ -123,7 +123,6 @@ export default function ProfilePage() {
   const [bannerUrl, setBannerUrl] = useState<string>(DEFAULT_BANNER);
   const [editBanner, setEditBanner] = useState<string | null>(null);
   const [editBannerFile, setEditBannerFile] = useState<File | null>(null);
-  const bannerInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState('Posts');
   const [profilePic, setProfilePic] = useState<string | null>(null)
   const [editProfilePic, setEditProfilePic] = useState<string | null>(null);
