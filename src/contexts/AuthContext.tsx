@@ -5,18 +5,41 @@ import { supabase } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
 import { handleDailyCheckIn } from "@/utils/dailyTasks";
 import { toast } from "sonner";
+import { usePathname, useRouter } from 'next/navigation';
 
 interface AuthContextType {
-    user: User | null;
-    loading: boolean; // ✅ Add loading property
-    signOut: () => Promise<void>;
-}  
+  user: User | null;
+  loading: boolean; // ✅ Add loading property
+  signOut: () => Promise<void>;
+}
 
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true, signOut: async () => {} });
+const AuthContext = createContext<AuthContextType>({ user: null, loading: true, signOut: async () => { } });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true); // ✅ Initialize loading
+  const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkProfileCompletion = async () => {
+      if (!user) return; // only for logged-in users
+
+      const { data } = await supabase
+        .from("Profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      sessionStorage.setItem("fromNoProfile", "register");
+      if (!data && pathname !== '/profile-setup') {
+        router.push("/profile-setup");
+      }
+    };
+
+    checkProfileCompletion();
+  }, [user, pathname, router]);
+
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {

@@ -11,6 +11,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { useNavigationContext } from '@/contexts/NavigationContext';
+import { flushSync } from "react-dom"
 
 interface Community {
   id: string;
@@ -28,12 +29,23 @@ export default function JoinCommunities() {
   const router = useRouter();
 
   const { fromPage, setFromPage } = useNavigationContext();
-  
-    useEffect(() => {
-      if (fromPage !== 'profile-setup') {
-        router.replace('/unauthorized'); // or '/'
-      }
-    }, [fromPage, router]);
+
+  useEffect(() => {
+    const fromPageReload = sessionStorage.getItem("fromPageReload");
+    if (fromPage !== 'profile-setup' && fromPageReload !== 'profile-setup') {
+      router.replace('/unauthorized'); // or '/'
+    }
+    sessionStorage.removeItem("fromPageReload");
+  }, [fromPage, router]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      sessionStorage.setItem("fromPageReload", "profile-setup");
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
 
 
   async function fetchCommunities() {
@@ -69,7 +81,9 @@ export default function JoinCommunities() {
       // Optionally show toast or error UI
       return;
     }
-    setFromPage('join-communities');
+    flushSync(() => {
+      setFromPage("join-communities");
+    });
     router.push("/quiz/anime-categories");
   };
 

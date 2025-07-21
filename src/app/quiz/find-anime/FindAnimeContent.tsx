@@ -13,6 +13,7 @@ import { toast } from "sonner"
 import { ChevronsLeft, ChevronsRight } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useNavigationContext } from '@/contexts/NavigationContext';
+import { flushSync } from "react-dom"
 
 interface QuizAnswer {
   companion: string
@@ -185,7 +186,9 @@ export default function FindAnimeQuiz() {
       if (quizError) throw quizError
 
       toast.success("Quiz completed! Redirecting to your recommendations...")
-      setFromPage("find-anime")
+      flushSync(() => {
+        setFromPage("find-anime");
+      });
       router.push("/recommended-anime")
     } catch (error) {
       console.error("Error submitting quiz:", error)

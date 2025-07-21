@@ -18,7 +18,7 @@ interface Anime {
   synopsis: string;
 }
 
-interface Answers{
+interface Answers {
   genres: string[];
   ageGroup: string;
   companion: string;
@@ -38,10 +38,21 @@ const RecommendedAnimePage = () => {
   const { fromPage } = useNavigationContext();
 
   useEffect(() => {
-    if (fromPage !== 'find-anime') {
+    const fromPageReload = sessionStorage.getItem("fromPageReload");
+    if (fromPage !== 'find-anime' && fromPageReload !== 'find-anime') {
       router.replace('/unauthorized'); // or '/'
     }
+    sessionStorage.removeItem("fromPageReload");
   }, [fromPage, router]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      sessionStorage.setItem("fromPageReload", "find-anime");
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
 
   useEffect(() => {
     const fetchRecommendations = async () => {

@@ -5,7 +5,9 @@ import { motion } from "framer-motion"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
+import { flushSync } from 'react-dom';
 import { FaGoogle, FaDiscord } from "react-icons/fa"
+import { useNavigationContext } from '@/contexts/NavigationContext';
 
 interface FormData {
   email: string
@@ -72,6 +74,7 @@ export default function RegisterPage() {
     confirmPassword: "",
   })
   const router = useRouter();
+  const { setFromPage } = useNavigationContext();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
@@ -94,6 +97,11 @@ export default function RegisterPage() {
       return;
     }
 
+    if (formData.password.length < 6) {
+      toast.error("Password is too short. Please enter at least 6 characters.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -105,9 +113,11 @@ export default function RegisterPage() {
       if (error) throw error;
       console.log("Registration successful:", data);
       if (data.user) {
-        toast.success("Registration successful! Please check your email to confirm your account.");
         setFormData({ email: "", password: "", confirmPassword: "" });
-        router.push("/profile-setup?fromPage=register");
+        flushSync(() => {
+          setFromPage("register");
+        });
+        router.push("/profile-setup");
       }
     } catch (error) {
       console.log(error || "Something went wrong. Please try again.");
@@ -118,7 +128,8 @@ export default function RegisterPage() {
 
   // Social login with Google
   const signInWithGoogle = async () => {
-    const redirectUrl = `${window.location.origin}/profile-setup?fromPage=register`;
+    sessionStorage.setItem("fromPageReload", "register");
+    const redirectUrl = `${window.location.origin}/profile-setup`;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -132,7 +143,8 @@ export default function RegisterPage() {
 
   // Social login with Discord
   const signInWithDiscord = async () => {
-    const redirectUrl = `${window.location.origin}/profile-setup?fromPage=register`;
+    sessionStorage.setItem("fromPageReload", "register");
+    const redirectUrl = `${window.location.origin}/profile-setup`;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'discord',
@@ -184,7 +196,7 @@ export default function RegisterPage() {
             <Input
               type="password"
               name="password"
-              placeholder="Password"
+              placeholder="Password (at least 6 characters)"
               value={formData.password}
               onChange={handleInputChange}
               disabled={isLoading}
