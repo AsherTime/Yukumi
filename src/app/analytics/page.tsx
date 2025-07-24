@@ -73,7 +73,7 @@ export default function VisitsAnalytics() {
       const uniquePerDay: Record<string, Set<string>> = {};
 
       let totalToday = 0;
-      let uniqueToday = new Set<string>();
+      const uniqueToday = new Set<string>();
       let totalThisWeek = 0;
 
       const today = new Date();
