@@ -9,6 +9,7 @@ import { LoginGateProvider } from '@/contexts/LoginGateContext';
 import LoginGateModalWrapper from '@/components/LoginGateModalWrapper';
 import { NavigationProvider } from '@/contexts/NavigationContext';
 import { Toaster } from "@/components/ui/sonner"
+import VisitTracker from "@/components/VisitTracker";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -31,6 +32,7 @@ export default function RootLayout({
           <NavigationProvider>
             <QueryClientProvider client={queryClient}>
               <LoginGateProvider>
+                <VisitTracker />
                 <main>{children}</main>
                 <LoginGateModalWrapper />
               </LoginGateProvider>
