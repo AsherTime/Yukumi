@@ -7,6 +7,8 @@ const Footer = () => (
       <div className="flex gap-4 text-zinc-400 text-sm mb-2 md:mb-0">
         <Link href="/about" className="hover:text-white transition-colors">About</Link>
         <span>|</span>
+        <Link href="/analytics" className="hover:text-white transition-colors">Analytics</Link>
+        <span>|</span>
         <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
         <span>|</span>
         <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
