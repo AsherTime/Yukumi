@@ -1,6 +1,7 @@
 "use client";
 export const runtime = "edge";
 import { useState, useEffect, useMemo } from "react";
+import React from "react";
 import { RecentPosts } from "@/components/recent-posts";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
@@ -70,6 +71,18 @@ interface Anime {
   genres?: string[]
 }
 
+type Subanime = {
+  usersubanime: {
+    progress: number;
+    score: number;
+    user_id: string;
+    subanime_id: string;
+  }[];
+  id: string;
+  title: string;
+  parent: string;
+  episodes: number;
+};
 
 
 const AnimeCard = ({ anime }: { anime: Anime }) => {
@@ -130,11 +143,12 @@ export default function ProfilePage() {
   const [username, setUsername] = useState<string | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [userAnime, setUserAnime] = useState<UserAnime[]>([]);
+  const [subanime, setSubanime] = useState<Subanime[]>([]); 
   const [selectedStatus, setSelectedStatus] = useState('');
   const profileId = userId || user?.id;
   const { requireLogin } = useLoginGate();
   const { setPostsData, fetchPosts } = fetchPost();
-  const { saved, savedLoading, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); // pass fetchPosts here
+  const { saved, savedLoading, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); 
   const { following, handleFollowToggle } = handleFollow(user);
   const { data: savedPosts } = useSWR(
     () => (saved.length ? ['savedPosts', saved] : null),
@@ -148,6 +162,12 @@ export default function ProfilePage() {
       return data;
     }
   );
+  const [openAnimeId, setOpenAnimeId] = useState<string | null>(null);
+
+  const toggleRow = (animeId: string | undefined) => {
+    if (!animeId) return;
+    setOpenAnimeId((prev) => (prev === animeId ? null : animeId));
+  };
 
   const statusButtonColors: Record<
     string,
@@ -167,7 +187,6 @@ export default function ProfilePage() {
     Dropped: "bg-red-500",
     Planning: "bg-blue-500",
   };
-
 
 
   const filteredUserAnime = selectedStatus
@@ -263,8 +282,24 @@ export default function ProfilePage() {
 
     }
 
+    const fetchSubAnime = async () => {
+      if (!user?.id) return;
+      const { data: subanime, error } = await supabase
+        .from("subanime")
+        .select("*, usersubanime(score, progress, user_id, subanime_id)")
+        .eq("usersubanime.user_id", user?.id);
+      if (error) {
+        console.error("Error fetching subanime:", error.message);
+      }
+      else {
+        setSubanime(subanime || []);
+      }
+    }
+
+
     fetchUserPosts();
     fetchUserAnime();
+    fetchSubAnime();
   }, [userId, user]);
 
   useEffect(() => {
@@ -774,36 +809,73 @@ export default function ProfilePage() {
                       </thead>
                       <tbody className="divide-y divide-white/5">
                         {filteredUserAnime.map((anime, index) => (
-                          <tr key={anime.Anime?.id} className="hover:bg-white/5">
-                            {/* Status Color Band */}
-                            <td className="w-1 p-0">
-                              <div
-                                className={`w-1 h-full min-h-[64px] ${statusBgColors[anime.status] || 'bg-gray-500'}`}
-                              />
-                            </td>
-
-                            {/* Index */}
-                            <td className="py-3 px-4">{index + 1}</td>
-
-                            {/* Title & Image */}
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-3">
-                                <Image
-                                  src={anime.Anime?.image_url.trimEnd() || "/placeholder.svg"}
-                                  alt={anime.Anime?.title || `Anime ${anime.Anime?.id}`}
-                                  width={40}
-                                  height={60}
-                                  className="rounded"
+                          <React.Fragment key={anime.Anime?.id}>
+                            {/* Main Row */}
+                            <tr
+                              className="hover:bg-white/5 cursor-pointer"
+                              onClick={() => toggleRow(anime.Anime?.id)}
+                            >
+                              <td className="w-1 p-0">
+                                <div
+                                  className={`w-1 h-full min-h-[64px] ${statusBgColors[anime.status] || 'bg-gray-500'}`}
                                 />
-                                <span>{anime.Anime?.title}</span>
-                              </div>
-                            </td>
+                              </td>
+                              <td className="py-3 px-4">{index + 1}</td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-3">
+                                  <Image
+                                    src={anime.Anime?.image_url.trimEnd() || "/placeholder.svg"}
+                                    alt={anime.Anime?.title || `Anime ${anime.Anime?.id}`}
+                                    width={40}
+                                    height={60}
+                                    className="rounded"
+                                  />
+                                  <span>{anime.Anime?.title}</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-right">{anime.score || "-"}</td>
+                            </tr>
 
-                            {/* Score */}
-                            <td className="py-3 px-4 text-right">{anime.score || "-"}</td>
-                          </tr>
+                            {/* Dropdown Row */}
+                            {openAnimeId === anime.Anime?.id && (
+                              <tr className="bg-[#1f1f1f]">
+                                <td colSpan={4} className="py-2 px-4">
+                                  <div className="space-y-2 text-white text-sm">
+                                    {/* Table Header */}
+                                    <div className="flex items-center font-semibold border-b border-gray-500 pb-1">
+                                      <span className="w-1/2">Title</span>
+                                      <span className="w-1/4 text-right">Progress</span>
+                                      <span className="w-1/4 text-right">Score</span>
+                                    </div>
 
+                                    {/* Table Rows */}
+                                    {subanime
+                                      .filter(
+                                        (sub) =>
+                                          sub.parent === anime.Anime?.id &&
+                                          sub.usersubanime?.length > 0
+                                      )
+                                      .map((sub) => (
+                                        <div
+                                          key={sub.id}
+                                          className="flex items-center border-b border-gray-600 py-1"
+                                        >
+                                          <span className="w-1/2">{sub.title}</span>
+                                          <span className="w-1/4 text-right">
+                                            {sub.usersubanime[0].progress}/{sub.episodes}
+                                          </span>
+                                          <span className="w-1/4 text-right">
+                                            {sub.usersubanime[0].score || "-"}
+                                          </span>
+                                        </div>
+                                      ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
                         ))}
+
                       </tbody>
                     </table>
                   </div>

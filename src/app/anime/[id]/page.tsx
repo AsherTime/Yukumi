@@ -40,6 +40,24 @@ type UserAnime = {
   score: number;
 };
 
+type Subanime = {
+  id: string;
+  title: string;
+  parent: string;
+  episodes: number;
+  type: string;
+  aired_from: string;
+  aired_to: string;
+  studio: string[];
+  usersubanime?: {
+    progress?: number;
+    score?: number;
+    user_id?: string;
+    subanime_id?: string;
+  }[];
+};
+
+
 function formatDate(dateStr?: string) {
   if (!dateStr) return "-";
   const date = new Date(dateStr);
@@ -61,13 +79,21 @@ export default function AnimeDetail() {
   const [, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [anime, setAnime] = useState<Anime | null>(null);
+  const [subanime, setSubanime] = useState<Subanime[]>([]);
   const [, setAnimeList] = useState<UserAnime>();
   const [watchlistStatus, setWatchlistStatus] = useState<string>("Watching");
-  const [, setProgress] = useState(1);
-  const [score, setScore] = useState(10);
+  const [, setProgress] = useState(0);
+  const [score, setScore] = useState(0);
   const [, setShouldUpdate] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const { requireLogin } = useLoginGate();
+  const [openSubId, setOpenSubId] = useState<string | null>(null);
+  const [localProgressMap, setLocalProgressMap] = useState<{ [key: string]: string }>({});
+
+
+  const toggleSub = (id: string) => {
+    setOpenSubId((prev) => (prev === id ? null : id));
+  };
 
 
   useEffect(() => {
@@ -100,14 +126,43 @@ export default function AnimeDetail() {
       setIsInList(!!data);
       setAnimeList(data || null);
       setWatchlistStatus(data?.status || "Watching");
-      setProgress(data?.progress || 1);
-      setScore(data?.score || 10);
+      setProgress(data?.progress || 0);
+      setScore(data?.score || 0);
     }
+    const AnimeRelations = async () => {
+      if (!user) return;
+      try {
+        const {
+          data,
+          error,
+        } = await supabase
+          .from("subanime")
+          .select(`
+        *,
+        usersubanime:usersubanime (
+          progress,
+          score
+        )
+      `)
+          .eq("parent", id)
+          .eq("usersubanime.user_id", user.id); // filter user's own progress/score
+
+        if (error) throw error;
+
+        setSubanime(data || []);
+      } catch (error) {
+        console.error("Error fetching anime relations:", error);
+        toast.error("Failed to load anime relations. Please try again.");
+      }
+    };
+
     if (id) {
       fetchAnimeDetails();
       inList();
+      AnimeRelations();
     }
   }, [id, user]);
+
 
   const handleUpdate = async () => {
     if (!user || !id) return;
@@ -180,13 +235,91 @@ export default function AnimeDetail() {
       if (error) throw error;
       setIsInList(false);
       setWatchlistStatus("Watching");
-      setProgress(1);
-      setScore(10);
+      setProgress(0);
+      setScore(0);
       toast.success('Anime removed from your list successfully!');
       router.refresh();
     } catch (error) {
       console.error('Error deleting anime from list:', error);
       toast.error('Failed to remove anime from your list. Please try again.');
+    }
+  };
+
+  const handleProgressChange = async (subanimeId: string, value: string) => {
+    const newProgress = parseInt(value, 10);
+    if (!user || isNaN(newProgress)) return;
+
+    const { error } = await supabase
+      .from('usersubanime')
+      .upsert(
+        {
+          user_id: user.id,
+          subanime_id: subanimeId,
+          progress: newProgress
+        },
+        { onConflict: 'user_id,subanime_id' }
+      );
+
+    if (error) {
+      console.error('Error updating progress:', error.message);
+    }
+    else {
+      setSubanime((prev) =>
+        prev.map((item) =>
+          item.id === subanimeId
+            ? {
+              ...item,
+              usersubanime: [
+                {
+                  ...(item.usersubanime?.[0] || {}),
+                  progress: newProgress,
+                },
+              ],
+            }
+            : item
+        )
+      );
+      setLocalProgressMap((prev) => ({
+        ...prev,
+        [subanimeId]: newProgress.toString(),
+      }));
+    }
+  };
+
+  const handleScoreChange = async (subanimeId: string, value: string) => {
+    const newScore = parseInt(value, 10);
+    if (!user || isNaN(newScore)) return;
+
+    const { error } = await supabase
+      .from('usersubanime')
+      .upsert(
+        {
+          user_id: user.id,
+          subanime_id: subanimeId,
+          score: newScore
+        },
+        { onConflict: 'user_id,subanime_id' }
+      );
+
+    if (error) {
+      console.error('Error updating score:', error.message);
+    }
+    else{
+      setSubanime((prev) =>
+        prev.map((item) =>
+          item.id === subanimeId
+            ? {
+              ...item,
+              usersubanime: [
+                {
+                  ...(item.usersubanime?.[0] || {}),
+                  score: newScore,
+                },
+              ],
+            }
+            : item
+        )
+      );
     }
   };
 
@@ -262,7 +395,7 @@ export default function AnimeDetail() {
                     <label htmlFor="score" className="block text-sm font-medium text-white mb-1">Score</label>
                     <select
                       id="score"
-                      value={score}
+                      value={score > 0 ? score : 'Select Score'}
                       onChange={(e) => setScore(parseInt(e.target.value))}
                       className="w-full p-2 rounded bg-zinc-800 text-white border border-zinc-600"
                     >
@@ -305,14 +438,70 @@ export default function AnimeDetail() {
             </div>
 
 
-            {/* Anime Details */}
-            <div className="bg-[#1f1f1f] text-white p-4 rounded space-y-2">
-              <h3 className="font-bold mb-6">Anime Details</h3>
-              <p>Premiered: {anime.season || "-"}</p>
-              <p>Aired: {formatDate(anime.aired_from) || "-"} to {formatDate(anime.aired_to) || "-"}</p>
-              <p>Genres: {anime.genres?.join(", ") || "-"}</p>
-              <p>Studio: {anime.studio?.join(", ") || "-"}</p>
-            </div>
+            {/* Anime Relations */}
+            {subanime.length > 0 && (
+              <div className="bg-[#1f1f1f] text-white p-4 rounded space-y-2">
+                <h3 className="font-bold mb-6">Anime Relations</h3>
+                {subanime.map((sub) => {
+                  const progressValue = localProgressMap[sub.id] ?? sub.usersubanime?.[0]?.progress?.toString() ?? '';
+                  return (
+                    <div key={sub.id} className="border-b border-gray-700 py-2">
+                      <div
+                        onClick={() => toggleSub(sub.id)}
+                        className="text-lg font-semibold cursor-pointer flex justify-between items-center"
+                      >
+                        <span>{sub.title}</span>
+                        <span>{openSubId === sub.id ? "▲" : "▼"}</span>
+                      </div>
+
+                      {openSubId === sub.id && (
+                        <div className="mt-1 space-y-1">
+
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm text-white">Score:</p>
+                            <select
+                              className="w-20 rounded px-2 py-1 text-sm bg-[#2a2a2a] text-white border border-gray-600"
+                              value={sub.usersubanime?.[0]?.score ?? ''}
+                              onChange={(e) => handleScoreChange(sub.id, e.target.value)}
+                            >
+                              <option value="">-</option>
+                              {[...Array(10)].map((_, i) => (
+                                <option key={i + 1} value={i + 1}>{i + 1}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm text-white">Progress:</p>
+                            <input
+                              type="number"
+                              className="w-16 rounded px-2 py-1 text-sm bg-[#2a2a2a] text-white border border-gray-600"
+                              value={progressValue}
+                              onChange={(e) =>
+                                setLocalProgressMap((prev) => ({
+                                  ...prev,
+                                  [sub.id]: e.target.value,
+                                }))
+                              }
+                              onBlur={() => handleProgressChange(sub.id, progressValue)}
+                            />
+                            <p className="text-sm text-white">/ {sub.episodes || "-"}</p>
+                          </div>
+
+                          <p className="text-sm text-gray-400">Type: {sub.type}</p>
+                          <p className="text-sm text-gray-400">
+                            Aired: {formatDate(sub.aired_from)}{sub.aired_to && ` - ${formatDate(sub.aired_to)}`}
+                          </p>
+                          <p className="text-sm text-gray-400">Studio: {sub.studio.join(", ") || "N/A"}</p>
+                        </div>
+                      )}
+
+                    </div>
+                  )
+                })
+                }
+              </div>
+            )}
           </div>
 
           {/* Right Column - Anime Details */}
@@ -344,7 +533,10 @@ export default function AnimeDetail() {
             </div>
 
             <div className="bg-[#1f1f1f] text-white p-6">
-              <h3 className="text-lg font-semibold mb-4">Synopsis</h3>
+              <h3 className="text-2xl font-semibold mb-4">Synopsis</h3>
+              <br></br>
+              <p className="text-lg font-bold">Genres: {anime.genres?.join(", ") || "-"}</p>
+              <br></br>
               <p className="text-white mt-2 whitespace-pre-line">{anime.synopsis || "No synopsis available."}</p>
             </div>
 
