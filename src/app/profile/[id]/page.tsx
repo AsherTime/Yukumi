@@ -283,11 +283,11 @@ export default function ProfilePage() {
     }
 
     const fetchSubAnime = async () => {
-      if (!user?.id) return;
+      if (!userId) return;
       const { data: subanime, error } = await supabase
         .from("subanime")
         .select("*, usersubanime(score, progress, user_id, subanime_id)")
-        .eq("usersubanime.user_id", user?.id);
+        .eq("usersubanime.user_id", userId);
       if (error) {
         console.error("Error fetching subanime:", error.message);
       }
