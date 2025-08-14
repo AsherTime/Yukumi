@@ -36,35 +36,20 @@ export default function useFetchPost() {
     const [postsData, setPostsData] = useState<Post[]>([]);
     const { user } = useAuth();
 
-    const [page,] = useState(1);
-    const [, setHasMore] = useState(true);
-    const [, setLoadingMore] = useState(false);
-    const POSTS_PER_PAGE = 10;
 
     const fetchPosts = useCallback(async (reset = false) => {
         try {
-            const from = reset ? 0 : (page - 1) * POSTS_PER_PAGE;
-            const to = from + POSTS_PER_PAGE - 1;
 
             const { data: posts, error } = await supabase
                 .from("posts")
                 .select(`*, Profiles(username, avatar_url),post_tags(tags(name))`, { count: "exact" })
-                .order("created_at", { ascending: false })
-                .range(from, to);
+                .order("created_at", { ascending: false });
 
             if (error) {
-                if (error.message === "Requested range not satisfiable") {
-                    setHasMore(false);
-                    return setLoadingMore(false);
-                }
                 console.error("Post fetch error:", error);
                 return;
             }
 
-            if (!posts || posts.length === 0) {
-                setHasMore(false);
-                return setLoadingMore(false);
-            }
 
 
             let savedPosts: string[] = [];
@@ -129,14 +114,10 @@ export default function useFetchPost() {
             } else {
                 setPostsData(prev => [...prev, ...postsWithMeta]);
             }
-
-            setHasMore(postsWithMeta.length === POSTS_PER_PAGE);
         } catch (err) {
             console.error("fetchPosts error:", err);
-        } finally {
-            setLoadingMore(false);
         }
-    }, [user, page, POSTS_PER_PAGE]);
+    }, [user]);
 
     useEffect(() => {
         fetchPosts(true); // Always call
