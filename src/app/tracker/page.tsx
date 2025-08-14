@@ -748,7 +748,19 @@ export default function TrackerPage() {
   // Use real data if available, otherwise fallback to demo
   const score = tracker?.xp ?? trackerData.score
   const level = tracker?.level ?? trackerData.level
-  const levelName = trackerData.levelName // You may want to fetch this from DB in the future
+  let levelName;
+  if(score < 1000)
+    levelName = "Aura Farmer"
+  else if(score < 2000)
+    levelName = "Rising Hunter"
+  else if(score < 3000)
+    levelName = "Cosmic Voyager"
+  else if(score < 4000)
+    levelName = "Galactic Sage"
+  else if(score < 5000)
+    levelName = "Stellar Guardian"
+  else
+    levelName = "Celestial Champion"
   const levelProgress = tracker ? ((score % 200) / 200) * 100 : trackerData.levelProgress
 
   // Update the trackerData.features array in the return statement
