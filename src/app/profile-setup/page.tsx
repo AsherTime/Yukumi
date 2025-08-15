@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { useNavigationContext } from '@/contexts/NavigationContext';
+import { useImageUpload } from '@/hooks/useImageUpload';
 
 export default function ProfileSetup() {
   const [profileImage, setProfileImage] = useState<string | null>(null)
@@ -23,7 +24,14 @@ export default function ProfileSetup() {
   const [isUsernameAvailable, setIsUsernameAvailable] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(false);
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
+  const router = useRouter();
+  const { uploadImage } = useImageUpload({
+    folder: '/user-avatars',
+    maxSizeMB: 5,
+    quality: 80,
+    width: 1920, // Max width for cover images
+    height: 1080 // Max height for cover images
+  });
 
   const { fromPage, setFromPage } = useNavigationContext();
 
@@ -232,32 +240,16 @@ export default function ProfileSetup() {
   }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+     const file = e.target.files?.[0];
+    if (!file) return;
+
     try {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("No user session");
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${session.user.id}-${Math.random()}.${fileExt}`;
-      const filePath = `${session.user.id}/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('avatars').getPublicUrl(filePath);
-
-      setProfileImage(publicUrl);
+      const imageUrl = await uploadImage(file);
+      setProfileImage(imageUrl);
+      toast.success('Image uploaded successfully!');
     } catch (error) {
-      console.error(error || "Failed to upload image");
+      console.error('Upload error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload image');
     }
   };
 
