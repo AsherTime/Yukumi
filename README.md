@@ -1,6 +1,6 @@
 # 🌸 Yukumi - Anime Tracker & Community
 
-Yukumi is a full-stack anime website where users can track their watched anime, score them, and engage in community discussions. Inspired by platforms like MyAnimeList and Reddit, Yukumi brings together tracking, scoring, and social interaction — all in one place.
+Yukumi is a full-stack anime website where users can track their anime progress, score them, and engage in community discussions. Inspired by platforms like MyAnimeList and Reddit, Yukumi brings together tracking, scoring, and social interaction — all in one place.
 
 ## 🚀 Features
 
@@ -24,7 +24,7 @@ Yukumi is a full-stack anime website where users can track their watched anime, 
 - Personalized experience once logged in.
 
 ### 📷 Media & Hosting
-- Anime posters and assets are served through [Supabase](https://supabase.com/) and [ImageKit](https://imagekit.io/).
+- Anime posters and assets are served through [ImageKit](https://imagekit.io/).
 - Images are optimized for fast delivery and caching.
 
 ## ⚙️ Tech Stack
@@ -32,4 +32,4 @@ Yukumi is a full-stack anime website where users can track their watched anime, 
 - **Frontend:** React (with TypeScript), Tailwind CSS, Next.js (App Router)
 - **Backend:** Supabase (Database, Auth, RLS Policies, Edge Functions)
 - **Auth:** Supabase Authentication
-- **Storage/CDN:** Supabase + ImageKit
+- **Storage/CDN:** ImageKit
