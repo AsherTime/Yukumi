@@ -23,6 +23,7 @@ import Image from "next/image"
 import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { useLoginGate } from '@/contexts/LoginGateContext';
+import { useImageUpload } from '@/hooks/useImageUpload';
 
 interface Post {
   id: string;
@@ -132,7 +133,7 @@ export default function ProfilePage() {
     return [];
   });
   const [showEditModal, setShowEditModal] = useState(false);
-  const DEFAULT_BANNER = "https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Flux_Dev_a_stunning_illustration_of_Create_an_animethemed_webs_0.jpg?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5X2EwNWE5MzA2LTNiZGItNDliNC1hZGQ2LTFjMjEzNjhiYzcwMSJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9GbHV4X0Rldl9hX3N0dW5uaW5nX2lsbHVzdHJhdGlvbl9vZl9DcmVhdGVfYW5fYW5pbWV0aGVtZWRfd2Vic18wLmpwZyIsImlhdCI6MTc0NzU2NDg0NiwiZXhwIjoxNzc5MTAwODQ2fQ.ow7wQ-1Dunza5HIya7Ky4wjGdYULgrged7V6J-Smag0";
+  const DEFAULT_BANNER = "https://ik.imagekit.io/g19tkydww/Background_Images/default%20banner.jpg?updatedAt=1755241485636";
   const [bannerUrl, setBannerUrl] = useState<string>(DEFAULT_BANNER);
   const [editBanner, setEditBanner] = useState<string | null>(null);
   const [editBannerFile, setEditBannerFile] = useState<File | null>(null);
@@ -143,12 +144,26 @@ export default function ProfilePage() {
   const [username, setUsername] = useState<string | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [userAnime, setUserAnime] = useState<UserAnime[]>([]);
-  const [subanime, setSubanime] = useState<Subanime[]>([]); 
+  const [subanime, setSubanime] = useState<Subanime[]>([]);
   const [selectedStatus, setSelectedStatus] = useState('');
   const profileId = userId || user?.id;
+  const { uploadImage: uploadBanner } = useImageUpload({
+    folder: '/user-banners',
+    maxSizeMB: 5,
+    quality: 80,
+    width: 1920, // Max width for cover images
+    height: 1080 // Max height for cover images
+  });
+  const { uploadImage: uploadProfilePic } = useImageUpload({
+    folder: '/user-avatars',
+    maxSizeMB: 5,
+    quality: 80,
+    width: 1920, // Max width for profile pictures
+    height: 1080 // Max height for profile pictures
+  });
   const { requireLogin } = useLoginGate();
   const { setPostsData, fetchPosts } = fetchPost();
-  const { saved, savedLoading, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts); 
+  const { saved, savedLoading, toggleSave } = useSavedPosts(user, setPostsData, fetchPosts);
   const { following, handleFollowToggle } = handleFollow(user);
   const { data: savedPosts } = useSWR(
     () => (saved.length ? ['savedPosts', saved] : null),
@@ -463,57 +478,40 @@ export default function ProfilePage() {
   });
 
   const handleBannerUpload = async () => {
-    if (!editBannerFile) return;
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return;
     const file = editBannerFile;
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${session.user.id}-banner-${Date.now()}.${fileExt}`;
-    const filePath = `${session.user.id}/${fileName}`;
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, file, { cacheControl: '3600', upsert: true, contentType: file.type });
-    if (uploadError) {
-      toast.error("Failed to upload banner");
-      return;
+    if (!file) return;
+
+    try {
+      const imageUrl = await uploadBanner(file);
+      setBannerUrl(imageUrl); // updates state for UI
+      toast.success('Image uploaded successfully!');
+      return imageUrl; // return directly, not from state
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload image');
+      return null;
     }
-    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-    if (!urlData.publicUrl) {
-      toast.error("Failed to get banner URL");
-      return;
-    }
-    setBannerUrl(urlData.publicUrl);
-    return urlData.publicUrl;
   };
 
+
   const handleImageUpload = async () => {
-    if (!editProfilePicFile) return;
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session?.user) return;
-
     const file = editProfilePicFile;
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${session.user.id}-${Math.random()}.${fileExt}`;
-    const filePath = `${session.user.id}/${fileName}`;
+    if (!file) return;
 
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, file);
-
-    if (uploadError) throw uploadError;
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from('avatars').getPublicUrl(filePath);
-
-    setProfilePic(publicUrl);
-    return publicUrl;
+    try {
+      const imageUrl = await uploadProfilePic(file);
+      setProfilePic(imageUrl); // updates state for UI
+      toast.success('Image uploaded successfully!');
+      return imageUrl; // return directly, not from state
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload image');
+      return null;
+    }
   }
 
   const handleSaveProfile = async () => {
+    setLoading(true);
     let newBannerUrl = bannerUrl;
     if (editBannerFile) {
       const uploaded = await handleBannerUpload();
@@ -545,6 +543,7 @@ export default function ProfilePage() {
       setBannerUrl(newBannerUrl);
       setEditBannerFile(null);
       setEditBanner(null);
+      setLoading(false);
       toast.success("Profile updated!");
     } else {
       toast.error("Failed to update profile");

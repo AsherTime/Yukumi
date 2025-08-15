@@ -799,7 +799,7 @@ export default function TrackerPage() {
       {/* Background Layer */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <Image
-          src="https://rhspkjpeyewjugifcvil.supabase.co/storage/v1/object/sign/animepagebg/Leonardo_Anime_XL_Generate_a_wide_horizontal_image_for_a_websi_1.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hMDVhOTMwNi0zYmRiLTQ5YjQtYWRkNi0xYzIxMzY4YmM3MDEiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJhbmltZXBhZ2ViZy9MZW9uYXJkb19BbmltZV9YTF9HZW5lcmF0ZV9hX3dpZGVfaG9yaXpvbnRhbF9pbWFnZV9mb3JfYV93ZWJzaV8xLmpwZyIsImlhdCI6MTc1MDA5MDEwOSwiZXhwIjoxNzgxNjI2MTA5fQ.fWu7BWc3R8PgN7n8Q8XrSS0sK3m8jC5Rub8EVZP6LUk"
+          src="https://ik.imagekit.io/g19tkydww/Background_Images/tracker%20bg.jpg?updatedAt=1755241560944"
           alt="Background"
           fill
           className="object-cover blur-[2.25px] brightness-70 grayscale-[0.07]"
