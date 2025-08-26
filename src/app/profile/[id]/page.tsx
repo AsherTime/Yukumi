@@ -66,8 +66,8 @@ interface Anime {
   id: string
   title: string
   image_url: string
-  score: number | null
-  status: string
+  score?: number | null
+  status?: string
   tags?: string[]
   genres?: string[]
 }
@@ -611,10 +611,6 @@ export default function ProfilePage() {
 
     fetchEnriched();
   }, [posts, uniqueSavedPosts, user]);
-
-  useEffect(() => {
-    console.log("Enriched Posts: ", enrichedPosts);
-  }, [enrichedPosts]);
 
 
 

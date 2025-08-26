@@ -18,18 +18,12 @@ type Anime = {
   image_url: string;
   title: string;
   synopsis: string;
-  type: string;
-  episodes: number;
-  season: string;
-  aired_from: string;
-  aired_to: string;
   genres: string[];
   score: number;
   rank: number;
   popularity: number;
   members: number;
   tags: string[];
-  studio: string[]
 };
 
 type UserAnime = {
@@ -130,7 +124,26 @@ export default function AnimeDetail() {
       setScore(data?.score || 0);
     }
     const AnimeRelations = async () => {
-      if (!user) return;
+      if (!user) {
+        try {
+          const {
+            data,
+            error,
+          } = await supabase
+            .from("subanime")
+            .select("*")
+            .eq("parent", id);
+
+          if (error) throw error;
+
+          setSubanime(data || []);
+        }
+        catch (error) {
+          console.error("Error fetching anime relations:", error);
+          toast.error("Failed to load anime relations. Please try again.");
+        }
+        return;
+      }
       try {
         const {
           data,
@@ -283,6 +296,34 @@ export default function AnimeDetail() {
         ...prev,
         [subanimeId]: newProgress.toString(),
       }));
+      if (newProgress > 0) {
+        try {
+          const wasAwarded = await handleQuickReviewer(
+            user.id,
+            subanimeId,
+            'anime'
+          );
+
+          if (wasAwarded) {
+            toast.success('Review submitted and daily task completed! +25 XP');
+          } else {
+            // Award points for review submission even if daily task is already completed
+            await awardPoints(
+              user.id,
+              'review_submitted',
+              15,
+              subanimeId,
+              'anime'
+            );
+            toast.success('Review submitted successfully! +15 XP');
+          }
+        } catch (pointsError) {
+          console.error('Failed to award points for review:', pointsError);
+          toast.warning('Review submitted, but points system is temporarily unavailable');
+        }
+      } else {
+        toast.success('Watchlist updated successfully!');
+      }
     }
   };
 
@@ -304,7 +345,7 @@ export default function AnimeDetail() {
     if (error) {
       console.error('Error updating score:', error.message);
     }
-    else{
+    else {
       setSubanime((prev) =>
         prev.map((item) =>
           item.id === subanimeId
@@ -320,6 +361,34 @@ export default function AnimeDetail() {
             : item
         )
       );
+      if (newScore > 0) {
+        try {
+          const wasAwarded = await handleQuickReviewer(
+            user.id,
+            subanimeId,
+            'anime'
+          );
+
+          if (wasAwarded) {
+            toast.success('Review submitted and daily task completed! +25 XP');
+          } else {
+            // Award points for review submission even if daily task is already completed
+            await awardPoints(
+              user.id,
+              'review_submitted',
+              15,
+              subanimeId,
+              'anime'
+            );
+            toast.success('Review submitted successfully! +15 XP');
+          }
+        } catch (pointsError) {
+          console.error('Failed to award points for review:', pointsError);
+          toast.warning('Review submitted, but points system is temporarily unavailable');
+        }
+      } else {
+        toast.success('Watchlist updated successfully!');
+      }
     }
   };
 
@@ -462,6 +531,12 @@ export default function AnimeDetail() {
                             <select
                               className="w-20 rounded px-2 py-1 text-sm bg-[#2a2a2a] text-white border border-gray-600"
                               value={sub.usersubanime?.[0]?.score ?? ''}
+                              onMouseDown={(e) => {
+                                const allowed = requireLogin();
+                                if (!allowed) {
+                                  e.preventDefault(); // stop the dropdown from opening
+                                }
+                              }}
                               onChange={(e) => handleScoreChange(sub.id, e.target.value)}
                             >
                               <option value="">-</option>
@@ -477,6 +552,12 @@ export default function AnimeDetail() {
                               type="number"
                               className="w-16 rounded px-2 py-1 text-sm bg-[#2a2a2a] text-white border border-gray-600"
                               value={progressValue}
+                              onMouseDown={(e) => {
+                                const allowed = requireLogin();
+                                if (!allowed) {
+                                  e.preventDefault(); // stop the dropdown from opening
+                                }
+                              }}
                               onChange={(e) =>
                                 setLocalProgressMap((prev) => ({
                                   ...prev,

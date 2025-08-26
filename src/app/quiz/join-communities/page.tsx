@@ -70,7 +70,6 @@ export default function JoinCommunities() {
       .from("members")
       .upsert(
         joinedCommunities.map((community) => ({
-          user_id: userId,
           community_id: community.id,
         })),
         { onConflict: 'user_id, community_id' }
