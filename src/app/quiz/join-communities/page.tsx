@@ -5,7 +5,6 @@ import { motion } from "framer-motion"
 import { Check, ChevronsRight, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
-import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -24,8 +23,6 @@ export default function JoinCommunities() {
   const [value] = useState<string>()
   const [communities, setCommunities] = useState<Community[]>([])
   const [joinedCommunities, setJoinedCommunities] = useState<Community[]>([]);
-  const { user } = useAuth();
-  const userId = user?.id;
   const router = useRouter();
 
   const { fromPage, setFromPage } = useNavigationContext();
@@ -70,7 +67,6 @@ export default function JoinCommunities() {
       .from("members")
       .upsert(
         joinedCommunities.map((community) => ({
-          user_id: userId,
           community_id: community.id,
         })),
         { onConflict: 'user_id, community_id' }

@@ -28,10 +28,10 @@ interface Community {
   anime_id: string;
   banner_url: string;
   avatar_url: string;
-  description: string;
-  rules: string;
-  trending_tags: string[];
-  trending_topics: string[];
+  description?: string;
+  rules?: string;
+  trending_tags?: string[];
+  trending_topics?: string[];
 }
 
 interface Anime {
@@ -394,7 +394,7 @@ export default function CommunityIdPage() {
           <div className="flex flex-col md:flex-row gap-8">
             {/* Main Posts Feed */}
             <div className="order-2 md:order-1 flex-1 flex flex-col bg-[#18181b] space-y-4">
-              <AnimatePresence mode="wait">
+              <AnimatePresence>
                 {uniquePosts.length === 0 ? (
                   <motion.div
                     key="no-posts"
