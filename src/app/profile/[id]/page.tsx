@@ -510,45 +510,71 @@ export default function ProfilePage() {
     }
   }
 
-  const handleSaveProfile = async () => {
-    setLoading(true);
-    let newBannerUrl = bannerUrl;
-    if (editBannerFile) {
-      const uploaded = await handleBannerUpload();
-      if (uploaded) newBannerUrl = uploaded;
-    }
-    let newProfilePic = profilePic;
+ const handleSaveProfile = async () => {
+  setLoading(true);
+
+  let newBannerUrl = bannerUrl;
+  if (editBannerFile) {
+    const uploaded = await handleBannerUpload();
+    if (uploaded) newBannerUrl = uploaded;
+  }
+
+  let newProfilePic = profilePic;
+  if (editProfilePicFile) {
+    const uploaded = await handleImageUpload();
+    if (uploaded) newProfilePic = uploaded;
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return;
+
+  // Build update object dynamically
+  const updateData: Record<string, any> = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (displayName && displayName.trim() !== "") {
+    updateData.display_name = displayName;
+  }
+
+  if (about && about.trim() !== "") {
+    updateData.about = about;
+  }
+
+  if (editProfilePicFile) {
+    updateData.avatar_url = newProfilePic;
+  }
+
+  if (editBannerFile) {
+    updateData.banner = newBannerUrl;
+  }
+
+  const { error } = await supabase
+    .from("Profiles")
+    .update(updateData)
+    .eq("id", session.user.id);
+
+  if (!error) {
     if (editProfilePicFile) {
-      const uploaded = await handleImageUpload();
-      if (uploaded) newProfilePic = uploaded;
-    }
-    // Save display name, banner, and about
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return;
-    const { error } = await supabase
-      .from('Profiles')
-      .update({
-        display_name: displayName,
-        avatar_url: newProfilePic,
-        banner: newBannerUrl,
-        about: about,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', session.user.id);
-    if (!error) {
-      setShowEditModal(false);
       setProfilePic(newProfilePic);
       setEditProfilePicFile(null);
       setEditProfilePic(null);
+    }
+    if (editBannerFile) {
       setBannerUrl(newBannerUrl);
       setEditBannerFile(null);
       setEditBanner(null);
-      setLoading(false);
-      toast.success("Profile updated!");
-    } else {
-      toast.error("Failed to update profile");
     }
-  };
+    setShowEditModal(false);
+    setLoading(false);
+    console.log("Profile updated!");
+  } else {
+    console.error("Failed to update profile:", error.message);
+    setLoading(false);
+  }
+};
+
+
 
   const [enrichedPosts, setEnrichedPosts] = useState<Post[]>([]);
   const [enrichedSavedPosts, setEnrichedSavedPosts] = useState<Post[]>([]);
