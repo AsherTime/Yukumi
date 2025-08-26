@@ -85,6 +85,16 @@ type Subanime = {
   episodes: number;
 };
 
+type Profile = {
+  id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  banner: string | null;
+  about: string | null;
+  updated_at: string;
+};
+
+
 
 const AnimeCard = ({ anime }: { anime: Anime }) => {
   const router = useRouter();
@@ -512,43 +522,70 @@ export default function ProfilePage() {
 
   const handleSaveProfile = async () => {
     setLoading(true);
+
     let newBannerUrl = bannerUrl;
     if (editBannerFile) {
       const uploaded = await handleBannerUpload();
       if (uploaded) newBannerUrl = uploaded;
     }
+
     let newProfilePic = profilePic;
     if (editProfilePicFile) {
       const uploaded = await handleImageUpload();
       if (uploaded) newProfilePic = uploaded;
     }
-    // Save display name, banner, and about
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
+
+    // Build update object dynamically
+    const updateData: Partial<Profile> = {
+      updated_at: new Date().toISOString(),
+    };
+
+
+    if (displayName && displayName.trim() !== "") {
+      updateData.display_name = displayName;
+    }
+
+    if (about && about.trim() !== "") {
+      updateData.about = about;
+    }
+
+    if (editProfilePicFile) {
+      updateData.avatar_url = newProfilePic;
+    }
+
+    if (editBannerFile) {
+      updateData.banner = newBannerUrl;
+    }
+
     const { error } = await supabase
-      .from('Profiles')
-      .update({
-        display_name: displayName,
-        avatar_url: newProfilePic,
-        banner: newBannerUrl,
-        about: about,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', session.user.id);
+      .from("Profiles")
+      .update(updateData)
+      .eq("id", session.user.id);
+
     if (!error) {
+      if (editProfilePicFile) {
+        setProfilePic(newProfilePic);
+        setEditProfilePicFile(null);
+        setEditProfilePic(null);
+      }
+      if (editBannerFile) {
+        setBannerUrl(newBannerUrl);
+        setEditBannerFile(null);
+        setEditBanner(null);
+      }
       setShowEditModal(false);
-      setProfilePic(newProfilePic);
-      setEditProfilePicFile(null);
-      setEditProfilePic(null);
-      setBannerUrl(newBannerUrl);
-      setEditBannerFile(null);
-      setEditBanner(null);
       setLoading(false);
-      toast.success("Profile updated!");
+      console.log("Profile updated!");
     } else {
-      toast.error("Failed to update profile");
+      console.error("Failed to update profile:", error.message);
+      setLoading(false);
     }
   };
+
+
 
   const [enrichedPosts, setEnrichedPosts] = useState<Post[]>([]);
   const [enrichedSavedPosts, setEnrichedSavedPosts] = useState<Post[]>([]);
