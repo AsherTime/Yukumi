@@ -85,6 +85,16 @@ type Subanime = {
   episodes: number;
 };
 
+type Profile = {
+  id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  banner: string | null;
+  about: string | null;
+  updated_at: string;
+};
+
+
 
 const AnimeCard = ({ anime }: { anime: Anime }) => {
   const router = useRouter();
@@ -510,69 +520,70 @@ export default function ProfilePage() {
     }
   }
 
- const handleSaveProfile = async () => {
-  setLoading(true);
+  const handleSaveProfile = async () => {
+    setLoading(true);
 
-  let newBannerUrl = bannerUrl;
-  if (editBannerFile) {
-    const uploaded = await handleBannerUpload();
-    if (uploaded) newBannerUrl = uploaded;
-  }
-
-  let newProfilePic = profilePic;
-  if (editProfilePicFile) {
-    const uploaded = await handleImageUpload();
-    if (uploaded) newProfilePic = uploaded;
-  }
-
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return;
-
-  // Build update object dynamically
-  const updateData: Record<string, any> = {
-    updated_at: new Date().toISOString(),
-  };
-
-  if (displayName && displayName.trim() !== "") {
-    updateData.display_name = displayName;
-  }
-
-  if (about && about.trim() !== "") {
-    updateData.about = about;
-  }
-
-  if (editProfilePicFile) {
-    updateData.avatar_url = newProfilePic;
-  }
-
-  if (editBannerFile) {
-    updateData.banner = newBannerUrl;
-  }
-
-  const { error } = await supabase
-    .from("Profiles")
-    .update(updateData)
-    .eq("id", session.user.id);
-
-  if (!error) {
-    if (editProfilePicFile) {
-      setProfilePic(newProfilePic);
-      setEditProfilePicFile(null);
-      setEditProfilePic(null);
-    }
+    let newBannerUrl = bannerUrl;
     if (editBannerFile) {
-      setBannerUrl(newBannerUrl);
-      setEditBannerFile(null);
-      setEditBanner(null);
+      const uploaded = await handleBannerUpload();
+      if (uploaded) newBannerUrl = uploaded;
     }
-    setShowEditModal(false);
-    setLoading(false);
-    console.log("Profile updated!");
-  } else {
-    console.error("Failed to update profile:", error.message);
-    setLoading(false);
-  }
-};
+
+    let newProfilePic = profilePic;
+    if (editProfilePicFile) {
+      const uploaded = await handleImageUpload();
+      if (uploaded) newProfilePic = uploaded;
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+
+    // Build update object dynamically
+    const updateData: Partial<Profile> = {
+      updated_at: new Date().toISOString(),
+    };
+
+
+    if (displayName && displayName.trim() !== "") {
+      updateData.display_name = displayName;
+    }
+
+    if (about && about.trim() !== "") {
+      updateData.about = about;
+    }
+
+    if (editProfilePicFile) {
+      updateData.avatar_url = newProfilePic;
+    }
+
+    if (editBannerFile) {
+      updateData.banner = newBannerUrl;
+    }
+
+    const { error } = await supabase
+      .from("Profiles")
+      .update(updateData)
+      .eq("id", session.user.id);
+
+    if (!error) {
+      if (editProfilePicFile) {
+        setProfilePic(newProfilePic);
+        setEditProfilePicFile(null);
+        setEditProfilePic(null);
+      }
+      if (editBannerFile) {
+        setBannerUrl(newBannerUrl);
+        setEditBannerFile(null);
+        setEditBanner(null);
+      }
+      setShowEditModal(false);
+      setLoading(false);
+      console.log("Profile updated!");
+    } else {
+      console.error("Failed to update profile:", error.message);
+      setLoading(false);
+    }
+  };
 
 
 
