@@ -285,7 +285,7 @@ export function TopNav({ children }: { children?: React.ReactNode }) {
           <div className="flex items-center justify-between w-full lg:w-auto pr-4 sm:px-6">
             <div className="flex-shrink-0">
               <Image
-                src="https://res.cloudinary.com/difdc39kr/image/upload/v1740159528/Simplification_gho0s6.svg"
+                src="https://ik.imagekit.io/g19tkydww/Logo/Simplification.svg?updatedAt=1756392588436"
                 alt="YUKUMI"
                 width={144}
                 height={48}
