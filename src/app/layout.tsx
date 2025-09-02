@@ -26,6 +26,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <meta name="image" property="og:image" content="https://yukumi.pages.dev/og-image.png" />
+        <meta property="og:image:alt" content="Yukumi preview image" />
+        <meta name="title" property="og:title" content="Yukumi" />
+        <meta name="description" property="og:description" content="Social cataloguing website for Japanese animated shows that allows users to track their watching progress, create shareable content and engage with fellow enthusiasts." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://yukumi.pages.dev/" />
+        <meta name="author" content="Sarthak Pattnaik" />
+        <meta property="article:published_time" content="2025-09-02T00:00:00Z" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Yukumi" />
+        <meta name="twitter:description" content="Social cataloguing website for Japanese animated shows that allows users to track their watching progress, create shareable content and engage with fellow enthusiasts." />
+        <meta name="twitter:image" content="https://yukumi.pages.dev/og-image.png" />
+      </head>
       <body className={`${inter.className} min-h-screen bg-black text-white`}>
         <Toaster richColors position="top-right" />
         <AuthProvider>
